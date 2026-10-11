@@ -1,0 +1,51 @@
+{
+  "_": "Cấu hình dự án của harness. Chưa khai đơn vị nào: mở phiên Claude Code ở gốc dự án, harness nhắc chạy skill onboard để khai. Nghĩa từng trường: .claude/plugin/FORMAT.md.",
+  "name": "",
+  "defaultUnit": "",
+  "units": {
+    "parents": [],
+    "dirs": {}
+  },
+  "skills": {
+    "mode": "enforce",
+    "overview": "services",
+    "serviceDocs": [
+      "CLAUDE.md",
+      "docs/agent/STATUS.md"
+    ],
+    "tools": {
+      "design_record": "service-docs",
+      "design_update": "service-docs",
+      "spec_fill": "service-docs",
+      "impl_link": "service-docs",
+      "service_doc_set": "service-docs",
+      "problem_record": "service-docs",
+      "diagram_save": "diagrams",
+      "diagram_explain": "diagrams",
+      "diagram_remove": "diagrams",
+      "diagram_generate": "diagrams",
+      "diagram_review": "diagrams",
+      "context_term": "context",
+      "context_relate": "context",
+      "portal_build": "service-page"
+    },
+    "readonly": [
+      "docs_status",
+      "docs_check",
+      "service_doc_get",
+      "diagram_validate",
+      "diagram_list",
+      "diagram_get",
+      "context_explore",
+      "scope_register",
+      "scope_status"
+    ],
+    "files": []
+  },
+  "policies": {
+    "rootNeverPush": false,
+    "docsNeverPush": false,
+    "unitSheets": [],
+    "readOnlyDirs": []
+  }
+}

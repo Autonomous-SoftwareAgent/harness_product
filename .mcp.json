@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "bsn-docs": {
+      "command": "node",
+      "args": [
+        ".claude/plugin/mcp/mcp-server.js"
+      ]
+    }
+  }
+}

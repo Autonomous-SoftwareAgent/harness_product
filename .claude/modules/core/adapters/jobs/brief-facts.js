@@ -97,7 +97,7 @@ function bannedFacts(root, hooks, parts = {}) {
 // Mọi dữ kiện cho tóm tắt đầu phiên của phiên `sid`. `sessions` là phần bảng phiên (bên gọi đưa vào: otherSessions, myTitle),
 // `skillHealth` là hàm kiểm sổ phiên, `importScopeFiles` là hàm chuyển tệp phạm vi kiểu cũ vào sổ (bên gọi đưa vào: bộ chuyển không nhập nhau).
 // `parts` là các phần khác của harness, do CỬA VÀO đưa vào dưới dạng hàm trả module: { yaml, gitHooks, bannedScan, portal, contextPortal, mcpTools }.
-function gather(root, sid, { now = Date.now(), sessions, skillHealth, importScopeFiles, parts = {} } = {}) {
+function gather(root, sid, { now = Date.now(), sessions, skillHealth, importScopeFiles, extensions, parts = {} } = {}) {
   const svcs = services(root);
   const hooks = ensureGitHooks(root, parts);
   const f = { services: svcs.map((s) => serviceFacts(root, s, parts)), hooks, handoffs: openHandoffs(root), notices: [], toolCount: 0, advertise: false };
@@ -124,6 +124,8 @@ function gather(root, sid, { now = Date.now(), sessions, skillHealth, importScop
     else if (!cfg.units.parents.length && !Object.keys(P.extraUnits(root)).length) f.onboard = cfg.exists ? 'project.json chưa khai đơn vị nào' : 'chưa có .claude/project/project.json';
   } catch { /* bỏ qua */ }
   try { const m = ensureMcpJson(root); if (m !== 'ok') f.mcpJson = m; } catch { /* bỏ qua */ }
+  // Khối mở rộng (S-065): bên gọi đưa vào hàm tính tình trạng; không có gì đáng nói thì không có dòng.
+  try { const x = extensions(root); if (x && x.lines.length) f.extensions = x; } catch { /* bỏ qua */ }
   return f;
 }
 

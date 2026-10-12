@@ -114,6 +114,10 @@ on('install', () => {
     const r = require('./install').run(ROOT, path.resolve(arg), { apply: argv.includes('--apply'), undo: argv.includes('--undo') });
     console.log(r.text); if (!r.ok) process.exitCode = 1;
 });
+on('extension', () => {
+    // Khối mở rộng của dự án và của từng đơn vị (S-065): xem, tạo khung, chạy ca thử, xác nhận (chỉ người dùng, ngoài phiên Claude), chạy lệnh.
+    return require('./extension').run(ROOT, argv.slice(1)).then((r) => { console.log(r.text); if (!r.ok) process.exitCode = 1; }, (e) => { console.error(e.message); process.exitCode = 2; });
+});
 on('public-export', () => {
     // Đóng gói harness thành sản phẩm cài được cho dự án khác (S-063) vào <thư mục> (phải trống hoặc chưa có): chỉ bản ĐÃ COMMIT, bỏ phần
     // nội bộ, thay skill bằng bộ skill của sản phẩm, rồi dò gói. Không commit, không đẩy gì.
@@ -127,7 +131,7 @@ const ctx = { argv, cmd, arg, si, core, autoCheck, generator, portal, cmdRel: CM
 for (const c of P.contributions(ROOT, 'commands')) require(c.file).register(on, ctx);
 
 const usage = () => {
-    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
+    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|extension <list|new|test|trust|untrust|run> ...|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
     process.exit(cmd ? 2 : 0);
 };
 

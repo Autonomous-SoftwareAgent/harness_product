@@ -28,6 +28,8 @@ const LEGACY_PROJECT = [
   ['project.json', 'project.json'], ['units.json', 'units.json'], ['skills-map.json', 'skills-map.json'], ['scope.config.json', 'scope.config.json'],
   [path.join('gate', 'gate.config.json'), 'gate.config.json'], [path.join('gate', 'MIGRATED_AT'), 'MIGRATED_AT'],
   [path.join('mcp', 'context.config.json'), 'context.config.json'], [path.join('mcp', 'portal', 'generators'), 'generators'], ['rules', 'rules'],
+  // Khối mở rộng của dự án (S-065). Dấu vân tay tính theo nội dung, nên khối đã xác nhận vẫn còn hiệu lực sau khi dời chỗ.
+  ['extensions', 'extensions'],
 ];
 const GIT_HOOKS = ['post-commit', 'pre-commit', 'commit-msg', 'pre-push'];
 

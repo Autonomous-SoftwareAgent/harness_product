@@ -40,8 +40,30 @@ function run(root) {
     const ext = W.ruleFiles(root).filter((f) => f.ext);
     const reg = require('../core/rules/registry').create();
     for (const f of ext) { try { reg.add(require(f.file), path.relative(root, f.file), { extension: true }); } catch (e) { err(`luật mở rộng ${path.relative(root, f.file).split(path.sep).join('/')} không nạp được: ${e.message}`); } }
-    if (ext.length) ok(`luật mở rộng của dự án: ${reg.ids().join(', ') || '(không luật nào nạp được)'}`);
-  } catch { /* chưa có phần lắp ráp hook */ }
+    if (ext.length) ok(`luật mở rộng của dự án: ${reg.ids().join(', ') || '(không luật nào nạp được)'}${reg.ids().length ? ' (kiểu cũ api 0.1, không cần xác nhận; nên chuyển sang khối mở rộng)' : ''}`);
+    // Khối mở rộng (S-065): khối chưa xác nhận thì không chạy; khối đã sửa hay đã xóa thì bản đã xác nhận vẫn chạy.
+    const C = require('../core/extensions/contract');
+    const cli = P.codeRel(root, 'cli/cli.js');
+    let seen = new Set();
+    try { seen = new Set(require('../mcp/mcp-tools').tools().filter((t) => !t.extension).map((t) => t.name)); } catch { /* không nạp được lớp công cụ */ }
+    for (const e of W.extensions(root)) {
+      for (const p of e.problems) err(`khối mở rộng ${e.key}: ${p}`);
+      if (e.state === 'untrusted') warn(`khối mở rộng ${e.key} CHƯA xác nhận nên không chạy. Người dùng xác nhận (trong terminal, ngoài phiên Claude): node ${cli} extension trust ${e.key}`);
+      if (e.state === 'changed') warn(`khối mở rộng ${e.key} đã sửa sau lần xác nhận: đang chạy bản đã xác nhận, bản mới chưa có hiệu lực. Xác nhận lại: node ${cli} extension trust ${e.key}`);
+      if (e.state === 'removed') warn(`khối mở rộng ${e.key} đã xóa khỏi repo nhưng bản đã xác nhận vẫn chạy. Gỡ hẳn: node ${cli} extension untrust ${e.key}`);
+      if (!e.manifest) continue;
+      const parts = ['rules', 'tools', 'commands'].map((k) => W.extensionParts(e, k));
+      for (const pr of parts) for (const p of pr.problems) err(`khối mở rộng ${e.key}: ${p} (phần này đang KHÔNG chạy)`);
+      for (const t of parts[1].items) {
+        const n = C.toolName(e.name, t.name);
+        if (seen.has(n)) err(`khối mở rộng ${e.key}: công cụ ${n} trùng tên công cụ đã có nên bị bỏ`);
+        seen.add(n);
+      }
+      ok(`khối mở rộng ${e.key}: ${parts[0].items.length} luật, ${parts[1].items.length} công cụ, ${parts[2].items.length} lệnh`);
+    }
+    const errs = require('../adapters/project/extensions').recentErrors(root, new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+    if (errs.length) warn(`khối mở rộng lỗi lúc chạy ${errs.length} lần trong 24 giờ (luật lỗi hay quá giờ thì cho qua): ${[...new Set(errs.map((x) => `${x.key} ${x.rule}`))].join(', ')}. Xem: node ${cli} extension list`);
+  } catch (e) { warn(`không kiểm được luật và khối mở rộng: ${e.message}`); }
 
   // 2. Đơn vị
   const units = P.serviceEntries(root);

@@ -1,6 +1,7 @@
 'use strict';
 // spec: HOOK-S-007
 // spec: HOOK-S-010
+// spec: HOOK-S-011
 // spec: LEDG-S-004
 // CỬA VÀO, phần lắp ráp dùng chung của các tệp hook (S-055). Đây là nơi DUY NHẤT của các luật biết cả lõi lẫn bộ chuyển:
 // chọn bộ chuyển cho từng cổng, tìm luật, rồi giao cho bộ chuyển Claude Code chạy. Mỗi tệp hook chỉ còn vài dòng gọi `hook(...)`.
@@ -91,26 +92,126 @@ function hook({ name, id, kind, cwdFallback = 'process', shell = false, badInput
   });
 }
 
-// Chạy các luật MỞ RỘNG của dự án nghe sự kiện `kind` (S-064). Luật chạy theo thứ tự id; quyết định khác "cho qua" đầu tiên thắng.
-// Như mọi hook của harness: lỗi của một luật thì cho qua (Claude Code cũng cho qua khi hook hỏng) và ghi ra stderr.
+// KHỐI MỞ RỘNG (S-065): mọi khối của dự án và của các đơn vị, kèm tình trạng xác nhận và khai báo của bản ĐANG CHẠY (bản đã xác nhận).
+// [{ key, scope, name, unit, base, state, run, manifest | null, problems: [chữ] }]. Chỉ khối có `manifest` mới chạy.
+function extensions(root = ROOT) {
+  const A = require('../adapters/project/extensions');
+  const C = require('../core/extensions/contract');
+  return A.status(root).map((e) => {
+    const out = { ...e, manifest: null, problems: [] };
+    if (e.state !== 'removed') out.problems.push(...C.checkManifest(e.raw, { scope: e.scope, name: e.name }).problems.map((p) => `bản trong repo: ${p}`));
+    if (!e.run) return out;
+    const m = C.checkManifest(A.runningManifest(e), { scope: e.scope, name: e.name });
+    if (!m.manifest) { out.problems.push(...m.problems.map((p) => `bản đã xác nhận: ${p}`)); return out; }
+    out.manifest = m.manifest;
+    return out;
+  });
+}
+
+// Nạp phần `key` ('rules' | 'tools' | 'commands') của một khối đang chạy, từ bản đã xác nhận. Trả { items, problems }.
+function extensionParts(ext, key) {
+  const C = require('../core/extensions/contract');
+  const check = { rules: (x, f) => C.checkRule(x, ext.scope, f), tools: (x, f) => C.checkTool(x, f), commands: (x, f) => C.checkCommand(x, f) }[key];
+  const items = [];
+  const problems = [];
+  for (const f of (ext.manifest && ext.manifest[key]) || []) {
+    try {
+      const mod = require(path.join(ext.run, ...f.split('/')));
+      for (const x of Array.isArray(mod) ? mod : [mod]) items.push({ ...check(x, `${ext.key} ${f}`), file: f });
+    } catch (e) { problems.push(`${f}: ${e.message.split('\n')[0]}`); }
+  }
+  return { items, problems };
+}
+
+// Cửa sổ nhìn và cách trả lời của khối `ext` cho sự kiện `event`. `writesAbs`: các tệp việc đó ghi (tuyệt đối).
+function extensionCtx(root, ext, event, writesAbs, { write = false } = {}) {
+  const A = require('../adapters/project/extensions');
+  const C = require('../core/extensions/contract');
+  const v = A.view(ext.base, { write });
+  const rel = (abs) => A.relIn(ext.base, abs);
+  return {
+    api: C.EXT_API, kind: event.kind, scope: ext.scope, unit: ext.unit ? { name: ext.unit, dir: ext.base } : null,
+    session: event.session || '', agent: event.agent || '', prompt: event.prompt || '', reply: event.reply || '', source: event.source || '',
+    action: C.shapeAction(event.action, rel, writesAbs),
+    // Đơn vị chứa một đường dẫn tính từ thư mục của khối ('' nếu không thuộc đơn vị nào): khối của cả dự án dùng để xét theo đơn vị.
+    unitOf: (p) => P.serviceOf(root, path.resolve(ext.base, String(p || ''))),
+    fs: v.fs, git: v.git, ...C.answers(event.kind),
+  };
+}
+
+// Các tệp một việc ghi (đường dẫn tuyệt đối): tệp của lần ghi, và đích của lệnh shell khi cửa vào có phân tích lệnh.
+function writesOf(event, root) {
+  const a = event.action || {};
+  const out = [];
+  if (a.type === 'write-file' && a.file) out.push(path.resolve(a.file));
+  if (a.shell && Array.isArray(a.shell.targets)) for (const t of a.shell.targets) out.push(P.resolveToken(t, event.cwd || root));
+  return out;
+}
+
+const withTimeout = (p, ms, what) => new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error(`${what}: quá ${ms} ms`)), ms);
+  p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+});
+
+// Khối của đơn vị chỉ nhận việc đụng tới đơn vị của nó: tệp ghi nằm trong đơn vị, hoặc công cụ được gọi với service là đơn vị đó.
+function touchesUnit(root, unit, event, writesAbs) {
+  const a = event.action || {};
+  if (writesAbs.some((f) => P.serviceOf(root, f) === unit)) return true;
+  if (a.file && P.serviceOf(root, a.file) === unit) return true;
+  return Boolean(a.args && a.args.service === unit);
+}
+
+// Chạy luật MỞ RỘNG nghe sự kiện `kind`: luật kiểu cũ ở <thư mục dự án>/rules/ (api 0.1, S-064) và luật của các khối mở rộng đã xác nhận
+// (S-065). Mọi quyết định được gộp, chặn mạnh nhất thắng: khối chỉ chặn thêm được, không nới được gì (luật của harness là hook riêng,
+// Claude Code gộp theo cùng cách). Luật hỏng hay quá giờ thì cho qua, ghi ra stderr và sổ lỗi để doctor, tóm tắt đầu phiên báo.
 function extensionHook({ kind, root = ROOT, shell = false }) {
   const host = require('../adapters/claude-code/hook');
   return host.serve({
     name: 'project-rules', kind, root, badInput: 'skip', cwdFallback: process.cwd(),
     shell: shell ? require('../gate/bash-targets').analyzeBash : null,
-  }, async (event) => {
-    const reg = require('../core/rules/registry').create();
-    for (const f of ruleFiles(root).filter((x) => x.ext)) {
-      try { reg.add(require(f.file), `rules/${f.id}.js (mở rộng của dự án)`, { extension: true }); } catch (e) { process.stderr.write(`project-rules: ${e.message}\n`); }
+  }, async (event) => runExtensions(root, kind, event));
+}
+
+async function runExtensions(root, kind, event) {
+  const A = require('../adapters/project/extensions');
+  const C = require('../core/extensions/contract');
+  const ps = ports(root);
+  const decisions = [];
+  const fail = (key, rule, e) => {
+    process.stderr.write(`project-rules: ${key} ${rule}: ${e.message}\n`);
+    A.logError(root, { key, rule, kind, error: e.message.split('\n')[0].slice(0, 300) });
+  };
+  // Luật kiểu cũ (api 0.1).
+  const reg = require('../core/rules/registry').create();
+  for (const f of ruleFiles(root).filter((x) => x.ext)) {
+    try { reg.add(require(f.file), `rules/${f.id}.js (mở rộng của dự án)`, { extension: true }); } catch (e) { fail('rules', f.id, e); }
+  }
+  for (const r of reg.forKind(kind)) {
+    let d = null;
+    try { d = await r.run(event, ps, {}); } catch (e) { fail('rules', r.id, e); continue; }
+    if (d) { await recordDecision(ps, r.id, event, d); decisions.push(d); }
+  }
+  // Khối mở rộng đã xác nhận.
+  const writesAbs = writesOf(event, root);
+  let exts = [];
+  try { exts = extensions(root).filter((x) => x.manifest); } catch (e) { fail('extensions', '-', e); }
+  const runs = [];
+  for (const ext of exts) {
+    if (ext.scope === 'unit' && (!C.UNIT_KINDS.includes(kind) || !touchesUnit(root, ext.unit, event, writesAbs))) continue;
+    const { items, problems } = extensionParts(ext, 'rules');
+    for (const p of problems) fail(ext.key, '-', new Error(p));
+    for (const r of items.filter((x) => x.on.includes(kind))) {
+      runs.push((async () => {
+        try {
+          const d = await withTimeout(Promise.resolve().then(() => r.run(extensionCtx(root, ext, event, writesAbs))), ext.manifest.timeoutMs, `luật ${r.id}`);
+          const l = C.label(kind, ext, r.id, d);
+          if (l) { await recordDecision(ps, `${ext.name}/${r.id}`, event, l); decisions.push(l); }
+        } catch (e) { fail(ext.key, r.id, e); }
+      })());
     }
-    const ps = ports(root);
-    for (const r of reg.forKind(kind)) {
-      let decision = null;
-      try { decision = await r.run(event, ps, {}); } catch (e) { process.stderr.write(`project-rules: ${r.id}: ${e.message}\n`); continue; }
-      if (decision) { await recordDecision(ps, r.id, event, decision); return decision; }
-    }
-    return null;
-  });
+  }
+  await Promise.all(runs);
+  return C.merge(decisions);
 }
 
 // Ghi mọi quyết định khác "cho qua" của một luật vào sổ quyết định (act_rule_decisions, S-060), để đo được luật nào chặn bao nhiêu,
@@ -135,7 +236,25 @@ function briefFacts(root, sid, now = Date.now()) {
     sessions: { otherSessions: (...a) => require('./sessions-lib').otherSessions(...a), myTitle: (...a) => require('./sessions-lib').myTitle(...a) },
     skillHealth: (r) => require('./ledger-lib').health(r),
     importScopeFiles: (r) => require('./scope-lib').importScopeFiles(r),
+    extensions: (r) => extensionsBrief(r, now),
   });
 }
 
-module.exports = { ROOT, PLUGIN, PARTS, ports, rule, allRules, ruleFiles, hook, extensionHook, briefFacts };
+// Các điều về khối mở rộng mà phiên và người dùng cần biết (S-065): khối chưa xác nhận, đã sửa, đã xóa, khai báo hỏng, lỗi lúc chạy
+// trong 24 giờ qua. Trả { lines: [chữ], cli } ; rỗng khi mọi khối chạy đúng.
+function extensionsBrief(root, now = Date.now()) {
+  const lines = [];
+  for (const e of extensions(root)) {
+    if (e.state === 'untrusted') lines.push(`${e.key} chưa được xác nhận nên KHÔNG chạy`);
+    else if (e.state === 'changed') lines.push(`${e.key} đã sửa sau lần xác nhận, đang chạy bản đã xác nhận`);
+    else if (e.state === 'removed') lines.push(`${e.key} đã xóa khỏi repo nhưng bản đã xác nhận vẫn chạy`);
+    if (e.problems.length) lines.push(`${e.key} khai báo hỏng: ${e.problems[0]}`);
+  }
+  const errs = require('../adapters/project/extensions').recentErrors(root, new Date(now - 24 * 3600 * 1000).toISOString());
+  const byKey = {};
+  for (const x of errs) byKey[x.key] = (byKey[x.key] || 0) + 1;
+  for (const [k, n] of Object.entries(byKey)) lines.push(`${k} lỗi lúc chạy ${n} lần trong 24 giờ (luật lỗi thì cho qua)`);
+  return { lines, cli: P.codeRel(root, 'cli/cli.js') };
+}
+
+module.exports = { ROOT, PLUGIN, PARTS, ports, rule, allRules, ruleFiles, hook, extensionHook, runExtensions, extensions, extensionParts, extensionCtx, writesOf, briefFacts };

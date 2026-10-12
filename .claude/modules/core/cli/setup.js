@@ -3,7 +3,8 @@
 // BỘ CÀI (S-064): sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật.
 //   - Hook: mỗi mục `hooks` của một khối thành một nhóm { matcher?, hooks: [{ type, command, timeout, statusMessage? }] }, xếp theo `order`
 //     trong từng sự kiện; lệnh neo vào gốc dự án bằng "$CLAUDE_PROJECT_DIR/..." (S-027) và trỏ tới đường dẫn THẬT theo bố cục đang dùng.
-//   - Luật mở rộng của dự án (<thư mục dự án>/rules/): một nhóm hooks/project-rules.js <loại> cho mỗi loại sự kiện có luật nghe.
+//   - Luật mở rộng của dự án (<thư mục dự án>/rules/) và luật của khối mở rộng đã xác nhận (S-065): một nhóm hooks/project-rules.js <loại>
+//     cho mỗi loại sự kiện có luật nghe.
 //   - Máy chủ MCP của lõi: mục trong .mcp.json, tên trong enabledMcpjsonServers, quyền "mcp__<tên>" trong permissions.allow.
 // Phần người dùng tự thêm được giữ nguyên: nhóm hook có lệnh không trỏ vào mã harness, máy chủ MCP khác, quyền khác, mọi khóa khác.
 // Không ghi gì khi kết quả không đổi. Lệnh: node <harness>/cli/cli.js setup [--check | --dry-run].
@@ -11,6 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../gate/gate-paths');
 
+const DEFAULT_MATCHER = 'Write|Edit|NotebookEdit|Bash';
 const EVENTS = ['PreToolUse', 'PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart'];
 const KIND_EVENT = { 'before-action': 'PreToolUse', 'after-action': 'PostToolUse', 'turn-end': 'Stop', 'user-prompt': 'UserPromptSubmit', 'session-start': 'SessionStart' };
 // Lệnh hook là của harness khi nó chạy một tệp trong thư mục mã của harness (bố cục cũ hoặc bố cục khối).
@@ -37,12 +39,20 @@ function harnessHooks(root) {
   const kinds = new Set();
   let matchers = [];
   try {
-    for (const f of require('../hooks/wire').ruleFiles(root).filter((x) => x.ext)) {
+    const wire = require('../hooks/wire');
+    for (const f of wire.ruleFiles(root).filter((x) => x.ext)) {
       try {
         const r = require(f.file);
         for (const k of [].concat(r.on || [])) kinds.add(k);
         if (typeof r.matcher === 'string') matchers.push(r.matcher);
       } catch { /* luật hỏng: doctor báo */ }
+    }
+    // Khối mở rộng (S-065): chỉ đọc bản ĐÃ XÁC NHẬN (mã chưa xác nhận không được nạp, kể cả để đọc khai báo).
+    for (const ext of wire.extensions(root).filter((x) => x.manifest)) {
+      for (const r of wire.extensionParts(ext, 'rules').items) {
+        for (const k of r.on) kinds.add(k);
+        matchers.push(r.matcher || DEFAULT_MATCHER); // luật không khai matcher vẫn phải nhận các lần ghi tệp
+      }
     }
   } catch { /* chưa có phần lắp ráp hook */ }
   matchers = [...new Set(matchers.flatMap((m) => m.split('|')))];
@@ -50,7 +60,7 @@ function harnessHooks(root) {
     const event = KIND_EVENT[k];
     if (!event) continue;
     const hook = { type: 'command', command: command(root, 'hooks/project-rules.js', k), timeout: 10 };
-    add(event, 900, event === 'PreToolUse' ? { matcher: matchers.length ? matchers.join('|') : 'Write|Edit|NotebookEdit|Bash', hooks: [hook] } : { hooks: [hook] });
+    add(event, 900, event === 'PreToolUse' ? { matcher: matchers.length ? matchers.join('|') : DEFAULT_MATCHER, hooks: [hook] } : { hooks: [hook] });
   }
   const out = {};
   for (const [e, list] of Object.entries(byEvent)) out[e] = list.map((x, i) => ({ ...x, i })).sort((a, b) => a.order - b.order || a.i - b.i).map((x) => x.group);

@@ -35,11 +35,39 @@ const CORE_TOOLS = [
   },
 ];
 
-// Công cụ của các khối đang bật, theo `order` khai trong tệp tự khai, rồi công cụ của lõi. Nạp mỗi lần gọi (tiến trình ngắn).
+// Công cụ của KHỐI MỞ RỘNG đã xác nhận (S-065), tên <tên khối>_<tên công cụ>. Công cụ trùng tên công cụ đã có thì bị bỏ (doctor báo).
+// Công cụ nhận cửa sổ nhìn của khối (đọc trong thư mục của khối; ghi chỉ khi khai `write: true`), không nhận tham số `service`.
+function extensionTools(taken) {
+  const out = [];
+  let wire;
+  try { wire = require('../hooks/wire'); } catch { return out; }
+  const C = require('../core/extensions/contract');
+  for (const ext of wire.extensions(ROOT).filter((x) => x.manifest)) {
+    for (const t of wire.extensionParts(ext, 'tools').items) {
+      const name = C.toolName(ext.name, t.name);
+      if (taken.has(name)) continue;
+      taken.add(name);
+      out.push({
+        name, noService: true, extension: ext.key, write: t.write,
+        description: `[${ext.scope === 'unit' ? `đơn vị ${ext.name}` : `khối mở rộng ${ext.name}`}] ${t.description}`,
+        inputSchema: JSON.parse(JSON.stringify(t.inputSchema)),
+        run: (a) => {
+          if (t.write && ext.unit) { try { require('../hooks/sessions-lib').mark(ROOT, process.env.CLAUDE_CODE_SESSION_ID, ext.unit); } catch { /* bỏ qua */ } }
+          return t.run(a, wire.extensionCtx(ROOT, ext, { kind: 'tool', action: {} }, [], { write: t.write }));
+        },
+      });
+    }
+  }
+  return out;
+}
+
+// Công cụ của các khối đang bật, theo `order` khai trong tệp tự khai, rồi công cụ của lõi, rồi công cụ của khối mở rộng.
+// Nạp mỗi lần gọi (tiến trình ngắn).
 function tools() {
   const out = [];
   for (const c of P.contributions(ROOT, 'tools')) out.push(...require(c.file).TOOLS);
   out.push(...CORE_TOOLS);
+  try { out.push(...extensionTools(new Set(out.map((t) => t.name)))); } catch { /* khối mở rộng hỏng: công cụ của harness vẫn chạy */ }
   // Một server dùng chung cho mọi service: mỗi công cụ nhận thêm `service`. Đơn vị nằm ở đâu và đơn vị mặc định lấy từ cấu hình dự án (S-063).
   const cfg = P.projectConfig(ROOT);
   const base = require('node:path').basename(ROOT);
@@ -68,10 +96,12 @@ function call(name, args = {}) {
       try { require('../hooks/sessions-lib').mark(ROOT, process.env.CLAUDE_CODE_SESSION_ID, String(args.service)); } catch { /* bỏ qua */ }
     }
     const text = tool.noService ? tool.run(args) : engine.withService(args.service, () => tool.run(args));
+    // Công cụ của khối mở rộng có thể trả lời hứa; lớp chạy (mcp-worker.js) chờ.
+    if (text && typeof text.then === 'function') return text.then((t) => ({ text: String(t), isError: false }), (e) => ({ text: String((e && e.message) || e), isError: true }));
     return { text: String(text), isError: false };
   } catch (e) {
     return { text: e.message, isError: true };
   }
 }
 
-module.exports = { list, call };
+module.exports = { list, call, tools };

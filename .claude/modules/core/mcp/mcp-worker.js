@@ -8,12 +8,13 @@ const MARK = '\u001ebsn-docs-result\u001e';
 let input = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (c) => { input += c; });
-process.stdin.on('end', () => {
+process.stdin.on('end', async () => {
   let out;
   try {
     const req = JSON.parse(input || '{}');
     const tools = require('./mcp-tools');
-    out = req.op === 'list' ? { tools: tools.list() } : tools.call(req.name, req.arguments || {});
+    // Công cụ của khối mở rộng (S-065) có thể trả lời hứa: chờ.
+    out = await (req.op === 'list' ? { tools: tools.list() } : tools.call(req.name, req.arguments || {}));
   } catch (e) {
     out = { crash: String((e && e.stack) || e).slice(0, 1500) };
   }

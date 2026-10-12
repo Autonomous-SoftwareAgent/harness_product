@@ -1,0 +1,10 @@
+{
+  "name": "vi-du",
+  "api": "1.0",
+  "scope": "project",
+  "description": "Khối mẫu: hai luật chặn, một công cụ chỉ đọc, một lệnh. Sửa cho đúng việc của bạn; cách viết ở FORMAT.md của harness, mục Khối mở rộng.",
+  "rules": ["rules/khong-ghi-vendor.js", "rules/khong-sua-migration-da-commit.js"],
+  "tools": ["tools/dem-tep.js"],
+  "commands": ["commands/tom-tat.js"],
+  "timeout": 2
+}

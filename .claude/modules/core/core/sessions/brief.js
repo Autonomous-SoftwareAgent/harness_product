@@ -21,6 +21,7 @@
 //   parents    [thư mục chứa đơn vị] theo cấu hình dự án (S-063)
 //   mcpJson    'created' | 'added' | 'broken' khi .mcp.json ở gốc vừa được tạo, vừa thêm mục, hay hỏng; undefined khi đã đúng
 //   onboard    câu nói dự án chưa cài đặt gì (chưa có cấu hình, hoặc chưa khai đơn vị nào); undefined khi đã cài
+//   extensions { lines: [chữ], cli } điều cần báo về khối mở rộng (S-065); undefined khi không có gì
 const { ago } = require('./table');
 
 const STATUS_BIG = 40 * 1024;
@@ -83,6 +84,11 @@ function compose(f) {
     if (bad.length) lines.push(`- SKILL health: ${bad.join('; ')}. Báo người dùng (xem: node .claude/modules/core/cli/session.js skills).`);
   }
   if (f.banned) { const b = bannedLine(f.banned); if (b) lines.push(b); }
+  // Khối mở rộng của dự án hay đơn vị (S-065): chưa xác nhận thì không chạy; chỉ người dùng xác nhận, ngoài phiên Claude.
+  if (f.extensions && f.extensions.lines.length) {
+    const x = f.extensions;
+    lines.push(`- KHỐI MỞ RỘNG: ${x.lines.join('; ')}. Báo người dùng; xem: node ${x.cli} extension list. Xác nhận (người dùng tự chạy trong terminal, phiên Claude không chạy được): node ${x.cli} extension trust <khóa>.`);
+  }
   // Bản trên claude.ai cũ hơn cổng trên máy: chỉ nhắc khi đã có gói chuẩn bị (máy tự dựng và dò sau mỗi commit). Đẩy vẫn do người dùng ra lệnh.
   if (f.publish) lines.push(`- ${f.publish}`);
   if (hooks.rootPush && hooks.rootPush.length) lines.push(`- REPO GỐC KHÔNG BAO GIỜ ĐẨY (S-035) nhưng: ${hooks.rootPush.join('; ')}. Báo người dùng; kiểm: node .claude/modules/core/cli/install-git-hooks.js --check .`);

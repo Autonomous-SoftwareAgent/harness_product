@@ -160,6 +160,16 @@ function provided(root, name) {
   return '';
 }
 const moduleEnabled = (root, name) => { const ms = moduleManifests(root); return !ms.length || enabledModules(root).enabled.some((m) => m.name === name); };
+// KHỐI MỞ RỘNG (S-065): phần riêng của dự án và của từng đơn vị (luật, công cụ, lệnh), cùng một khuôn module.json.
+//   cả dự án   <thư mục dự án>/extensions/<tên>/module.json
+//   một đơn vị <thư mục đơn vị>/.harness/module.json
+// Mã của khối chỉ chạy từ BẢN ĐÃ XÁC NHẬN chép ở <gốc>/.claude/local/extensions/ (chỉ người dùng ghi, ngoài phiên Claude).
+const UNIT_EXT_DIR = '.harness';
+const extensionsDir = (root) => path.join(projectDir(root), 'extensions');
+const trustDir = (root) => path.join(localDir(root), 'extensions');
+const trustFile = (root) => path.join(trustDir(root), 'trust.json');
+// Lỗi lúc chạy của khối mở rộng (hỏng, quá giờ): hook cho qua nhưng ghi lại để doctor và tóm tắt đầu phiên báo.
+const extensionErrorsPath = (root) => path.join(stateDir(root), 'extensions-errors.jsonl');
 
 const pluginDir = (root) => projectDir(root);
 const projectConfigPath = (root) => path.join(projectDir(root), 'project.json');
@@ -335,6 +345,8 @@ function isProtectedPath(p) {
   if (n.endsWith('/.claude/local/publish-allow.json')) return true;
   // Danh sách từ cấm của máy (S-034): chỉ người dùng ghi. Phiên tự ghi được thì làm rỗng được danh sách, và mọi lớp quét thôi quét (P-017).
   if (n.endsWith('/.claude/local/cam-tu.json')) return true;
+  // Bản đã xác nhận của khối mở rộng và sổ xác nhận (S-065): phiên tự ghi được thì tự bật mã chưa duyệt, hoặc tắt luật chặn của đơn vị.
+  if (n.includes('/.claude/local/extensions/')) return true;
   // Sổ phiên và các tệp đi kèm của SQLite (harness.db, harness.db-wal, harness.db-shm): hook chặn dựa vào sổ này nên model không được tự ghi.
   // Sổ đo lường và bản sao lưu của sổ phiên (S-060): phiên tự ghi được thì sửa được điểm chấm, hoặc thay sổ bằng bản cũ.
   if (n.includes('/.claude/.state/db-backups/')) return true;
@@ -355,6 +367,7 @@ function isProtectedTarget(p) {
   }
   if (isProtectedPath(p)) return true;
   return n.endsWith('/.claude/.state') || n.endsWith('/.claude/modules/core/gate') || n.endsWith('/.claude/plugin') || n.endsWith('/.claude') ||
+    n.endsWith('/.claude/local') || n.endsWith('/.claude/local/extensions') ||
     n.endsWith('/.claude/modules') || n.endsWith('/.claude/modules/core') || n.endsWith('/.claude/modules/core/gate') || n.endsWith('/.claude/project');
 }
 
@@ -380,5 +393,6 @@ module.exports = {
   SERVICES_DIR, LEGACY_CONFIG: LEGACY, pluginDir, projectConfigPath, projectConfig, policy, sheetOwner, unitParents, servicesDir, serviceDir, serviceOf, serviceRel, serviceEntries, extraUnits, unitReads, serviceHasRepo, HARNESS_UNIT_DIR,
   harnessDir, configPath, manifestPath, migratedAtPath, versionPath,
   MODULE_ORDER, rootFrom, isModular, modulesHome, harnessHome, codeIndex, codePath, codeDirs, codeRel, projectDir, generatorsDir, contextConfigPath, moduleManifests, enabledModules, moduleEnabled, contributions, provided,
+  UNIT_EXT_DIR, extensionsDir, trustDir, trustFile, extensionErrorsPath,
   norm, slashes, inside, isProtectedPath, isProtectedTarget, resolveToken, exemptDirs, PROTECTED_BASENAMES,
 };

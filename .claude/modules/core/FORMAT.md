@@ -14,7 +14,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | Tệp | Là gì | Ai ghi | Bắt buộc |
 |---|---|---|---|
 | `.claude/modules/<khối>/` | Mã của harness chia theo khối, kèm `module.json` (tệp tự khai: hook, công cụ, lệnh, skill của khối); `index.json`, `FILES.json`, `MANIFEST.json`, `VERSION` | Bộ cài (`install`); bản mới thay toàn bộ | Có |
-| `.claude/project/` | Phần của dự án: `project.json`, công tắc, luật mở rộng `rules/`, bộ sinh trang riêng `generators/`. Nâng cấp không bao giờ đụng | Agent qua skill `onboard`, người dùng | Có |
+| `.claude/project/` | Phần của dự án: `project.json`, công tắc, khối mở rộng `extensions/`, luật kiểu cũ `rules/`, bộ sinh trang riêng `generators/`. Nâng cấp không bao giờ đụng | Agent qua skill `onboard`, người dùng | Có |
 | `.claude/project/project.json` | Cấu hình dự án | Agent qua skill `onboard`, sau khi người dùng duyệt | Có |
 | `.claude/skills/`, `.claude/settings.json` | Skill (chỗ Claude Code đọc); khai hook. Bộ cài (`setup`) viết phần của harness, giữ phần của dự án | Bộ cài, dự án | Có |
 | `.mcp.json` | Khai máy chủ MCP `bsn-docs` | Harness tự tạo hay tự thêm mục khi mở phiên | Có |
@@ -23,6 +23,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `docs/system/decisions.md` | Quyết định chung của cả dự án, mỗi mục `## S-nnn: tiêu đề`; chỉ thêm, đổi ý thì ghi mục mới | Agent khi người dùng chốt | Khi có quyết định chung |
 | `docs/portal/` | Cổng HTML cho người đọc, sinh tự động sau mỗi commit | Công cụ | Không (bật khi dùng `service.yaml`) |
 | `.claude/local/cam-tu.json` | Danh sách từ cấm của máy, không bao giờ commit | Chỉ người dùng, ngoài Claude | Không |
+| `.claude/local/extensions/` | Bản đã xác nhận của các khối mở rộng và sổ xác nhận; mỗi máy một bản, không commit | Chỉ người dùng (`extension trust`), ngoài Claude | Không |
 
 ## Trong mỗi đơn vị
 
@@ -37,6 +38,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `docs/diagrams/<id>.yaml` | Sơ đồ khai bằng dữ liệu; công cụ vẽ | Công cụ (`diagram_save`, `diagram_explain`) | Tùy chọn |
 | `docs/context/` | Từ vựng và quan hệ cho kho ngữ nghĩa | Công cụ (`context_term`, `context_relate`) | Tùy chọn |
 | `docs/_generated/` | Bản tổng quan và bảng truy vết sinh tự động | Công cụ | Đi kèm khi dùng ba tầng hay `service.yaml` |
+| `.harness/` | Khối mở rộng của đơn vị: luật, công cụ, lệnh riêng (mục "Khối mở rộng" bên dưới). `docs/` là dữ liệu để đọc; `.harness/` là phần chạy được | Phiên của đơn vị; chỉ chạy sau khi người dùng xác nhận | Không |
 
 "Tùy chọn" nghĩa là dự án bật khi cần. Đơn vị chỉ có `CLAUDE.md` và `STATUS.md` vẫn được mọi hook bảo vệ đầy đủ; dùng công cụ ghi tài liệu lần đầu thì công cụ tự tạo khung còn thiếu. Mã nguồn đánh dấu đặc tả bằng một dòng chú thích `spec: <MÃ>-S-nnn` khi đơn vị dùng ba tầng.
 
@@ -83,8 +85,33 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `policies.unitSheets` | Mẫu đường dẫn của "tờ của một đơn vị" nằm trong thư mục đơn vị khác; nhóm bắt đầu tiên là tên đơn vị chủ |
 | `policies.readOnlyDirs` | Thư mục chỉ để đọc (mã bên ngoài để tham khảo): sửa ở đó thì hỏi người dùng |
 
-## Luật mở rộng của dự án
-Đặt `.claude/project/rules/<id>.js` xuất `{ id, on, api: "0.1", matcher?, run(event, ports) }`: `on` là loại sự kiện (`before-action`, `after-action`, `turn-end`, `user-prompt`, `session-start`), `run` trả quyết định (`deny`, `ask`, `note`, `block` từ `ports/events.js` của lõi) hoặc `null`. Chạy `cli.js setup` để khai hook cho luật. Luật khai bản giao diện khác số lớn, hoặc số nhỏ lớn hơn của harness, thì không được nạp (`doctor` báo). Không sửa mã trong `.claude/modules/`: bản mới thay toàn bộ thư mục đó.
+## Khối mở rộng: luật, công cụ, lệnh riêng của dự án và của từng đơn vị
+Dự án hay một đơn vị thêm luật chặn, công cụ, lệnh của riêng mình mà không sửa mã harness. Cùng một khuôn, khác chỗ đặt:
+
+| Chỗ đặt | Áp cho | Khóa |
+|---|---|---|
+| `.claude/project/extensions/<tên>/module.json` | Cả dự án, mọi loại sự kiện | `project:<tên>` |
+| `<thư mục đơn vị>/.harness/module.json` | Chỉ việc đụng tới đơn vị đó (ghi tệp trong đơn vị, hoặc gọi công cụ với `service` là đơn vị đó); chỉ `before-action`, `after-action` | `unit:<đơn vị>` |
+
+```json
+{ "api": "1.0", "rules": ["rules/khong-ghi-vendor.js"], "tools": ["tools/dem-tep.js"], "commands": ["commands/tom-tat.js"], "timeout": 2 }
+```
+
+| Phần | Tệp xuất | Ghi chú |
+|---|---|---|
+| Luật | `{ id, on: [loại sự kiện], matcher?, run(ctx) }` | `run` trả `ctx.block(lý do)`, `ctx.ask(lý do)`, `ctx.note(lời)` hoặc `null`. Không có "cho qua": khối chỉ chặn thêm, không nới được luật của harness hay của khối khác (gộp: chặn mạnh nhất thắng) |
+| Công cụ | `{ name, description, inputSchema?, write?, run(args, ctx) }` | Trên máy chủ `bsn-docs` tên là `<tên khối>_<name>` (gạch ngang thành gạch dưới); không nhận tham số `service` |
+| Lệnh | `{ name, description, run(argv, ctx) }` | `cli.js extension run <khóa> <name> [...]` |
+
+`ctx` (hợp đồng bản 1.0, chỉ thêm, không bỏ): `kind`, `scope`, `unit` (`{ name, dir }` hoặc `null`), `session`, `prompt`, `reply`, `action` (`type`, `tool`, `file`, `writes`, `command`, `name`, `args`), `fs` (`read`, `exists`, `list`; công cụ có `write: true` và lệnh có thêm `write`), `git.isCommitted(tệp)`, `unitOf(tệp)`. Mọi đường dẫn tính từ thư mục của khối (thư mục đơn vị, hoặc gốc dự án), kiểu posix; `fs` từ chối đường dẫn ra ngoài. Khối không `require` mã của harness: nâng cấp harness không làm gãy khối. Đây là quy ước của hợp đồng, không phải hộp cát: mã của khối chạy với quyền của người dùng, nên mới cần xác nhận.
+
+**Xác nhận.** Khối mới hay vừa sửa CHƯA chạy cho tới khi người dùng xác nhận: `cli.js extension trust <khóa>`, chạy trong terminal (lệnh từ chối khi chạy trong phiên Claude Code). Xác nhận chép khối sang `.claude/local/extensions/` (chỉ ở máy, hook cổng duyệt bảo vệ) và chạy `setup`. Mã luôn chạy từ bản đã chép: sửa hay xóa khối trong repo không đổi mã đang chạy và không tắt được luật chặn, cho tới khi người dùng xác nhận lại hoặc gỡ (`extension untrust <khóa>`, cũng chỉ người dùng). Mỗi máy xác nhận riêng: kéo repo về máy khác thì khối chưa chạy ở đó.
+
+**Hỏng thì cho qua, có chỗ báo.** Luật ném lỗi, quá `timeout` (giây, tối đa 5, mặc định 2) hay trả lời sai hợp đồng thì bị bỏ qua, ghi vào sổ lỗi; `doctor`, `extension list` và tóm tắt đầu phiên nêu khối chưa xác nhận, đã sửa, đã xóa, khai báo hỏng và lỗi trong 24 giờ.
+
+Các bước: `cli.js extension new <tên>` (cả dự án) hoặc `extension new --unit <đơn vị>` chép khối mẫu của harness; sửa; `extension test <khóa>` chạy các ca ở `cases.json` của khối (`{ name, event: { kind, action: { type, file } }, expect: "deny" | "ask" | "note" | "block" | "pass" }`); người dùng `extension trust <khóa>`; `extension list` để xem.
+
+Luật kiểu cũ ở `.claude/project/rules/<id>.js` (`{ id, on, api: "0.1", matcher?, run(event, ports) }`, trả quyết định của `ports/events.js`) vẫn chạy, không cần xác nhận; dự án mới dùng khối mở rộng. Không sửa mã trong `.claude/modules/`: bản mới thay toàn bộ thư mục đó.
 
 Giá trị của `units.dirs` hay `skills` là một chuỗi thì đó là tên tệp JSON trong `.claude/modules/` chứa phần đó. Không có `project.json` thì harness dùng bố cục mặc định của các bản trước, để dự án đã dùng harness từ trước chạy y như cũ. Kiểm cấu hình: `node .claude/modules/core/cli/cli.js doctor`.
 

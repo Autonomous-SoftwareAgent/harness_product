@@ -1,0 +1,5 @@
+[
+  { "name": "ghi vào vendor/ bị chặn", "event": { "kind": "before-action", "action": { "type": "write-file", "file": "vendor/thu-vien.js" } }, "expect": "deny" },
+  { "name": "tạo tệp migration mới thì được", "event": { "kind": "before-action", "action": { "type": "write-file", "file": "migrations/0099_moi.sql" } }, "expect": "pass" },
+  { "name": "sửa mã thường thì được", "event": { "kind": "before-action", "action": { "type": "write-file", "file": "src/app.js" } }, "expect": "pass" }
+]

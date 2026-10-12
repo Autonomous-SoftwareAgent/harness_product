@@ -1,0 +1,11 @@
+{
+  "name": "diagrams",
+  "version": "1.0.0",
+  "api": "0.1",
+  "uses": ["core", "servicedocs"],
+  "does": "sơ đồ khai bằng dữ liệu, bộ vẽ Mermaid, sơ đồ dữ liệu sinh từ cơ sở dữ liệu tạm",
+  "tools": [{ "file": "mcp/diagrams/tools.js", "order": 20 }],
+  "commands": ["cli/commands/diagrams.js"],
+  "checks": ["mcp/diagrams/diagrams.js"],
+  "skills": ["diagrams"]
+}

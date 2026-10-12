@@ -6,7 +6,7 @@ description: Ghi tài liệu của một dịch vụ bằng công cụ bsn-docs:
 # Ghi tài liệu của một dịch vụ
 
 ## Khi nào dùng
-Ghi hay sửa tài liệu của một dịch vụ. Phiên mở ở gốc dự án. Đơn vị nằm ở thư mục khai trong `.claude/plugin/project.json`. Mọi lời gọi `bsn-docs` truyền `service="<tên>"`.
+Ghi hay sửa tài liệu của một dịch vụ. Phiên mở ở gốc dự án. Đơn vị nằm ở thư mục khai trong `.claude/project/project.json`. Mọi lời gọi `bsn-docs` truyền `service="<tên>"`.
 
 Việc liền kề:
 - Sơ đồ: skill `diagrams`.
@@ -65,7 +65,7 @@ Làm theo thứ tự, kể cả khi mã do người dùng sửa (lúc đó hook 
 2. Ba tầng: tìm spec qua chú thích `// spec: ...` trong tệp mã hoặc `docs_status`. Thay đổi là một quyết định thiết kế mới của module thì `design_update` (hoặc `design_record`); rồi `spec_fill` cho đúng yêu cầu mới và `impl_link` lại.
 3. `docs/service.yaml`: chỉ khi mô tả nghiệp vụ, kiến trúc hay tiến độ ở đó không còn đúng. Hành vi dựa trên điều chưa kiểm với hệ thống thật thì thêm vào `business.unverified`.
 4. `docs/agent/STATUS.md`: thêm một dòng nhật ký (ngày, đổi gì, kiểm bằng gì, điều chưa kiểm).
-5. Dịch vụ có bộ sinh `code`: `node .claude/plugin/cli/cli.js --service <tên> code` để làm mới `code-map.md`.
+5. Dịch vụ có bộ sinh `code`: `node .claude/modules/core/cli/cli.js --service <tên> code` để làm mới `code-map.md`.
 
 Quyết định ghi ở đâu: quyết định thiết kế của MỘT module ghi bằng `design_record` (vào `1-design.md`); quyết định cho cả dịch vụ (cách làm việc, hạ tầng, quy ước) ghi tay vào `docs/agent/DECISIONS.md`.
 
@@ -79,5 +79,5 @@ Quyết định ghi ở đâu: quyết định thiết kế của MỘT module g
 
 ## Cách kiểm
 - Sửa mã thì cập nhật `docs/agent/STATUS.md` bằng Edit (hook Stop nhắc nếu quên). Chỉ sửa tài liệu thì thêm dòng nhật ký khi thay đổi đáng ghi (sơ đồ mới, vấn đề mới thì không bắt buộc).
-- Kiểm đồng bộ sạch. Ba cách này là MỘT lệnh: công cụ `docs_check`; `node .claude/plugin/cli/cli.js --service <tên> check` chạy từ gốc dự án; hoặc `npm run docs` chạy trong thư mục dịch vụ (nếu dịch vụ có script đó).
+- Kiểm đồng bộ sạch. Ba cách này là MỘT lệnh: công cụ `docs_check`; `node .claude/modules/core/cli/cli.js --service <tên> check` chạy từ gốc dự án; hoặc `npm run docs` chạy trong thư mục dịch vụ (nếu dịch vụ có script đó).
 - Commit trong repo của dịch vụ khi người dùng yêu cầu. Trang trên cổng chỉ đổi sau commit; kiểm lại trang bằng skill `service-page`.

@@ -11,11 +11,11 @@ description: Thêm một đơn vị (dịch vụ) mới vào dự án - tạo th
 
 ## Trước khi làm
 - Phiên mở ở gốc dự án. Trình kế hoạch và chờ người dùng duyệt trước khi chạy bước 1.
-- Đơn vị mới nằm ở thư mục cha ĐẦU TIÊN trong `units.parents` của `.claude/plugin/project.json`. Muốn đặt chỗ khác thì khai trong `units.dirs` trước (skill `onboard`).
+- Đơn vị mới nằm ở thư mục cha ĐẦU TIÊN trong `units.parents` của `.claude/project/project.json`. Muốn đặt chỗ khác thì khai trong `units.dirs` trước (skill `onboard`).
 - Tên đơn vị: chữ thường, số, gạch ngang, 2 đến 41 ký tự.
 
 ## Các bước
-1. Tạo khung, chạy từ gốc dự án: `node .claude/plugin/cli/new-service.js <tên>`
+1. Tạo khung, chạy từ gốc dự án: `node .claude/modules/core/cli/new-service.js <tên>`
    - Kết quả: thư mục của đơn vị có `git init`, `CLAUDE.md` khung, `docs/agent/{STATUS,DECISIONS,CONVENTIONS}.md`, git hook `post-commit`.
    - Đã có phần nào thì lệnh giữ nguyên phần đó.
    - Lệnh KHÔNG tạo `.claude` hay `.mcp.json` trong đơn vị: harness chỉ có một chỗ ở gốc dự án.
@@ -35,5 +35,5 @@ description: Thêm một đơn vị (dịch vụ) mới vào dự án - tạo th
 - Làm hai đơn vị trong một phiên. Tạo khung xong thì người dùng mở phiên mới ở gốc và giao việc cho đơn vị mới.
 
 ## Cách kiểm
-- `node .claude/plugin/cli/cli.js doctor` liệt kê đơn vị mới.
-- `node .claude/plugin/cli/cli.js --service <tên> check` không có lỗi.
+- `node .claude/modules/core/cli/cli.js doctor` liệt kê đơn vị mới.
+- `node .claude/modules/core/cli/cli.js --service <tên> check` không có lỗi.

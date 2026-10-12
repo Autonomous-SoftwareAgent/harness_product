@@ -16,7 +16,7 @@ Trang `docs/portal/<tên>/index.html` thiếu mục, sai nội dung, hoặc cầ
 ## Các bước
 1. Xác định phần thiếu hay sai thuộc tab nào và lấy từ nguồn nào (hai bảng dưới).
 2. Sửa NGUỒN: chữ và sổ vấn đề bằng skill `service-docs`, sơ đồ bằng skill `diagrams`.
-3. Commit ở repo đơn vị khi người dùng bảo; cổng tự dựng lại. Dựng tay: `node .claude/plugin/cli/cli.js portal` (hoặc công cụ `portal_build`).
+3. Commit ở repo đơn vị khi người dùng bảo; cổng tự dựng lại. Dựng tay: `node .claude/modules/core/cli/cli.js portal` (hoặc công cụ `portal_build`).
 4. Kiểm theo mục "Cách kiểm".
 
 ## Ba tab: mục nào ở đâu
@@ -36,13 +36,13 @@ Trang `docs/portal/<tên>/index.html` thiếu mục, sai nội dung, hoặc cầ
 | Thứ | Đã có | Chưa có |
 |---|---|---|
 | Trang của đơn vị | Sửa nguồn, đợi commit hoặc dựng tay | Trang có sau khi đơn vị commit `docs/service.yaml` (tạo bằng `service_doc_set`) |
-| Thư viện vẽ `.claude/plugin/mcp/vendor/mermaid.min.js` | Sơ đồ vẽ thành hình | Sơ đồ hiện dạng chữ; người dùng tự tải thư viện (xem `vendor/README.md`) |
+| Thư viện vẽ `.claude/modules/diagrams/mcp/vendor/mermaid.min.js` | Sơ đồ vẽ thành hình | Sơ đồ hiện dạng chữ; người dùng tự tải thư viện (xem `vendor/README.md`) |
 
 ## Lỗi hay gặp
 - Sửa `service.yaml` hay sơ đồ rồi chờ trang đổi ngay: phải đợi đơn vị commit.
 - Sửa tay trang đã sinh: hook chặn, và lần dựng sau ghi đè.
 
 ## Cách kiểm
-- `node .claude/plugin/cli/cli.js portal`: dòng kết quả nêu đơn vị nào chưa có trang.
-- `node .claude/plugin/cli/cli.js diagrams-check`: mọi sơ đồ vẽ được trong trình duyệt. Kết quả "BỎ QUA" là CHƯA kiểm.
+- `node .claude/modules/core/cli/cli.js portal`: dòng kết quả nêu đơn vị nào chưa có trang.
+- `node .claude/modules/core/cli/cli.js diagrams-check`: mọi sơ đồ vẽ được trong trình duyệt. Kết quả "BỎ QUA" là CHƯA kiểm.
 - Mở cả ba tab bằng mắt trước khi báo xong.

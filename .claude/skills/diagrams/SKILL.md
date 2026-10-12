@@ -28,7 +28,7 @@ Có hai nguồn nội dung, và chỉ MỘT bộ vẽ:
 Dù nội dung đến từ đâu, hình luôn do công cụ vẽ, qua cùng một bộ vẽ và cùng một khung xem. Trang ghi rõ nguồn gốc dưới mỗi hình. Không ai vẽ bằng tay, không ai viết cú pháp sơ đồ.
 
 ## Mỗi dịch vụ đủ năm loại
-Mỗi dịch vụ phải có ít nhất một sơ đồ của MỖI loại. `diagram_list` (hoặc `node .claude/plugin/cli/cli.js --service <tên> diagrams`) liệt kê sơ đồ theo loại và nói loại nào còn thiếu; `docs check` cảnh báo (không chặn commit); trang của dịch vụ ghi "CHƯA CÓ" ở đúng mục.
+Mỗi dịch vụ phải có ít nhất một sơ đồ của MỖI loại. `diagram_list` (hoặc `node .claude/modules/core/cli/cli.js --service <tên> diagrams`) liệt kê sơ đồ theo loại và nói loại nào còn thiếu; `docs check` cảnh báo (không chặn commit); trang của dịch vụ ghi "CHƯA CÓ" ở đúng mục.
 
 | Loại | `type` | Trả lời câu hỏi | Tab |
 |---|---|---|---|
@@ -45,10 +45,10 @@ Loại THẬT SỰ không áp dụng (ví dụ dịch vụ không lưu dữ li�
 2. Gọi `diagram_validate` với hai tham số: `service` (tên dịch vụ) và `spec` (một ĐỐI TƯỢNG JSON theo lược đồ dưới, không phải chuỗi). Sai thì công cụ nêu đúng chỗ; sửa rồi gọi lại. Đúng thì công cụ trả bản xem trước.
 3. Gọi `diagram_save` với cùng `service` và `spec`.
 4. Gọi `diagram_explain` với `service`, `id` và `explain` để ghi phần giải thích dưới hình (mục "Phần giải thích" bên dưới). Sửa một sơ đồ đã có giải thích thì viết lại phần này, nếu không trang sẽ báo "có thể đã cũ".
-5. `node .claude/plugin/cli/cli.js --service <tên> check` (chạy từ gốc dự án) phải sạch.
+5. `node .claude/modules/core/cli/cli.js --service <tên> check` (chạy từ gốc dự án) phải sạch.
 6. Cập nhật danh sách và số sơ đồ trong `CLAUDE.md` của dịch vụ nếu có ghi.
 7. Báo người dùng: sơ đồ đã lưu nhưng CHƯA lên trang cho tới khi repo dịch vụ commit. Chỉ commit khi người dùng yêu cầu.
-8. Sau commit: `node .claude/plugin/cli/cli.js diagrams-check` (chạy từ gốc dự án) mở trang bằng trình duyệt không giao diện và báo từng trang vẽ được bao nhiêu sơ đồ. Chạy trước commit thì lệnh chỉ thấy trang cũ. Kết quả "BỎ QUA" nghĩa là CHƯA kiểm, không phải đạt. Lệnh cũng báo sơ đồ nào "quá lớn" (rộng hơn 1800px hoặc cao hơn 2400px ở kích thước thật): sơ đồ đó nên khai lại theo dạng tầng hoặc tách ra.
+8. Sau commit: `node .claude/modules/core/cli/cli.js diagrams-check` (chạy từ gốc dự án) mở trang bằng trình duyệt không giao diện và báo từng trang vẽ được bao nhiêu sơ đồ. Chạy trước commit thì lệnh chỉ thấy trang cũ. Kết quả "BỎ QUA" nghĩa là CHƯA kiểm, không phải đạt. Lệnh cũng báo sơ đồ nào "quá lớn" (rộng hơn 1800px hoặc cao hơn 2400px ở kích thước thật): sơ đồ đó nên khai lại theo dạng tầng hoặc tách ra.
 
 ### Sửa một sơ đồ đang có
 - Đọc một sơ đồ để hiểu hay để soát: `diagram_get` với `id`. Công cụ trả DẠNG GỌN (mỗi nút, mỗi cạnh một dòng), ngắn hơn nhiều so với bản khai báo.
@@ -87,7 +87,7 @@ Phần bạn ghi nằm ở `docs/context/auto.yaml` của dịch vụ (tệp do 
 ### Sơ đồ dữ liệu (`erd`): tự sinh trước, agent khai phần còn lại
 Dịch vụ dùng cơ sở dữ liệu quan hệ (PostgreSQL) thì KHÔNG tự khai các bảng: công cụ đọc từ cơ sở dữ liệu thật. Nó tạo một cơ sở dữ liệu tạm trên PostgreSQL local, chạy LỆNH TẠO BẢNG của dịch vụ vào đó, đọc bảng, cột, kiểu, khóa chính, ràng buộc duy nhất và khóa ngoại, rồi xóa cơ sở dữ liệu tạm. Dữ liệu của hệ đang chạy không bị đụng tới. Cần một PostgreSQL đang chạy trên máy.
 
-- **Lần đầu (hoặc khi đổi lệnh tạo bảng)**: viết một tệp JSON rồi chạy `node .claude/plugin/cli/cli.js --service <tên> diagram-generate <tệp.json>` (từ gốc dự án). Tệp gồm:
+- **Lần đầu (hoặc khi đổi lệnh tạo bảng)**: viết một tệp JSON rồi chạy `node .claude/modules/core/cli/cli.js --service <tên> diagram-generate <tệp.json>` (từ gốc dự án). Tệp gồm:
   - `id`, `title`
   - `sources`: tệp mã khai cấu trúc bảng (ví dụ `src/store-postgres.js`); tệp này đổi thì `docs check` nhắc sinh lại
   - `command`: lệnh tạo bảng dạng DANH SÁCH đối số, chạy trong thư mục dịch vụ, không qua shell; phần tử đầu phải là `node`, `python`, `python3`, `py` hoặc `uv`. Lệnh chỉ được tạo bảng rồi thoát (không mở cổng, không chạy mãi).
@@ -183,10 +183,10 @@ Quy ước: mã phần tử gồm chữ, số, gạch dưới, bắt đầu bằ
 
 ## Việc khác
 - Liệt kê sơ đồ và loại còn thiếu: `diagram_list`. Xóa một sơ đồ sai hẳn: `diagram_remove` với `id`.
-- Phiên chưa nối lại MCP (thiếu `diagram_list`, `diagram_get`, `diagram_review`) thì báo người dùng gõ `/mcp`. Cùng các việc đó có ở dòng lệnh (chạy từ gốc dự án): `node .claude/plugin/cli/cli.js --service <tên> diagrams`, `diagram-get <id> [--json]`, `diagram-review <tệp.json>`, `diagram-save <tệp.json>`, `diagram-explain <id> <tệp.json>`, `diagram-generate <id|tệp.json>`, `diagram-remove <id>`.
+- Phiên chưa nối lại MCP (thiếu `diagram_list`, `diagram_get`, `diagram_review`) thì báo người dùng gõ `/mcp`. Cùng các việc đó có ở dòng lệnh (chạy từ gốc dự án): `node .claude/modules/core/cli/cli.js --service <tên> diagrams`, `diagram-get <id> [--json]`, `diagram-review <tệp.json>`, `diagram-save <tệp.json>`, `diagram-explain <id> <tệp.json>`, `diagram-generate <id|tệp.json>`, `diagram-remove <id>`.
 - Khi bộ vẽ đổi, mọi sơ đồ tự được vẽ lại và kiểm lại; bạn không phải lưu lại sơ đồ nào.
 - Sơ đồ nằm ở đâu trên trang: skill `service-page`.
-- Công cụ không diễn đạt được điều cần vẽ (thiếu loại sơ đồ, thiếu trường): KHÔNG lách bằng Mermaid viết tay. Ghi yêu cầu vào `docs/handoff/` cho phiên harness, hoặc xin người dùng cho sửa công cụ (`.claude/plugin/core/diagrams/spec.js`, `.claude/plugin/adapters/mermaid/render.js`).
+- Công cụ không diễn đạt được điều cần vẽ (thiếu loại sơ đồ, thiếu trường): KHÔNG lách bằng Mermaid viết tay. Ghi yêu cầu vào `docs/handoff/` cho phiên harness, hoặc xin người dùng cho sửa công cụ (`.claude/modules/diagrams/core/diagrams/spec.js`, `.claude/modules/diagrams/adapters/mermaid/render.js`).
 
 ## Lỗi hay gặp
 - Gửi `diagram_save` chỉ với phần mới: công cụ THAY TOÀN BỘ sơ đồ cùng `id`, phần không gửi lại là mất.
@@ -200,7 +200,7 @@ Quy ước: mã phần tử gồm chữ, số, gạch dưới, bắt đầu bằ
 ## Cách kiểm
 Trước commit (việc của bạn xong ở đây nếu người dùng chưa bảo commit):
 - `diagram_save` trả "Đã ghi sơ đồ"; `diagram_explain` trả "Đã ghi phần giải thích".
-- `node .claude/plugin/cli/cli.js --service <tên> check` không có lỗi; cảnh báo "chưa đủ bộ sơ đồ" còn thì nói với người dùng loại nào còn thiếu.
+- `node .claude/modules/core/cli/cli.js --service <tên> check` không có lỗi; cảnh báo "chưa đủ bộ sơ đồ" còn thì nói với người dùng loại nào còn thiếu.
 - Đã nói rõ với người dùng là sơ đồ chưa lên trang.
 
 Sau commit:

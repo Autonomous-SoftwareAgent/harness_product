@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/guard-scope.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/guard-scope.js\"",
             "timeout": 10
           }
         ]
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/guard-owned.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/servicedocs/hooks/guard-owned.js\"",
             "timeout": 10
           }
         ]
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/gate/gate-hook.js\" tool",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js\" tool",
             "timeout": 10
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/guard-skill.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/guard-skill.js\"",
             "timeout": 10
           }
         ]
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/guard-banned.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/guard-push/hooks/guard-banned.js\"",
             "timeout": 10
           }
         ]
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/guard-push.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/guard-push/hooks/guard-push.js\"",
             "timeout": 10
           }
         ]
@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/forward.js\" track",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/forward.js\" track",
             "timeout": 10
           }
         ]
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/ledger.js\" record",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/ledger.js\" record",
             "timeout": 10
           }
         ]
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/forward.js\" stop",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/forward.js\" stop",
             "timeout": 60,
             "statusMessage": "Checking docs are in sync..."
           }
@@ -116,7 +116,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/gate/gate-hook.js\" stop",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js\" stop",
             "timeout": 10
           }
         ]
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/gate/gate-hook.js\" prompt",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js\" prompt",
             "timeout": 90,
             "statusMessage": "Checking approval..."
           }
@@ -137,7 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/ledger.js\" prompt",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/ledger.js\" prompt",
             "timeout": 10
           }
         ]
@@ -148,7 +148,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/gate/gate-hook.js\" health",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js\" health",
             "timeout": 15
           }
         ]
@@ -157,7 +157,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/session-brief.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/session-brief.js\"",
             "timeout": 10
           }
         ]
@@ -166,7 +166,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/plugin/hooks/ledger.js\" start",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/ledger.js\" start",
             "timeout": 10
           }
         ]

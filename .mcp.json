@@ -3,7 +3,7 @@
     "bsn-docs": {
       "command": "node",
       "args": [
-        ".claude/plugin/mcp/mcp-server.js"
+        ".claude/modules/core/mcp/mcp-server.js"
       ]
     }
   }

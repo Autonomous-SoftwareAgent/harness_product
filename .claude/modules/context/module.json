@@ -1,0 +1,15 @@
+{
+  "name": "context",
+  "version": "1.0.0",
+  "api": "0.1",
+  "uses": ["core", "servicedocs", "diagrams"],
+  "does": "kho ngữ nghĩa lập sau mỗi commit, hỏi trước khi tìm, sơ đồ tự sinh từ mã",
+  "tools": [{ "file": "mcp/context/tools.js", "order": 30 }],
+  "commands": ["cli/commands/context.js"],
+  "checks": ["mcp/context/annotations.js"],
+  "provides": {
+    "autoDiagrams": "mcp/context/auto-provider.js",
+    "contextPortal": "mcp/context/context-portal.js"
+  },
+  "skills": ["context"]
+}

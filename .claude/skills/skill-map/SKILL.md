@@ -1,11 +1,11 @@
 ---
 name: skill-map
-description: Khai việc nào cần skill nào và tài liệu nào trong .claude/plugin/project.json (phần skills), và viết một skill riêng của dự án. Dùng khi thêm skill mới, khi muốn hook chặn một công cụ hay một loại tệp cho tới khi phiên đã đọc hướng dẫn, khi doctor báo "khai mà KHÔNG chặn".
+description: Khai việc nào cần skill nào và tài liệu nào trong .claude/project/project.json (phần skills), và viết một skill riêng của dự án. Dùng khi thêm skill mới, khi muốn hook chặn một công cụ hay một loại tệp cho tới khi phiên đã đọc hướng dẫn, khi doctor báo "khai mà KHÔNG chặn".
 ---
 
 # Khai bảng việc - skill
 
-Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill và chưa đọc đủ tài liệu cho việc đó. "Việc nào cần gì" khai ở MỘT nơi: phần `skills` của `.claude/plugin/project.json` (hoặc tệp riêng mà phần đó trỏ tới). Nghĩa từng trường: `.claude/plugin/FORMAT.md`, mục "Cấu hình dự án".
+Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill và chưa đọc đủ tài liệu cho việc đó. "Việc nào cần gì" khai ở MỘT nơi: phần `skills` của `.claude/project/project.json` (hoặc tệp riêng mà phần đó trỏ tới). Nghĩa từng trường: `.claude/modules/core/FORMAT.md`, mục "Cấu hình dự án".
 
 ## Khi nào dùng
 - Dự án có một quy trình mà agent phải đọc hướng dẫn trước khi làm (sửa migration, sửa workflow CI, gọi công cụ phát hành).
@@ -36,7 +36,7 @@ Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill v
    - Công cụ chỉ đọc mà mẫu `*` vô tình khớp: thêm vào `"readonly"`.
    - Một đơn vị cần đọc tài liệu khác mặc định: `"unitDocs": { "<đơn vị>": [ ... ] }`.
 3. **Công cụ ngoài `bsn-docs`:** thêm tên (hoặc mẫu) vào `matcher` của nhóm PreToolUse đang gọi `guard-skill.js` trong `.claude/settings.json`, nếu không thì hook không bao giờ được gọi cho công cụ đó.
-4. **Kiểm:** `node .claude/plugin/cli/cli.js doctor`.
+4. **Kiểm:** `node .claude/modules/core/cli/cli.js doctor`.
 
 ## Đã có thì sao, chưa có thì làm gì
 | Thứ | Đã có | Chưa có |

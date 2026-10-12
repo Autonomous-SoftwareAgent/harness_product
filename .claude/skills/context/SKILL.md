@@ -33,7 +33,7 @@ Trước khi dùng Grep hay Glob để tìm hiểu một việc trong hệ. Mộ
 - Thêm `service` để chỉ hỏi trong một dịch vụ. Bỏ trống là hỏi cả hệ.
 - Một mục bị cắt ("còn N mục") thì gọi lại với `section` là mã mục đó.
 - Tiếng Việt gõ không dấu cũng khớp.
-- Phiên chưa nối lại MCP: `node .claude/plugin/cli/cli.js context "<câu hỏi>" [--to "<vật>"] [--section <mục>]`, hoặc `context --impact <tệp> [<tệp>...]` (chạy từ gốc dự án; thêm `--service <tên>` trước `context` để giới hạn).
+- Phiên chưa nối lại MCP: `node .claude/modules/core/cli/cli.js context "<câu hỏi>" [--to "<vật>"] [--section <mục>]`, hoặc `context --impact <tệp> [<tệp>...]` (chạy từ gốc dự án; thêm `--service <tên>` trước `context` để giới hạn).
 
 ## Đọc câu trả lời thế nào
 - Dòng đầu nói khớp ở bậc nào. Bậc 1: đúng mã hoặc đúng tên. Bậc 2: khớp bảng từ vựng. Bậc 3: mọi từ đều có trong tên hoặc tóm tắt. Bậc 4: chỉ là GỢI Ý để hỏi lại, không dùng để kết luận.
@@ -92,4 +92,4 @@ Một dòng nhật ký trong `STATUS.md` thì kho chỉ thấy tiêu đề mục
 ## Cách kiểm
 - Câu trả lời cho người dùng nêu địa chỉ `tệp:dòng` lấy từ kho hoặc từ tệp đã mở, không nêu theo trí nhớ.
 - Điều lấy từ dòng có nhãn "chưa kiểm" hay từ khớp bậc 4 thì đã mở tệp gốc để xác nhận trước khi khẳng định.
-- Sau khi ghi từ vựng hoặc quan hệ: `node .claude/plugin/cli/cli.js --service <tên> check` không có lỗi.
+- Sau khi ghi từ vựng hoặc quan hệ: `node .claude/modules/core/cli/cli.js --service <tên> check` không có lỗi.

@@ -5,7 +5,7 @@ description: Chỉ đường chung khi làm việc trong một đơn vị (dịc
 
 # Làm việc trong một đơn vị của dự án
 
-Skill này là bản chỉ đường, không phải nội dung của đơn vị nào. Điều riêng của từng đơn vị nằm trong tài liệu của chính đơn vị đó; ở đây chỉ nói đi đâu để đọc và làm theo thứ tự nào. Khuôn chung của dự án: `.claude/plugin/FORMAT.md`.
+Skill này là bản chỉ đường, không phải nội dung của đơn vị nào. Điều riêng của từng đơn vị nằm trong tài liệu của chính đơn vị đó; ở đây chỉ nói đi đâu để đọc và làm theo thứ tự nào. Khuôn chung của dự án: `.claude/modules/core/FORMAT.md`.
 
 ## Khi nào dùng
 - Trước lần sửa đầu tiên trong một đơn vị, và trước lời gọi ghi đầu tiên của công cụ `bsn-docs`. Hook `guard-skill.js` chặn cho tới khi skill này được mở.
@@ -19,8 +19,8 @@ Skill này là bản chỉ đường, không phải nội dung của đơn vị 
 - Mọi lần sửa đều qua cổng duyệt: tổng hợp yêu cầu, trình kế hoạch, DỪNG chờ người dùng đồng ý ở lượt sau.
 
 ## Các bước
-1. **Xác định đơn vị.** Đơn vị nào có trong dự án và nằm ở đâu: tóm tắt đầu phiên, hoặc `.claude/plugin/project.json` (`units`). Chưa rõ việc thuộc đơn vị nào thì hỏi người dùng.
-2. **Xem có ai đang làm cùng đơn vị không:** `node .claude/plugin/cli/session.js for <đơn-vị>`. Có phiên khác vừa sửa thì báo người dùng trước khi sửa.
+1. **Xác định đơn vị.** Đơn vị nào có trong dự án và nằm ở đâu: tóm tắt đầu phiên, hoặc `.claude/project/project.json` (`units`). Chưa rõ việc thuộc đơn vị nào thì hỏi người dùng.
+2. **Xem có ai đang làm cùng đơn vị không:** `node .claude/modules/core/cli/session.js for <đơn-vị>`. Có phiên khác vừa sửa thì báo người dùng trước khi sửa.
 3. **Đọc cửa vào của đơn vị** bằng công cụ Read, theo mục "Đọc gì khi nào". Các tệp khai trong `skills.serviceDocs` (mặc định `CLAUDE.md` và `docs/agent/STATUS.md`) là bắt buộc; hook chặn lần sửa đầu tiên nếu chưa đọc.
 4. **Tìm hiểu việc cần làm** bằng `context_explore` trước khi Grep (skill `context`).
 5. **Trình kế hoạch theo khuôn** (mục "Khuôn kế hoạch") và chờ duyệt. Được duyệt thì gọi `scope_register`.
@@ -58,7 +58,7 @@ Dự án khai danh sách bắt buộc khác (`skills.serviceDocs`, `skills.unitD
 ### Đã có thì sao, chưa có thì làm gì
 | Tệp | Đã có | Chưa có |
 |---|---|---|
-| `CLAUDE.md` của đơn vị | Đọc trước tiên, làm theo | `node .claude/plugin/cli/new-service.js <tên>` tạo khung (không ghi đè); điền từ mã thật trong cùng kế hoạch |
+| `CLAUDE.md` của đơn vị | Đọc trước tiên, làm theo | `node .claude/modules/core/cli/new-service.js <tên>` tạo khung (không ghi đè); điền từ mã thật trong cùng kế hoạch |
 | `docs/agent/STATUS.md` | Đọc; cuối việc thêm dòng nhật ký | Như trên |
 | `docs/agent/CONVENTIONS.md` | Theo đúng quy ước | Viết mã theo cách đang thấy trong đơn vị; ghi lại quy ước đọc thấy khi người dùng đồng ý |
 | Tài liệu có cấu trúc (ba tầng, `service.yaml`, sơ đồ) | Cập nhật bằng skill `service-docs`, `diagrams` khi mã đổi | Không tự bật; hỏi người dùng nếu việc cần |
@@ -74,7 +74,7 @@ Dự án khai danh sách bắt buộc khác (`skills.serviceDocs`, `skills.unitD
 | Trang của đơn vị trên cổng HTML | `service-page` |
 | Thêm một đơn vị mới | `new-service` |
 
-Dự án có thể khai thêm skill riêng; bảng đầy đủ việc nào cần skill nào là phần `skills` của `.claude/plugin/project.json`.
+Dự án có thể khai thêm skill riêng; bảng đầy đủ việc nào cần skill nào là phần `skills` của `.claude/project/project.json`.
 
 ## Thế nào là làm đúng
 - **Chỉ ghi điều đã đọc thấy trong mã hoặc người dùng đã chốt.** Điều chưa kiểm với hệ thống thật thì ghi rõ là chưa kiểm.
@@ -92,6 +92,6 @@ Dự án có thể khai thêm skill riêng; bảng đầy đủ việc nào cầ
 
 ## Cách kiểm
 - Test của đơn vị qua (lệnh ở `CLAUDE.md` của đơn vị).
-- `node .claude/plugin/cli/cli.js --service <tên> check` không có lỗi.
+- `node .claude/modules/core/cli/cli.js --service <tên> check` không có lỗi.
 - `docs/agent/STATUS.md` có dòng nhật ký cho việc vừa làm: đổi gì, kiểm bằng gì, điều chưa kiểm.
 - Việc cần đơn vị khác đã có tờ trong `docs/handoff/` và đã báo người dùng.

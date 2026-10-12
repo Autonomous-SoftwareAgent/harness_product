@@ -1,0 +1,14 @@
+{
+  "_": "Bộ khuôn nhẹ (S-064): chỉ lõi (cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên) và khối chặn đẩy. Mỗi đơn vị chỉ cần CLAUDE.md và docs/agent/STATUS.md; không tài liệu ba tầng, không sơ đồ, không cổng HTML. Khóa nào dự án khai trong project.json thì thắng khóa ở đây.",
+  "lang": "vi",
+  "modules": ["core", "guard-push"],
+  "skills": {
+    "mode": "enforce",
+    "overview": "services",
+    "serviceDocs": ["CLAUDE.md", "docs/agent/STATUS.md"],
+    "tools": {},
+    "readonly": ["scope_register", "scope_status"],
+    "files": []
+  },
+  "policies": { "rootNeverPush": false, "docsNeverPush": false, "unitSheets": [], "readOnlyDirs": [] }
+}

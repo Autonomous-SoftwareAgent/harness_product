@@ -5,33 +5,35 @@ Bộ harness cho Claude Code: phiên Claude chỉ sửa tệp sau khi bạn duy�
 ## Cài vào một dự án
 Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 
-1. Tải repo này về một chỗ bất kỳ: `git clone https://github.com/Autonomous-SoftwareAgent/harness_product`
-2. Chép thư mục `.claude/` và tệp `.mcp.json` vào GỐC dự án của bạn.
-   - Dự án đã có `.claude/`: chép `.claude/plugin/` và `.claude/skills/*` vào, rồi trộn phần `hooks` của `.claude/settings.json` vào settings đang có.
-   - Dự án đã có `.mcp.json`: không cần chép; lần mở phiên đầu harness tự thêm mục `bsn-docs`.
-3. Mở Claude Code ở gốc dự án. Claude Code hỏi có tin thư mục này không: chọn có, để hook chạy.
-4. Tóm tắt đầu phiên báo "CHƯA CÀI ĐẶT DỰ ÁN". Bảo Claude: "onboard dự án này". Agent đọc dự án, trình kế hoạch tổ chức (đơn vị nằm ở đâu, trước khi sửa phải đọc gì, việc nào cần skill nào), bạn duyệt, agent ghi `.claude/plugin/project.json` và dựng phần tài liệu còn thiếu.
-5. Kiểm: `node .claude/plugin/cli/cli.js doctor` không có dòng LỖI. Gõ `/mcp` nếu tóm tắt đầu phiên nhắc.
+1. Tải repo này về một chỗ bất kỳ (không phải trong dự án): `git clone https://github.com/Autonomous-SoftwareAgent/harness_product`
+2. Xem trước việc sẽ làm: `node harness_product/.claude/modules/core/cli/cli.js install <thư mục dự án>`
+3. Làm thật: thêm `--apply`. Lệnh chép mã vào `<dự án>/.claude/modules/`, tạo `.claude/project/` (phần của dự án), chép skill còn thiếu vào `.claude/skills/`, rồi viết phần của harness trong `.claude/settings.json` và `.mcp.json` (phần bạn tự thêm được giữ). Bản cũ được cất để quay lại: `install <dự án> --undo`.
+4. Mở Claude Code ở gốc dự án. Claude Code hỏi có tin thư mục này không: chọn có, để hook chạy.
+5. Tóm tắt đầu phiên báo "CHƯA CÀI ĐẶT DỰ ÁN". Bảo Claude: "onboard dự án này". Agent đọc dự án, trình kế hoạch tổ chức (đơn vị nằm ở đâu, trước khi sửa phải đọc gì, việc nào cần skill nào), bạn duyệt, agent ghi `.claude/project/project.json` và dựng phần tài liệu còn thiếu.
+6. Kiểm: `node .claude/modules/core/cli/cli.js doctor` không có dòng LỖI. Gõ `/mcp` nếu tóm tắt đầu phiên nhắc.
 
-## Phiên đầu tiên sẽ xảy ra gì
-- Cổng duyệt kế hoạch chạy ngay: Claude không sửa tệp nào khi bạn chưa duyệt kế hoạch.
-- Harness tạo `.mcp.json` (nếu thiếu) và thư mục trạng thái của nó bên trong `.claude/` (sổ phiên SQLite; tệp `.claude/.gitignore` của gói đã bỏ qua thư mục này).
-- Các luật theo đơn vị (đọc tài liệu trước khi sửa, giữ phạm vi theo kế hoạch) bắt đầu áp sau khi `project.json` khai đơn vị.
+## Nâng cấp, và chuyển từ bản cũ
+- Tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong `.claude/modules/` được thay; `.claude/project/`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
+- Dự án đang dùng bản cũ (mọi thứ trong `.claude/plugin/`): cùng lệnh `install`. Lệnh chuyển cấu hình (`project.json`, bảng đơn vị, bảng skill, công tắc, bộ sinh riêng, luật mở rộng) sang `.claude/project/`, giữ sổ phiên, cất `.claude/plugin/` cũ để quay lại, và nêu các tệp cổng duyệt bạn từng sửa.
 
-## Gồm những gì
-| Thứ | Ở đâu |
-|---|---|
-| Khuôn làm việc chung, cấu hình dự án | `.claude/plugin/FORMAT.md` |
-| Hook (cổng duyệt, phạm vi, skill, tệp do công cụ sở hữu, từ cấm, đẩy) | `.claude/settings.json` khai, mã ở `.claude/plugin/` |
-| Máy chủ MCP `bsn-docs` (tài liệu, sơ đồ, kho ngữ nghĩa, phạm vi) | `.claude/plugin/mcp/` |
-| Skill | `.claude/skills/` (`onboard`, `skill-map`, `services`, `service-docs`, `diagrams`, `context`, `service-page`, `new-service`) |
-| Lệnh | `node .claude/plugin/cli/cli.js` (`doctor`, `check`, `portal`...) |
+## Bố cục
+| Chỗ | Của ai | Giữ gì |
+|---|---|---|
+| `.claude/modules/<khối>/` | sản phẩm | mã harness; bản mới thay toàn bộ |
+| `.claude/project/` | dự án | `project.json` (khối bật, bộ khuôn, ngôn ngữ, đơn vị, bảng skill, luật), luật mở rộng `rules/`, bộ sinh riêng |
+| `.claude/skills/`, `.claude/settings.json`, `.mcp.json` | chung | chỗ Claude Code đọc; bộ cài viết phần của harness, giữ phần của bạn |
+| `.claude/local/` và thư mục trạng thái trong `.claude/` | máy | từ cấm, sổ phiên, trạng thái cổng duyệt; không commit |
+
+Khối: `core` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên, máy chủ MCP, bộ cài), `servicedocs` (tài liệu ba tầng), `diagrams` (sơ đồ), `context` (kho ngữ nghĩa), `portal` (trang HTML cho người đọc), `guard-push` (từ cấm, chặn đẩy). Chỉ bật một số khối: khóa `modules` trong `project.json` (hoặc `"preset": "light"`), rồi `node .claude/modules/core/cli/cli.js setup`.
+
+## Thêm luật của riêng dự án
+Đặt `.claude/project/rules/<id>.js` xuất `{ id, on, api: "0.1", run(event, ports) }` (sự kiện và quyết định: `.claude/modules/core/ports/events.js`), rồi chạy `setup` để khai hook. Mã trong `.claude/modules/` không phải sửa.
 
 ## Gỡ ra
-Xóa khối `hooks` trong `.claude/settings.json`, mục `bsn-docs` trong `.mcp.json`, rồi xóa `.claude/plugin/`, các skill trên và thư mục trạng thái của harness trong `.claude/`.
+`install <dự án> --undo` quay lại trạng thái trước lần cài gần nhất. Gỡ hẳn: xóa nhóm hook trỏ vào `.claude/modules/` trong `.claude/settings.json`, mục `bsn-docs` trong `.mcp.json`, rồi xóa `.claude/modules/`, `.claude/project/` và thư mục trạng thái của harness trong `.claude/`.
 
 ## Giới hạn
-- Chữ trong skill, lời báo và tài liệu là tiếng Việt.
+- Lời chặn và lời nhắc của lõi có tiếng Việt và tiếng Anh (`"lang": "en"` trong `project.json`); skill và tài liệu của gói là tiếng Việt.
 - Hook của Claude Code cho qua khi hook hỏng hay quá giờ; `doctor` và tóm tắt đầu phiên báo khi có vấn đề.
 - Hook là hàng rào cho phiên Claude, không phải sandbox: người ngồi trước máy vẫn sửa được mọi thứ.
-- Thư viện vẽ sơ đồ (Mermaid, giấy phép MIT) đi kèm ở `.claude/plugin/mcp/vendor/`.
+- Thư viện vẽ sơ đồ (Mermaid, giấy phép MIT) đi kèm ở `.claude/modules/diagrams/mcp/vendor/`.

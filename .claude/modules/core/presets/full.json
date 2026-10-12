@@ -1,0 +1,5 @@
+{
+  "_": "Bộ khuôn đầy đủ (S-064): mọi khối bật; tài liệu ba tầng, sơ đồ đủ năm loại, kho ngữ nghĩa, cổng HTML; luật riêng repo gốc không đẩy và docs/ không lên remote BẬT. Khóa nào dự án khai trong project.json thì thắng khóa ở đây.",
+  "lang": "vi",
+  "policies": { "rootNeverPush": true, "docsNeverPush": true }
+}

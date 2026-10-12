@@ -1,0 +1,13 @@
+{
+  "name": "servicedocs",
+  "version": "1.0.0",
+  "api": "0.1",
+  "uses": ["core"],
+  "does": "tài liệu ba tầng, docs/service.yaml, sổ vấn đề, chặn ghi tay tệp do công cụ sở hữu",
+  "hooks": [
+    { "event": "PreToolUse", "order": 20, "matcher": "Write|Edit|NotebookEdit|Bash", "file": "hooks/guard-owned.js", "timeout": 10 }
+  ],
+  "tools": [{ "file": "mcp/docs/tools.js", "order": 10 }],
+  "commands": ["cli/commands/docs.js"],
+  "skills": ["service-docs"]
+}

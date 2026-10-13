@@ -4,10 +4,10 @@
 // và nối đặc tả với tệp mã, tệp test được ghi trong tầng cài đặt.
 const { ID, mdItems, listField } = require('../kit');
 
-function run(g, { files }) {
+function run(g, { files, L }) {
   const idRe = /^[A-Z][A-Z0-9]*-[DS]-\d{3}$/;
   for (const [p, text] of files) {
-    const m = /^docs\/modules\/([^/]+)\/(1-design|2-spec|3-impl)\.md$/.exec(p);
+    const m = /^docs\/modules\/([^/]+)\/(1-design|2-spec|3-impl)\.md$/.exec(L(p)); // so mẫu theo tên logic; địa chỉ ghi vào kho là đường dẫn thật `p`
     if (!m) continue;
     const kind = { '1-design': 'design', '2-spec': 'spec', '3-impl': 'impl' }[m[2]];
     for (const it of mdItems(text, idRe)) {

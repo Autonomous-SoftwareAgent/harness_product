@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-004
-// LUẬT từ cấm (trước khi phiên ghi tệp hoặc gọi công cụ ghi của bsn-docs): CHẶN khi nội dung hoặc tên tệp có từ nằm trong danh sách
+// LUẬT từ cấm (trước khi phiên ghi tệp hoặc gọi công cụ ghi của máy chủ MCP của harness): CHẶN khi nội dung hoặc tên tệp có từ nằm trong danh sách
 // cấm của máy này. Danh sách chỉ ở máy, không commit; luật này không chứa và không in lại từ nào.
 // Chỉ xét tệp sẽ vào kho mã: tệp trong dự án mà kho KHÔNG bỏ qua. Thư mục tạm, bộ nhớ của phiên, tệp bị bỏ qua thì ghi tự do.
 // Hàng rào đầu: lệnh ghi qua shell không đi qua đây, nhưng git hook pre-commit, commit-msg và pre-push (cùng bộ quét) vẫn chặn.
@@ -8,8 +8,7 @@
 const path = require('node:path');
 const { deny } = require('../../../core/ports/events');
 const W = require('../../../core/core/rules/lib/banned-words');
-
-const TOOL_SERVER = 'bsn-docs';
+const N = require('../../../core/core/rules/lib/mcp-names');
 
 async function run(event, { workspace: ws, repo }) {
   const words = ws.bannedWords();
@@ -17,7 +16,7 @@ async function run(event, { workspace: ws, repo }) {
   const re = W.matcher(words);
   const a = event.action;
   const no = (where) => deny(`Lời gọi này bị chặn vì ${where} có từ nằm trong danh sách cấm của máy này. Từ trong danh sách không được có trong bất kỳ commit nào (nội dung, tên tệp, lời nhắn). Đọc danh sách ở ${ws.bannedListRel} (tệp chỉ có ở máy), viết lại không dùng các từ đó rồi gọi lại. Không chép từ trong danh sách vào tệp, tài liệu, lời nhắn commit hay tin nhắn nào.`);
-  if (a.type === 'call-tool' && a.server === TOOL_SERVER) {
+  if (a.type === 'call-tool' && N.isOwn(a.server, N.prefixOf(ws))) {
     let readonly = [];
     try { readonly = ws.skillsMapRaw().readonly || []; } catch { /* không có bảng nối: xét mọi công cụ */ }
     if (readonly.includes(a.name)) return null;

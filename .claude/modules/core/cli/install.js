@@ -61,6 +61,13 @@ function repos(dest) {
   return out.filter((d) => exists(path.join(d, '.git', 'hooks')));
 }
 
+// Khối người cài tự thêm: thư mục con của .claude/modules/ có module.json mà gói mới không có thư mục cùng tên.
+function localBlocks(src, dest) {
+  const mine = path.join(dest, '.claude', 'modules');
+  if (!exists(mine)) return [];
+  return fs.readdirSync(mine, { withFileTypes: true }).filter((d) => d.isDirectory() && exists(path.join(mine, d.name, 'module.json')) && !exists(path.join(src, '.claude', 'modules', d.name))).map((d) => d.name).sort();
+}
+
 function plan(src, dest) {
   const kind = kindOf(dest);
   const steps = [];
@@ -74,7 +81,13 @@ function plan(src, dest) {
       const changed = Object.entries(old.files).filter(([f, h]) => f.startsWith('.claude/modules/') && exists(path.join(dest, ...f.split('/'))) && sha(fs.readFileSync(path.join(dest, ...f.split('/')))) !== h).map(([f]) => f);
       const extra = walkFiles(path.join(dest, '.claude', 'modules')).map((f) => `.claude/modules/${f}`).filter((f) => !old.files[f] && !/^\.claude\/modules\/(FILES|MANIFEST|index)\.json$|VERSION$/.test(f));
       if (changed.length) notes.push(`tệp mã của sản phẩm bạn đã sửa tay (sẽ bị thay; bản đang có nằm trong chỗ cất): ${changed.join(', ')}`);
-      if (extra.length) notes.push(`tệp lạ trong .claude/modules/ (sẽ chuyển vào chỗ cất; luật riêng nên đặt ở .claude/project/rules/): ${extra.join(', ')}`);
+      // Khối bạn tự thêm (thư mục có module.json mà gói không có) được GIỮ. Tệp lẻ bạn thêm vào khối của gói thì vào chỗ cất: muốn giữ cả
+      // tệp lẻ và tệp đã sửa, dùng "upgrade preview" rồi "upgrade prepare" thay cho lệnh cài trần.
+      const own = localBlocks(src, dest);
+      const loose = extra.filter((f) => !own.some((b) => f.startsWith(`.claude/modules/${b}/`)));
+      if (own.length) notes.push(`khối bạn tự thêm, được GIỮ nguyên: ${own.join(', ')}`);
+      if (changed.length || loose.length) notes.push('muốn GIỮ phần đã sửa (gộp với bản mới) thay vì thay: dùng lệnh "upgrade preview" và "upgrade prepare" của gói mới');
+      if (loose.length) notes.push(`tệp lạ trong .claude/modules/ (sẽ chuyển vào chỗ cất; luật riêng nên đặt ở .claude/project/rules/): ${loose.join(', ')}`);
     } else notes.push('bản đang cài không có FILES.json: không phân biệt được tệp nào bạn đã sửa; bản cũ được cất nguyên để so');
   } else if (kind === 'legacy') {
     steps.push(`chuyển bố cục cũ .claude/plugin/ sang bố cục khối (bản ${version}); .claude/plugin/ cũ được cất nguyên`);
@@ -133,8 +146,16 @@ function apply(src, dest, p) {
   if (!projectExisted) rec.created.push('.claude/project');
   // Mã: cất bản cũ (bố cục cũ hoặc khối), chép bản mới.
   if (p.kind === 'legacy') { moveDir(LEGACY(dest), path.join(backup, '.claude', 'plugin')); rec.restore.push('.claude/plugin'); rec.removed = ['.claude/plugin']; }
-  if (p.kind === 'modular') { moveDir(path.join(dest, '.claude', 'modules'), path.join(backup, '.claude', 'modules')); rec.restore.push('.claude/modules'); }
-  copyDir(path.join(src, '.claude', 'modules'), path.join(dest, '.claude', 'modules'));
+  // Dựng bản mới ĐỦ ở một thư mục cạnh bên rồi mới đổi chỗ: phiên đang mở gọi hook trong lúc cài chỉ gặp thư mục mã trống trong đúng
+  // khoảng giữa hai lần đổi tên (hook thiếu tệp thì Claude Code cho qua), không phải trong suốt lúc chép.
+  const live = path.join(dest, '.claude', 'modules');
+  const fresh = path.join(dest, '.claude', `modules.moi-${at}`);
+  copyDir(path.join(src, '.claude', 'modules'), fresh);
+  // Khối người cài tự thêm: chép sang bản mới (bản đang chạy vào chỗ cất nguyên vẹn để quay lại được).
+  const keptBlocks = p.kind === 'modular' ? localBlocks(src, dest) : [];
+  for (const b of keptBlocks) copyDir(path.join(live, b), path.join(fresh, b));
+  if (p.kind === 'modular') { moveDir(live, path.join(backup, '.claude', 'modules')); rec.restore.push('.claude/modules'); }
+  moveDir(fresh, live);
   if (p.kind !== 'modular') rec.created.push('.claude/modules');
   // Phần của dự án.
   fs.mkdirSync(projectDir, { recursive: true });
@@ -177,6 +198,12 @@ function apply(src, dest, p) {
   const add = want.filter((l) => !have.includes(l));
   if (add.length) { save(gi); fs.writeFileSync(gi, `${[...have.filter(Boolean), ...add].join('\n')}\n`); }
   fs.writeFileSync(path.join(P.stateDir(dest), 'install-last.json'), `${JSON.stringify(rec, null, 2)}\n`);
+  // Gói được cài từ một bản clone của kho gói: ghi nhận nơi đó làm kho gói của dự án (lệnh upgrade lấy bản mới từ đó). Đã ghi nhận rồi
+  // thì không đổi.
+  try {
+    const memo = path.join(P.localDir(dest), 'upgrade.json');
+    if (!exists(memo) && exists(path.join(src, '.git'))) { fs.mkdirSync(path.dirname(memo), { recursive: true }); fs.writeFileSync(memo, `${JSON.stringify({ source: path.resolve(src) }, null, 2)}\n`); }
+  } catch { /* không ghi được: lệnh upgrade sẽ hỏi --from */ }
   // Bằng mã MỚI vừa chép: sinh settings và .mcp.json, cài lại git hook, kiểm.
   const cli = path.join(dest, '.claude', 'modules', 'core', 'cli', 'cli.js');
   const log = [];

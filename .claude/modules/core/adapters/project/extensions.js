@@ -16,6 +16,9 @@ const P = require('../../gate/gate-paths');
 const MAX_FILES = 200;
 const MAX_BYTES = 2 * 1024 * 1024;
 const SKIP_DIRS = new Set(['node_modules', '.git']);
+// Trong <đơn vị>/.harness/ còn có ghi chép và tệp cửa vào của đơn vị (bố cục gom): chúng KHÔNG thuộc khối mở rộng. Không bỏ qua thì mỗi
+// lần ghi tài liệu làm đổi dấu vân tay của khối (bị báo "đã sửa sau khi xác nhận"), và lệnh xác nhận chép cả ghi chép vào bản đã xác nhận.
+const NOT_BLOCK_DIRS = new Set(['docs', 'skills']);
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return undefined; } };
 const posix = (p) => p.split(path.sep).join('/');
 
@@ -43,14 +46,16 @@ function discover(root) {
 }
 
 // Các tệp của một thư mục khối: [{ rel, abs }], sắp theo đường dẫn. Quá giới hạn thì ném lỗi (khối là mã nhỏ, không phải nơi chứa dữ liệu).
-function files(dir) {
+function files(dir, { entry = '' } = {}) {
   const out = [];
   let bytes = 0;
   const walk = (d) => {
+    const top = d === dir;
     for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) walk(abs); continue; }
+      if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name) && !(top && NOT_BLOCK_DIRS.has(e.name))) walk(abs); continue; }
       if (!e.isFile()) continue;
+      if (top && entry && e.name === entry) continue; // tệp cửa vào của đơn vị
       bytes += fs.statSync(abs).size;
       out.push({ rel: posix(path.relative(dir, abs)), abs });
       if (out.length > MAX_FILES || bytes > MAX_BYTES) throw new Error(`khối quá lớn (giới hạn ${MAX_FILES} tệp, ${MAX_BYTES / 1024 / 1024} MB)`);
@@ -61,12 +66,18 @@ function files(dir) {
 }
 
 // Dấu vân tay: mã băm của danh sách (đường dẫn, mã băm nội dung). Thư mục không có hay không đọc được thì ''.
-function fingerprint(dir) {
+function fingerprint(dir, opts) {
   try {
     const h = crypto.createHash('sha256');
-    for (const f of files(dir)) h.update(`${f.rel}\0${crypto.createHash('sha256').update(fs.readFileSync(f.abs)).digest('hex')}\n`);
+    for (const f of files(dir, opts || unitOpts(dir))) h.update(`${f.rel}\0${crypto.createHash('sha256').update(fs.readFileSync(f.abs)).digest('hex')}\n`);
     return h.digest('hex');
   } catch { return ''; }
+}
+
+// Thư mục khối là <đơn vị>/.harness thì tệp cửa vào của đơn vị (tên do dự án khai) không thuộc khối.
+function unitOpts(dir) {
+  if (path.basename(dir) !== P.UNIT_EXT_DIR) return {};
+  try { return { entry: P.projectConfig(P.rootFrom(__dirname)).units.entry }; } catch { return { entry: P.LOGICAL_ENTRY }; }
 }
 
 const safeKey = (key) => key.replace(':', '-').replace(/[^\w.-]/g, '_');
@@ -109,7 +120,7 @@ const runningManifest = (e) => (e.run ? readJson(path.join(e.run, 'module.json')
 // Xác nhận một khối: chép bản trong repo vào .claude/local/extensions/<khóa>/ và ghi dấu vân tay. Bên gọi (cli/extension.js) đã kiểm
 // manifest và đã từ chối khi chạy trong phiên Claude.
 function trust(root, e, now = new Date().toISOString()) {
-  const list = files(e.dir);
+  const list = files(e.dir, unitOpts(e.dir));
   const copy = trustedCopy(root, e.key);
   fs.rmSync(copy, { recursive: true, force: true });
   for (const f of list) { const to = path.join(copy, ...f.rel.split('/')); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(f.abs, to); }

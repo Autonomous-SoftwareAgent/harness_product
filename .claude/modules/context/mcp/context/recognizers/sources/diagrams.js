@@ -6,10 +6,10 @@ const yaml = require('../../../../../core/core/lib/yaml-lite');
 const specs = require('../../../../../diagrams/core/diagrams/spec');
 const { ID } = require('../kit');
 
-function run(g, { files }) {
+function run(g, { files, L }) {
   const dg = require('../../../../../diagrams/mcp/diagrams/diagrams');
   for (const [p, text] of files) {
-    const m = /^docs\/diagrams\/([a-z][a-z0-9-]*)\.yaml$/.exec(p);
+    const m = /^docs\/diagrams\/([a-z][a-z0-9-]*)\.yaml$/.exec(L(p)); // so mẫu theo tên logic; địa chỉ ghi vào kho là đường dẫn thật `p`
     if (!m) continue;
     let spec;
     try { spec = specs.parse(yaml.parse(text)).spec; } catch { spec = null; }

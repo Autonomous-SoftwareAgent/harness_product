@@ -1,13 +1,23 @@
 {
   "enabledMcpjsonServers": [
-    "bsn-docs"
+    "harness",
+    "harness-mcp",
+    "harness-docs",
+    "harness-diagrams",
+    "harness-context",
+    "harness-portal"
   ],
   "worktree": {
     "bgIsolation": "none"
   },
   "permissions": {
     "allow": [
-      "mcp__bsn-docs"
+      "mcp__harness",
+      "mcp__harness-mcp",
+      "mcp__harness-docs",
+      "mcp__harness-diagrams",
+      "mcp__harness-context",
+      "mcp__harness-portal"
     ],
     "deny": [
       "Read(**/*.pem)",
@@ -50,7 +60,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|NotebookEdit|mcp__bsn-docs__.*",
+        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__bsn-docs__.*",
         "hooks": [
           {
             "type": "command",
@@ -70,7 +80,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|NotebookEdit|mcp__bsn-docs__.*",
+        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__bsn-docs__.*",
         "hooks": [
           {
             "type": "command",

@@ -87,7 +87,7 @@ function recognise(g, scope, ctx) {
   for (const r of registry.load('source')) {
     if (!r.scopes.includes(scope)) continue;
     g.by = r.id;
-    try { r.run(g.sink(), { ...ctx, svc: g.svc, scope }); } catch (e) { g.dark.push(`bộ nhận dạng "${r.id}" (${r.file}) lỗi: ${e.message}`); }
+    try { r.run(g.sink(), { U: (x) => x, L: (x) => x, ...ctx, svc: g.svc, scope }); } catch (e) { g.dark.push(`bộ nhận dạng "${r.id}" (${r.file}) lỗi: ${e.message}`); }
   }
   g.by = 'lõi';
 }
@@ -138,13 +138,46 @@ function extraKey(name) {
   return `+doc-them:${h.digest('hex').slice(0, 12)}`;
 }
 
+// GHI CHÉP TẠI CHỖ: đơn vị khai ghi chép không vào git thì phần tại chỗ của nó (<đơn vị>/.harness/) không có trong commit nào. Đọc phần
+// đó từ đĩa và chồng lên cây của commit; mã vẫn chỉ đọc từ commit. Trả Map<đường dẫn posix trong đơn vị, văn bản>.
+function readLocal(dir, layout) {
+  const out = new Map();
+  const walk = (d) => {
+    let entries = [];
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const abs = path.join(d, e.name);
+      if (e.isDirectory()) { walk(abs); continue; }
+      const p = path.relative(dir, abs).split(path.sep).join('/');
+      if (!TEXT_EXT.has(path.posix.extname(p))) continue;
+      try { if (fs.statSync(abs).size <= MAX_BYTES) out.set(p, fs.readFileSync(abs, 'utf8').replace(/\r\n/g, '\n')); } catch { /* tệp vừa mất */ }
+    }
+  };
+  walk(path.join(dir, ...layout.localRel.split('/')));
+  return out;
+}
+// Dấu của phần tại chỗ: nó đổi thì kho của đơn vị dựng lại dù không có commit mới. Đơn vị không ở chế độ tại chỗ thì ''.
+function localKey(name) {
+  const layout = P.unitLayout(core.BSN_DIR, name);
+  if (!layout.local) return '';
+  const h = crypto.createHash('sha256');
+  for (const [p, text] of readLocal(core.dirOf(name), layout)) { h.update(p); h.update(text); }
+  return `+tai-cho:${h.digest('hex').slice(0, 12)}`;
+}
+
 function buildService(name, infra) {
   const dir = core.dirOf(name);
+  const layout = P.unitLayout(core.BSN_DIR, name);
   const files = readTree(dir);
+  if (layout.local) for (const [p, text] of readLocal(dir, layout)) { files.set(p, text); files.all.add(p); }
   for (const [p, text] of readExtra(name)) { files.set(p, text); files.all.add(p); }
   const g = new Graph(name);
   const facts = scanner.scan(files);
-  recognise(g, 'service', { files, infra: infra[name] || null, allInfra: infra, facts, entryKinds: registry.load('entry') });
+  // U: tên logic của phần tại chỗ -> đường dẫn thật trong đơn vị; L: chiều ngược ('' khi tệp không thuộc phần tại chỗ). Bộ nhận dạng
+  // tìm ghi chép của đơn vị qua hai hàm này, nên đúng cho cả bố cục gom trong .harness/.
+  const U = (logical) => P.unitRealRel(layout, logical);
+  const L = (real) => P.unitLogicalRel(layout, real);
+  recognise(g, 'service', { files, infra: infra[name] || null, allInfra: infra, facts, entryKinds: registry.load('entry'), U, L });
   linkMentions(g, [name]);
   // Tệp có thật trong commit nhưng không phải mã (tệp cấu hình, script triển khai) mà có cạnh trỏ tới: thành nút tệp, không để cạnh treo.
   for (const e of g.edges) for (const end of [e.src, e.dst]) {
@@ -188,7 +221,7 @@ function buildAll({ force = false } = {}) {
   fs.mkdirSync(OUT(), { recursive: true });
   const prod = producer();
   const built = [];
-  const rootFiles = readTree(core.BSN_DIR, (p) => p === 'CLAUDE.md' || p.startsWith('docs/system/') || p.startsWith('docs/handoff/') || p.startsWith('infra/'));
+  const rootFiles = readTree(core.BSN_DIR, (p) => p === 'CLAUDE.md' /* gốc dự án */ || p.startsWith('docs/system/') || p.startsWith('docs/handoff/') || p.startsWith('infra/'));
   const infraCommit = mergeInfraRepo(rootFiles);
   const infra = readInfra(rootFiles);
   const infraKey = crypto.createHash('sha256').update(JSON.stringify(infra)).digest('hex').slice(0, 12);
@@ -205,9 +238,10 @@ function buildAll({ force = false } = {}) {
   };
   const services = {};
   for (const name of core.listAllServices()) {
-    const commit = headOf(core.dirOf(name));
+    const local = localKey(name);
+    const commit = headOf(core.dirOf(name)) || (local ? 'tai-cho' : null); // ghi chép tại chỗ: đơn vị chưa có commit nào vẫn có kho
     if (!commit) continue;
-    services[name] = load(name, commit, () => buildService(name, infra), extraKey(name));
+    services[name] = load(name, commit, () => buildService(name, infra), extraKey(name) + local);
   }
   const rootCommit = (headOf(core.BSN_DIR) || 'chua-co-commit') + (infraCommit ? `+infra:${infraCommit}` : '');
   const root = load(ROOT_NAME, rootCommit, () => buildRoot(rootFiles, infra));

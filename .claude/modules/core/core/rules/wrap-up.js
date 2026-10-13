@@ -25,7 +25,7 @@ async function run(event, { workspace: ws, store, jobs }, params = {}) {
   const reasons = [];
   const edited = (await store.editsOf(event.session)).filter((e) => e.edits > 0).map((e) => e.service);
   for (const svc of edited) {
-    if (!ws.exists(path.join(ws.serviceDir(svc), 'docs', 'modules'))) continue;
+    if (!ws.exists(path.join(ws.serviceDir(svc), ...ws.unitRel(svc, 'docs/modules').split('/')))) continue;
     // Chốt chặn không được biến mất cùng tệp của nó: thiếu phần kiểm docs thì chặn và nói rõ (một lần mỗi lượt), không bỏ qua.
     if (!(ws.entryExists(STOP_ENTRY) && ws.exists(ws.serviceDir(svc)))) {
       if (!event.again) reasons.push(`[${svc}] Thiếu hook ${STOP_ENTRY} (.claude/modules/core/hooks): kiểm docs không chạy được. Báo người dùng khôi phục tệp này.`);

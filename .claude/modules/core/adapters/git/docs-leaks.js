@@ -48,7 +48,7 @@ function fingerprints(root) {
       }
     }
   };
-  walk(path.join(root, 'docs'), 'docs');
+  walk(path.join(root, 'docs'), 'docs'); // gốc dự án: tài liệu chung, không phải ghi chép của một đơn vị
   for (const sha of shared) map.delete(sha);
   return map;
 }

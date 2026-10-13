@@ -14,17 +14,17 @@ const { deny } = require('../../../core/ports/events');
 const UNIT = '@unit';
 const OWNED = [
   { re: /^@unit\/[^/]+\/docs\/modules\/[^/]+\/(1-design|2-spec|3-impl)\.md$/i,
-    how: 'Ba tầng design/spec/impl chỉ ghi qua công cụ MCP bsn-docs: design_record và design_update (tầng 1), spec_fill (tầng 2), impl_link (tầng 3); truyền service="<tên service>".' },
+    how: 'Ba tầng design/spec/impl chỉ ghi qua công cụ MCP bsn-docs: design_record và design_update (tầng 1), spec_fill (tầng 2), impl_link (tầng 3); truyền service="<tên service>".' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/_generated(\/|$)/i,
-    how: 'docs/_generated/ do công cụ sinh: chạy `node .claude/modules/core/cli/cli.js --service <tên> check` (traceability) hoặc `... code` (code-map).' },
+    how: 'docs/_generated/ do công cụ sinh: chạy `node .claude/modules/core/cli/cli.js --service <tên> check` (traceability) hoặc `... code` (code-map).' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/service\.yaml$/i,
-    how: 'docs/service.yaml là nguồn có cấu trúc của dịch vụ, chỉ ghi qua công cụ MCP bsn-docs: service_doc_set (meta, business, architecture, progress) và problem_record; truyền service="<tên service>".' },
+    how: 'docs/service.yaml là nguồn có cấu trúc của dịch vụ, chỉ ghi qua công cụ MCP bsn-docs: service_doc_set (meta, business, architecture, progress) và problem_record; truyền service="<tên service>".' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/diagrams(\/|$)/i,
-    how: 'docs/diagrams/ chứa bản khai báo sơ đồ, chỉ ghi qua công cụ MCP bsn-docs: diagram_validate (kiểm, xem trước) rồi diagram_save; xóa bằng `node .claude/modules/core/cli/cli.js --service <tên> diagram-remove <id>`.' },
+    how: 'docs/diagrams/ chứa bản khai báo sơ đồ, chỉ ghi qua công cụ MCP bsn-docs: diagram_validate (kiểm, xem trước) rồi diagram_save; xóa bằng `node .claude/modules/core/cli/cli.js --service <tên> diagram-remove <id>`.' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/context(\/|$)/i,
-    how: 'docs/context/ chứa phần agent viết cho kho ngữ nghĩa (từ vựng, quan hệ bổ sung, giải thích và kết quả soát của sơ đồ tự sinh), chỉ ghi qua công cụ MCP bsn-docs: context_term, context_relate, diagram_explain, diagram_review; truyền service="<tên service>".' },
+    how: 'docs/context/ chứa phần agent viết cho kho ngữ nghĩa (từ vựng, quan hệ bổ sung, giải thích và kết quả soát của sơ đồ tự sinh), chỉ ghi qua công cụ MCP bsn-docs: context_term, context_relate, diagram_explain, diagram_review; truyền service="<tên service>".' }, // tên logic
   { re: /^docs\/portal\/(?!history(\/|$))/i,
-    how: 'docs/portal/ là cổng HTML sinh tự động (trang tổng gom liên kết, trang của từng dịch vụ): sửa nguồn (docs/service.yaml và sơ đồ qua bsn-docs, hoặc bộ sinh trang riêng của dự án) rồi chạy `node .claude/modules/core/cli/cli.js portal`, không sửa tay trang đã sinh.' },
+    how: 'docs/portal/ là cổng HTML sinh tự động (trang tổng gom liên kết, trang của từng dịch vụ): sửa nguồn (docs/service.yaml và sơ đồ qua bsn-docs, hoặc bộ sinh trang riêng của dự án) rồi chạy `node .claude/modules/core/cli/cli.js portal`, không sửa tay trang đã sinh.' }, // tên logic
 ];
 const MENTIONS_OWNED = /docs[\\/]+modules[\\/]+[^\s'"]+[\\/]+(1-design|2-spec|3-impl)\.md|docs[\\/]+_generated|docs[\\/]+service\.yaml|docs[\\/]+diagrams[\\/]|docs[\\/]+context[\\/]|docs[\\/]+portal[\\/]/i;
 
@@ -42,11 +42,12 @@ async function run(event, { workspace: ws }) {
   // Đường dẫn tính từ gốc dự án; tệp thuộc một đơn vị (thư mục con của thư mục cha khai trong cấu hình, hoặc đơn vị khai riêng)
   // được quy về dạng @unit/<tên>/..., để mọi luật ở trên áp dụng y như nhau cho mọi đơn vị.
   const relToRoot = (abs) => {
-    const rel = path.relative(ws.root, abs).split(path.sep).join('/');
-    if (rel.startsWith('..') || path.isAbsolute(rel)) return rel;
+    // Hỏi đơn vị TRƯỚC: đơn vị có thể nằm ngoài thư mục mở phiên (dự án khai gốc mã riêng), khi đó đường dẫn tính từ gốc bắt đầu bằng "..".
     const unit = ws.serviceOf(abs);
+    const rel = path.relative(ws.root, abs).split(path.sep).join('/');
     if (!unit) return rel;
-    const inUnit = path.relative(ws.serviceDir(unit), abs).split(path.sep).join('/');
+    // Phần tại chỗ của đơn vị quy về TÊN LOGIC (docs/..., CLAUDE.md), nên mẫu ở trên đúng cho cả bố cục gom trong .harness/.
+    const inUnit = ws.unitLogical(unit, path.relative(ws.serviceDir(unit), abs).split(path.sep).join('/'));
     return inUnit ? `${UNIT}/${unit}/${inUnit}` : `${UNIT}/${unit}`;
   };
   const ownedMatch = (abs) => {
@@ -89,7 +90,7 @@ async function run(event, { workspace: ws }) {
   const hit = ownedMatch(a.file);
   if (hit) return deny(`Tệp này do công cụ docs sở hữu, không sửa trực tiếp: ${path.relative(ws.root, a.file).split(path.sep).join('/')}. ${hit.how}`);
   const rel = path.relative(ws.root, a.file).split(path.sep).join('/'); // đường dẫn thật cho lời báo (dạng @unit/ chỉ dùng để so mẫu)
-  if (!rel.startsWith('..') && !path.isAbsolute(rel) && writesMermaid(a.file, a.text)) return deny(`Nội dung ghi vào ${rel} có cú pháp Mermaid viết tay. ${MERMAID_HOW}`);
+  if (ws.inside(a.file) && writesMermaid(a.file, a.text)) return deny(`Nội dung ghi vào ${rel} có cú pháp Mermaid viết tay. ${MERMAID_HOW}`);
   return null;
 }
 

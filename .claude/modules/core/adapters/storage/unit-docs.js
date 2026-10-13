@@ -1,5 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
+// spec: HOOK-S-018
 // BỘ MÁY GHI TÀI LIỆU CỦA MỘT ĐƠN VỊ (thuộc lõi): chọn đơn vị đang làm ("gốc") và chạy mỗi thao tác ghi trong MỘT giao dịch có khóa.
 // Tách ra từ mcp/docs/core.js để mọi khối ghi tài liệu (ba tầng, sơ đồ, kho ngữ nghĩa) dùng chung mà không khối nào phải nhập khối khác.
 // "Gốc" là thư mục của MỘT đơn vị (nơi có docs/), chọn bằng tham số `service` của từng lời gọi (withService), hoặc mặc định theo
@@ -18,10 +19,18 @@ let ROOT;
 let DOCS;
 let MODULES;
 let GENERATED;
+let LAYOUT;
+
+// Phần tại chỗ của đơn vị (tệp cửa vào, ghi chép) nằm ở đâu là do gate-paths quyết theo bố cục của đơn vị. Mã ghi tài liệu gọi bằng TÊN
+// LOGIC ("CLAUDE.md", "docs/service.yaml"): rel() cho đường dẫn thật tính từ thư mục đơn vị (để in ra), at() cho đường dẫn tuyệt đối.
+const rel = (logical) => P.unitRealRel(LAYOUT, logical);
+const at = (logical) => path.join(ROOT, ...rel(logical).split('/'));
+const unitAt = (dir, logical) => path.join(dir, ...P.unitRealRel(P.unitLayoutOfDir(BSN_DIR, dir), logical).split('/'));
 
 function setRoot(root) {
   ROOT = path.resolve(root);
-  DOCS = path.join(ROOT, 'docs');
+  LAYOUT = P.unitLayoutOfDir(BSN_DIR, ROOT);
+  DOCS = at('docs');
   MODULES = path.join(DOCS, 'modules');
   GENERATED = path.join(DOCS, '_generated');
 }
@@ -44,7 +53,7 @@ const serviceDirs = () => P.serviceEntries(BSN_DIR);
 
 function listServices() {
   return serviceDirs()
-    .filter((d) => fs.existsSync(path.join(d.dir, 'docs', 'modules')))
+    .filter((d) => fs.existsSync(unitAt(d.dir, 'docs/modules')))
     .map((d) => d.name)
     .sort();
 }
@@ -52,7 +61,7 @@ function listServices() {
 // Mọi dịch vụ (kể cả dịch vụ chưa dùng tài liệu ba tầng): thư mục có docs/agent hoặc docs/modules. Dùng cho cổng HTML và tóm tắt đầu phiên.
 function listAllServices() {
   return serviceDirs()
-    .filter((d) => ['agent', 'modules'].some((x) => fs.existsSync(path.join(d.dir, 'docs', x))))
+    .filter((d) => ['agent', 'modules'].some((x) => fs.existsSync(unitAt(d.dir, `docs/${x}`))))
     .map((d) => d.name)
     .sort();
 }
@@ -64,7 +73,7 @@ function defaultRoot() {
   if (process.env.BSN_SERVICE) return serviceRoot(process.env.BSN_SERVICE);
   if (process.env.BSN_ROOT) return path.resolve(process.env.BSN_ROOT);
   const top = P.serviceOf(BSN_DIR, process.cwd());
-  if (top && SERVICE_RE.test(top) && fs.existsSync(path.join(dirOf(top), 'docs', 'modules'))) return dirOf(top);
+  if (top && SERVICE_RE.test(top) && fs.existsSync(unitAt(dirOf(top), 'docs/modules'))) return dirOf(top);
   const def = defaultUnit();
   if (!def) throw new Error(`Cần truyền \`service\`: dự án chưa khai đơn vị mặc định (defaultUnit trong ${path.relative(BSN_DIR, P.projectConfigPath(BSN_DIR)).split(path.sep).join('/')}).`);
   return serviceRoot(def);
@@ -136,6 +145,8 @@ module.exports = {
   get DOCS() { return DOCS; },
   get MODULES() { return MODULES; },
   get GENERATED() { return GENERATED; },
+  get LAYOUT() { return LAYOUT; },
+  rel, at, unitAt,
   BSN_DIR, SERVICES_DIR, SERVICE_RE,
   serviceName, dirOf, setRoot, withService, serviceRoot, listServices, listAllServices, defaultUnit,
   readText, writeText, fileExists, makeDir, transaction, store,

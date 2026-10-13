@@ -88,12 +88,15 @@ async function run(event, { workspace: ws, store }) {
       if (peers.length) {
         clash = ` CẢNH BÁO: có ${peers.length} phiên Claude Code khác cũng đang sửa "${top}" (gần nhất ${ago(peers[0].ageMs)}). ` +
           `Hai phiên cùng sửa một dịch vụ dễ ghi đè nhau ở tệp thường (mã, STATUS.md). Hãy báo người dùng trước khi sửa tiếp; ` +
-          `tài liệu ba tầng và docs/service.yaml ghi qua bsn-docs thì có khóa nên không mất cập nhật.`;
+          `tài liệu ba tầng và ${ws.unitRel(top, 'docs/service.yaml')} ghi qua bsn-docs thì có khóa nên không mất cập nhật.`;
       }
     } catch { /* không đọc được thì không cảnh báo */ }
+    // Skill riêng của đơn vị nằm trong phần tại chỗ của nó; công cụ chủ không tự nạp chỗ đó nên phải nêu ra.
+    const own = ws.unitSkills(top);
+    const ownNote = own.length ? ` Đơn vị này có skill riêng: ${own.join(', ')} (đọc bằng công cụ Read: ${at}/.harness/skills/<tên>/SKILL.md) khi làm đúng loại việc đó.` : '';
     return note(`Bạn đang sửa dịch vụ "${top}" từ phiên mở ở gốc dự án. Theo CLAUDE.md gốc: một phiên làm một dịch vụ. ` +
-      `Làm theo ${at}/CLAUDE.md (quy tắc riêng, thiết kế ba lớp), ${at}/docs/agent/STATUS.md và skill ở .claude/skills/ (chỉ đường chung, mở trước: services; tài liệu: service-docs; sơ đồ: diagrams, không tự viết Mermaid; trang trên cổng: service-page). ` +
-      `Sửa xong thì cập nhật STATUS và tài liệu bằng công cụ bsn-docs (service="${top}"). Việc đụng dịch vụ khác thì ghi docs/handoff/, đừng tự sửa.${clash}`);
+      `Làm theo ${at}/${ws.unitRel(top, 'CLAUDE.md')} (quy tắc riêng, thiết kế ba lớp), ${at}/${ws.unitRel(top, 'docs/agent/STATUS.md')} và skill ở .claude/skills/ (chỉ đường chung, mở trước: services; tài liệu: service-docs; sơ đồ: diagrams, không tự viết Mermaid; trang trên cổng: service-page). ` +
+      `Sửa xong thì cập nhật STATUS và tài liệu bằng công cụ bsn-docs (service="${top}"). Việc đụng dịch vụ khác thì ghi docs/handoff/, đừng tự sửa.${ownNote}${clash}`);
   }
   return null;
 }

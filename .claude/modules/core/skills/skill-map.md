@@ -31,11 +31,11 @@ Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill v
    ## Cách kiểm
    ```
 2. **Khai việc cần skill đó** trong `skills`:
-   - Công cụ: `"tools": { "<tên>": "<skill>" }`. Tên là tên công cụ `bsn-docs` (`diagram_save`), hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__github__create_pull_request`). Dấu `*` khớp mọi chuỗi (`"mcp__db__*"`). Cần nhiều skill thì ghi danh sách.
+   - Công cụ: `"tools": { "<tên>": "<skill>" }`. Tên là tên công cụ của harness (`diagram_save`), hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__github__create_pull_request`). Dấu `*` khớp mọi chuỗi (`"mcp__db__*"`). Cần nhiều skill thì ghi danh sách.
    - Tệp: `"files": [{ "pattern": "^db/migrations/", "skills": ["db"], "reads": ["docs/agent/DB.md"] }]`. `pattern` là biểu thức chính quy trên đường dẫn tính từ gốc. `reads` là tài liệu phải đọc thêm, tính trong đơn vị chứa tệp (hoặc từ gốc nếu tệp không thuộc đơn vị nào).
    - Công cụ chỉ đọc mà mẫu `*` vô tình khớp: thêm vào `"readonly"`.
    - Một đơn vị cần đọc tài liệu khác mặc định: `"unitDocs": { "<đơn vị>": [ ... ] }`.
-3. **Công cụ ngoài `bsn-docs`:** thêm tên (hoặc mẫu) vào `matcher` của nhóm PreToolUse đang gọi `guard-skill.js` trong `.claude/settings.json`, nếu không thì hook không bao giờ được gọi cho công cụ đó.
+3. **Công cụ ngoài harness:** thêm tên (hoặc mẫu) vào `matcher` của nhóm PreToolUse đang gọi `guard-skill.js` trong `.claude/settings.json`, nếu không thì hook không bao giờ được gọi cho công cụ đó.
 4. **Kiểm:** `node .claude/modules/core/cli/cli.js doctor`.
 
 ## Đã có thì sao, chưa có thì làm gì
@@ -48,7 +48,7 @@ Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill v
 ## Lỗi hay gặp
 - Khai skill chưa có tệp `SKILL.md`: hook không đòi skill không tồn tại (thà không chặn còn hơn kẹt), và `doctor` báo.
 - Mẫu `*` quá rộng chặn cả công cụ đọc: thêm công cụ đó vào `readonly`.
-- Quên matcher cho công cụ ngoài `bsn-docs`.
+- Quên matcher cho công cụ ngoài harness.
 
 ## Cách kiểm
 - `doctor` không có LỖI.

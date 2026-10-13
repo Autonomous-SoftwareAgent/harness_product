@@ -2,11 +2,13 @@
 // spec: MCP-S-001
 // spec: HOOK-S-010
 // spec: LEDG-S-003
-// LỚP DƯỚI của máy chủ MCP bsn-docs: định nghĩa và chạy công cụ. Tệp này và mọi tệp nó nạp được sửa tự do:
+// LỚP DƯỚI của các máy chủ MCP của harness: định nghĩa và chạy công cụ. Tệp này và mọi tệp nó nạp được sửa tự do:
 // lớp bề mặt (mcp-server.js) chạy tệp này trong một tiến trình MỚI cho mỗi yêu cầu, nên phiên đang mở dùng mã mới ngay ở lời gọi kế,
 // không phải nối lại. Công cụ không giữ gì trong bộ nhớ giữa hai lần gọi (mọi thứ ở tệp, có khóa và giao dịch).
 // Công cụ của từng khối nằm trong khối đó (mcp/<việc>/tools.js) và được gom qua bảng đăng ký (khóa `tools` trong tệp tự khai):
 // khối tắt thì công cụ của nó không có. Tệp này chỉ giữ công cụ của lõi (phạm vi của phiên).
+// Mỗi công cụ thuộc MỘT khối (`block`), và mỗi khối có máy chủ MCP riêng: `list(block)` và `call(name, args, block)` chỉ thấy công cụ của khối đó;
+// không truyền khối thì thấy cả bộ (máy chủ cũ một cục, và các lệnh dòng lệnh).
 const P = require('../gate/gate-paths');
 const engine = require('../adapters/storage/unit-docs');
 
@@ -93,11 +95,12 @@ function extensionTools(taken) {
 
 // Công cụ của các khối đang bật, theo `order` khai trong tệp tự khai, rồi công cụ của lõi, rồi công cụ của khối mở rộng.
 // Nạp mỗi lần gọi (tiến trình ngắn).
-function tools() {
+function tools(block) {
   const out = [];
-  for (const c of P.contributions(ROOT, 'tools')) out.push(...require(c.file).TOOLS);
-  out.push(...CORE_TOOLS);
-  try { out.push(...extensionTools(new Set(out.map((t) => t.name)))); } catch { /* khối mở rộng hỏng: công cụ của harness vẫn chạy */ }
+  const blockOf = new Map(P.mcpServers(ROOT).filter((s) => s.module !== 'core').map((s) => [s.module, s.block]));
+  for (const c of P.contributions(ROOT, 'tools')) for (const t of require(c.file).TOOLS) { t.block = blockOf.get(c.module) || 'core'; out.push(t); }
+  for (const t of CORE_TOOLS) { t.block = 'core'; out.push(t); }
+  try { for (const t of extensionTools(new Set(out.map((x) => x.name)))) { t.block = 'core'; out.push(t); } } catch { /* khối mở rộng hỏng: công cụ của harness vẫn chạy */ }
   // Một server dùng chung cho mọi service: mỗi công cụ nhận thêm `service`. Đơn vị nằm ở đâu và đơn vị mặc định lấy từ cấu hình dự án.
   const cfg = P.projectConfig(ROOT);
   const base = require('node:path').basename(ROOT);
@@ -110,14 +113,14 @@ function tools() {
     t.inputSchema.properties = t.inputSchema.properties || {};
     t.inputSchema.properties.service = { type: 'string', description: `Tên service (${what}), có thể là: ${engine.listAllServices().join(', ') || '(chưa có)'}. ${dflt}` };
   }
-  return out;
+  return block ? out.filter((t) => t.block === block) : out;
 }
 
-const list = () => tools().map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
+const list = (block) => tools(block).map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
 
 // Trả { text, isError } hoặc { unknown: true }.
-function call(name, args = {}) {
-  const tool = tools().find((t) => t.name === name);
+function call(name, args = {}, block) {
+  const tool = tools(block).find((t) => t.name === name);
   if (!tool) return { unknown: true };
   try {
     // Công cụ GHI vào một dịch vụ: để lại dấu (kể cả khi lời gọi sau đó bị từ chối) "phiên này vừa làm dịch vụ đó" cho bảng phiên

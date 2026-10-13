@@ -7,8 +7,7 @@
 //   session-start  ghi phiên; nguồn "compact" hoặc "clear" thì sang đợt mới (những gì nạp trước đó không còn tính).
 // Chỉ ghi tên công cụ và tên dịch vụ, KHÔNG ghi tham số hay nội dung (tránh bí mật lọt vào sổ).
 const K = require('./lib/knowledge');
-
-const TOOL_SERVER = 'bsn-docs';
+const N = require('./lib/mcp-names');
 
 async function run(event, { workspace: ws, store }) {
   const sid = event.session;
@@ -48,7 +47,7 @@ async function run(event, { workspace: ws, store }) {
           if (doc) await book.addDoc({ sid, agent, service: doc.service, doc: doc.doc });
         }
       }
-      if (a.type === 'call-tool' && a.server === TOOL_SERVER && typeof a.args.service === 'string' && ws.isService(a.args.service)) service = a.args.service;
+      if (a.type === 'call-tool' && N.isOwn(a.server, N.prefixOf(ws)) && typeof a.args.service === 'string' && ws.isService(a.args.service)) service = a.args.service;
       await book.addTool({ sid, agent, tool, service });
     }
   }, undefined);

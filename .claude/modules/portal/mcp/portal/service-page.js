@@ -111,16 +111,38 @@ function parseTraceability(text) {
 }
 
 // Sơ đồ đã commit của dịch vụ: docs/diagrams/<id>.yaml -> [{ id, title, tab, mermaid } | { id, error }].
-function committedDiagrams(dir) {
-  const names = (git(dir, ['ls-tree', '--name-only', 'HEAD', 'docs/diagrams/']) || '').split('\n').map((n) => n.trim()).filter((n) => n.endsWith('.yaml'));
-  return names.sort().map((rel) => diagrams.fromText(path.basename(rel, '.yaml'), show(dir, rel) || ''));
+function committedDiagrams(src) {
+  const names = src.list('docs/diagrams').filter((n) => n.endsWith('.yaml'));
+  return names.sort().map((n) => diagrams.fromText(path.basename(n, '.yaml'), src.show(`docs/diagrams/${n}`) || ''));
+}
+
+// NGUỒN GHI CHÉP của một đơn vị, hỏi bằng TÊN LOGIC: bản đã commit (HEAD) của repo đơn vị, hoặc đĩa khi đơn vị khai ghi chép tại chỗ
+// (không vào git). Chỗ thật của từng tệp do bố cục của đơn vị quyết (gate-paths).
+//   show(tên logic) -> văn bản | null;  list(thư mục logic) -> [tên tệp];  real(tên logic) -> đường dẫn thật trong đơn vị
+function unitSource(name, dir) {
+  const P = require('../../../core/gate/gate-paths');
+  const layout = P.unitLayout(core.BSN_DIR, name);
+  const real = (logical) => P.unitRealRel(layout, logical);
+  const abs = (logical) => path.join(dir, ...real(logical).split('/'));
+  if (layout.local) {
+    return { local: true, real,
+      show: (logical) => { try { return fs.readFileSync(abs(logical), 'utf8'); } catch { return null; } },
+      list: (logical) => { try { return fs.readdirSync(abs(logical)); } catch { return []; } } };
+  }
+  return { local: false, real,
+    show: (logical) => show(dir, real(logical)),
+    list: (logical) => (git(dir, ['ls-tree', '--name-only', 'HEAD', `${real(logical)}/`]) || '').split('\n').map((n) => path.posix.basename(n.trim())).filter(Boolean) };
 }
 
 function collectService(name) {
   const dir = core.dirOf(name);
   const s = { name, doc: null, docError: null, status: null, decisions: [], check: null, modules: [], diagrams: [], hasDetail: false, parts: {}, commit: repoInfo(dir) };
+  const src = unitSource(name, dir);
+  s.docsRel = src.real('docs');
+  // Ghi chép tại chỗ: trang dựng từ đĩa, kể cả khi repo của đơn vị chưa có commit nào.
+  if (src.local) s.commit = { ...(s.commit || { sha: '', short: '', date: '', subject: '', dirty: 0 }), local: true };
   if (s.commit) {
-    const y = show(dir, 'docs/service.yaml');
+    const y = src.show('docs/service.yaml');
     if (y !== null) {
       try {
         s.doc = yaml.parse(y);
@@ -129,10 +151,10 @@ function collectService(name) {
       } catch (e) { s.docError = e.message; s.doc = null; }
     }
     s.hasSource = y !== null;
-    s.status = parseStatus(show(dir, 'docs/agent/STATUS.md'));
-    s.decisions = parseDecisions(show(dir, 'docs/agent/DECISIONS.md'));
-    s.diagrams = committedDiagrams(dir);
-    const trace = show(dir, 'docs/_generated/traceability.md');
+    s.status = parseStatus(src.show('docs/agent/STATUS.md'));
+    s.decisions = parseDecisions(src.show('docs/agent/DECISIONS.md'));
+    s.diagrams = committedDiagrams(src);
+    const trace = src.show('docs/_generated/traceability.md');
     if (trace !== null) {
       s.modules = parseTraceability(trace);
       s.check = { issues: s.modules.reduce((n, m) => n + m.issues, 0) };
@@ -199,6 +221,7 @@ function checkChip(s) {
 // Dòng nói rõ trang đang phản ánh commit nào, và có bao nhiêu tệp đang sửa chưa lên cổng.
 function commitLine(c) {
   if (!c) return '<span class="muted small">chưa có commit nào</span>';
+  if (c.local) return '<span class="muted small">ghi chép tại chỗ của đơn vị, đọc từ đĩa (không qua commit)</span>';
   return `<span class="muted small">theo commit <code>${esc(c.short)}</code> (${esc(c.date)}): ${esc(c.subject.length > 90 ? `${c.subject.slice(0, 90)}…` : c.subject)}</span>` +
     (c.dirty ? chip('warn', `${c.dirty} tệp chưa commit, chưa lên cổng`) : '');
 }
@@ -269,7 +292,7 @@ function architectureTab(s, ctx) {
   const svcLink = (label) => (names.has(label) ? `<a href="../${esc(label)}/index.html#architecture">${esc(label)}</a>` : esc(label));
   const modules = s.modules.length ? `<h3>Tài liệu ba tầng theo module</h3>
 ${table(['Module', 'Số mục', 'Đã làm xong', 'Lệch spec', 'Vấn đề đồng bộ'], s.modules.map((m) => [`<code>${esc(m.module)}</code>`, String(m.total), String(m.done), String(m.deviated), m.issues ? chip('bad', String(m.issues)) : chip('good', '0')]))}
-<p class="muted small">Chi tiết cho agent: <code>${esc(s.name)}/docs/modules/&lt;module&gt;/{1-design,2-spec,3-impl}.md</code>.</p>` : '';
+<p class="muted small">Chi tiết cho agent: <code>${esc(s.name)}/${esc(s.docsRel || 'docs')}/modules/&lt;module&gt;/{1-design,2-spec,3-impl}.md</code>.</p>` : '';
   const detail = s.hasDetail ? `<p class="callout"><a href="overview.html">Mở trang chi tiết kỹ thuật</a> (sinh từ mã thật của dịch vụ: luồng xử lý, bảng mã, kết quả test).</p>` : '';
   // Sơ đồ do bộ sinh riêng của dịch vụ tạo (HTML/CSS của chính nó, đã được người dùng duyệt): nhúng nguyên, không vẽ lại.
   const own = ownPart(s, 'architecture');
@@ -324,7 +347,7 @@ ${fromStatus}`;
 function noSource(s) {
   return `<p class="callout warn">${s.docError
     ? `Nguồn có cấu trúc của dịch vụ đang lỗi nên không hiển thị được: ${esc(s.docError)}`
-    : `Bản đã commit của dịch vụ này chưa có nguồn có cấu trúc <code>${esc(s.name)}/docs/service.yaml</code>, nên phần này chưa có nội dung. Agent ghi bằng công cụ <code>bsn-docs</code> (<code>service_doc_set</code>, <code>problem_record</code>) với <code>service="${esc(s.name)}"</code>.`}</p>`;
+    : `Bản đã commit của dịch vụ này chưa có nguồn có cấu trúc <code>${esc(s.name)}/${esc(s.docsRel || 'docs')}/service.yaml</code>, nên phần này chưa có nội dung. Agent ghi bằng công cụ <code>bsn-docs</code> (<code>service_doc_set</code>, <code>problem_record</code>) với <code>service="${esc(s.name)}"</code>.`}</p>`;
 }
 
 // Tên các tab của MỘT đơn vị: tab đầu lấy tên đơn vị tự khai (service.yaml: first_tab, ghi bằng service_doc_set section=meta), không thì "Nghiệp vụ" (P-004).

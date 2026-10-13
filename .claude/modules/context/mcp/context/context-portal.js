@@ -95,7 +95,7 @@ function prepare(notes = []) {
   const figs = new Map(); const pend = new Map();
   for (const [name, g] of Object.entries(all.services)) {
     try {
-      const list = auto.forService(g, { project: P.projectConfig(P.rootFrom(__dirname)).name }).map((d) => figureData(d, g.auto));
+      const list = auto.forService(g, { sourceDoc: P.unitPathRel(P.rootFrom(__dirname), name, 'docs/service.yaml'), project: P.projectConfig(P.rootFrom(__dirname)).name }).map((d) => figureData(d, g.auto));
       figs.set(name, list);
       pend.set(name, pendingOf(name, list, g.commit));
       writeIfChanged(path.join(ctx.OUT(), `${name}.md`), agentMd(g, list));

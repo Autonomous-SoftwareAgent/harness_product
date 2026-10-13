@@ -1,6 +1,7 @@
 'use strict';
 // spec: GATE-S-006
 // spec: GATE-S-001
+// spec: GATE-S-008
 // Phán xét tin nhắn của người dùng sau một bản kế hoạch: approve | revise | question | new_task | error.
 // Dùng một model qua `claude -p` (tiến trình con không có hook, chạy ở thư mục tạm để không nạp CLAUDE.md của dự án).
 // Model không dùng được (không tìm thấy claude, hết giờ, trả lời sai dạng) thì dự phòng bằng luật nghiêm: chỉ
@@ -137,13 +138,43 @@ function strictApproveHeld(message) {
   return String(message).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).some((t) => ACTION_TOKENS.has(t));
 }
 
+// CÂU DUYỆT CỦA DỰ ÁN (cấu hình cổng duyệt, khóa `approveWords`): những câu người dùng của dự án quen dùng để duyệt mà luật nghiêm
+// không nhận ("bắt đầu đi", "triển khai"). Chỉ khớp khi CẢ tin nhắn đúng bằng một câu đã khai (bỏ dấu câu, không phân biệt hoa thường):
+// "bắt đầu đi nhưng đổi X" không khớp. Câu quá ngắn (dưới hai chữ cái), quá dài, có dấu hỏi, hay danh sách quá 20 câu thì phần thừa bị
+// bỏ: khóa này là chỗ duy nhất nới cổng, nên không cho khai một ký tự hay một câu hỏi làm lời duyệt.
+const tokensOf = (s) => String(s || '').normalize('NFC').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+const MAX_PHRASES = 20;
+function approvePhrases(cfg) {
+  const out = [];
+  for (const raw of Array.isArray(cfg && cfg.approveWords) ? cfg.approveWords : []) {
+    if (typeof raw !== 'string' || raw.length > 40 || /[?？]/.test(raw)) continue;
+    const t = tokensOf(raw);
+    const letters = (t.join('').match(/\p{L}/gu) || []).length;
+    if (!t.length || t.length > 6 || letters < 2) continue;
+    const phrase = t.join(' ');
+    if (!out.includes(phrase)) out.push(phrase);
+    if (out.length >= MAX_PHRASES) break;
+  }
+  return out;
+}
+function phraseApprove(message, cfg) {
+  const msg = String(message || '').trim();
+  if (!msg || msg.length > 60 || /[?？]/.test(msg)) return false;
+  return approvePhrases(cfg).includes(tokensOf(msg).join(' '));
+}
+// Bộ phán: 'model' (mặc định) hỏi một model khi luật nghiêm không nhận; 'strict' không gọi model nào. Giá trị lạ = 'model'.
+const judgeOf = (cfg) => (cfg && cfg.judge === 'strict' ? 'strict' : 'model');
+
 // deps.run(cmd, args, opts) thay được trong test.
-// Thứ tự: (1) câu đồng ý ngắn, rõ -> approve ngay tại chỗ (không gọi model); (2) model phán xét; approve chỉ được tính khi đoạn
-// trích model trả về có thật trong tin nhắn của người dùng; (3) không có model: error (không bao giờ mở cổng ngoài luật nghiêm).
+// Thứ tự: (1) câu đồng ý ngắn, rõ, hoặc đúng một câu duyệt dự án đã khai -> approve ngay tại chỗ (không gọi model); (2) bộ phán 'strict':
+// mọi tin khác là việc mới (cổng đang mở thì ĐÓNG; kế hoạch đang chờ vẫn chờ thêm vài lượt); (3) bộ phán 'model': model phán xét, approve
+// chỉ được tính khi đoạn trích model trả về có thật trong tin nhắn của người dùng; (4) không có model: error (không đổi trạng thái).
 function classify(userMessage, plan, cfg, deps = {}) {
   const started = Date.now();
   const held = deps.held || null;
   if (held ? strictApproveHeld(userMessage) : strictApprove(userMessage)) return { verdict: 'approve', via: 'local', ms: Date.now() - started, quote: String(userMessage).trim() };
+  if (phraseApprove(userMessage, cfg)) return { verdict: 'approve', via: 'local-phrase', ms: Date.now() - started, quote: String(userMessage).trim() };
+  if (judgeOf(cfg) === 'strict') return { verdict: 'new_task', via: 'strict', ms: Date.now() - started };
   const run = deps.run || spawnSync;
   const claude = deps.claude !== undefined ? deps.claude : findClaude(cfg);
   if (claude) {
@@ -171,4 +202,4 @@ function classify(userMessage, plan, cfg, deps = {}) {
   return { verdict: 'error', via: 'fallback', ms: Date.now() - started };
 }
 
-module.exports = { classify, findClaude, buildPrompt, parseVerdict, strictApprove, strictApproveHeld, normalizeText, quoteInMessage };
+module.exports = { classify, findClaude, buildPrompt, parseVerdict, strictApprove, strictApproveHeld, approvePhrases, phraseApprove, judgeOf, normalizeText, quoteInMessage };

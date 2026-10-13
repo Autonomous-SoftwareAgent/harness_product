@@ -4,12 +4,13 @@
 const { ID, mdItems, cut } = require('../kit');
 
 const BOOK = {
-  service: { rel: 'docs/agent/DECISIONS.md', idRe: /^D-\d{3}$/ },
+  service: { rel: 'docs/agent/DECISIONS.md', /* tên logic */ idRe: /^D-\d{3}$/ },
   root: { rel: 'docs/system/decisions.md', idRe: /^S-\d{3}$/ },
 };
 
-function run(g, { files, scope }) {
-  const { rel, idRe } = BOOK[scope];
+function run(g, { files, scope, U }) {
+  const { idRe } = BOOK[scope];
+  const rel = scope === 'service' ? U(BOOK[scope].rel) : BOOK[scope].rel;
   if (!files.has(rel)) return;
   for (const it of mdItems(files.get(rel), idRe)) {
     g.node(ID.doc('dec', g.svc, it.id), 'decision', `${it.id}: ${it.title}`, `${rel}:${it.line}`, { text: it.fields['quyết định'] || it.fields.decision, attrs: { status: cut(it.fields['trạng thái'] || it.fields.status || '', 40) }, body: it.body });

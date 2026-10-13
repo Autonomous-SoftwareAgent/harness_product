@@ -1,0 +1,140 @@
+{
+  "version": "1.6.0",
+  "date": "2026-10-13",
+  "summary": "Mã ở đâu cũng được; phần tại chỗ của mỗi đơn vị gom về .harness/; cổng duyệt khai được; nâng cấp giữ phần người cài đã sửa.",
+  "changes": [
+    {
+      "id": "goc-ma-khai-rieng",
+      "kind": "added",
+      "block": "core",
+      "title": "Nơi chứa mã được khai riêng, không buộc nằm trong thư mục mở phiên",
+      "after": "Dự án khai workspace.root (đường dẫn tuyệt đối, hoặc tương đối tính từ thư mục mở phiên, được đi ra ngoài). Đơn vị được tìm từ gốc đó; luật giữ phạm vi, luật tài liệu phải đọc và công cụ ghi đều coi tệp dưới gốc đó là tệp trong dự án. units.parents nhận \".\" (các repo nằm ngay dưới gốc mã) khi đã khai gốc mã.",
+      "files": [
+        "core/gate/gate-paths.js",
+        "core/ports/workspace.js",
+        "core/adapters/project/workspace.js",
+        "core/core/rules/scope.js",
+        "core/core/rules/lib/knowledge.js",
+        "core/FORMAT.md"
+      ],
+      "surface": { "config": ["workspace.root", "units.parents", "units.dirs"] },
+      "impact": "Không khai gì thì như cũ: gốc mã là thư mục mở phiên. Khối mở rộng gọi cổng workspace có thêm projectRel, unitRel, unitLogical, unitLocal, unitSkills.",
+      "verified": "Dự án thử có mã nằm ngoài thư mục mở phiên, chạy lệnh, công cụ và luật thật; bảng tổ hợp cách khai.",
+      "unverified": "Chưa chạy bằng một phiên Claude Code thật trên dự án có gốc mã nằm ngoài."
+    },
+    {
+      "id": "phan-tai-cho-ve-harness",
+      "kind": "changed",
+      "block": "core",
+      "title": "Phần của harness trong một đơn vị gom về <đơn vị>/.harness/",
+      "before": "Tệp cửa vào CLAUDE.md nằm ở gốc đơn vị và ghi chép nằm ở <đơn vị>/docs/, đường dẫn viết cứng trong mã của mọi khối.",
+      "after": "Mã chỉ dùng tên logic (CLAUDE.md, docs/...); một nơi duy nhất quyết chỗ thật theo bố cục của đơn vị: harness (.harness/CLAUDE.md, .harness/docs/) hoặc legacy (gốc đơn vị). Bố cục chọn theo thứ tự: khai cho từng đơn vị, khai cho cả dự án (units.layout), rồi tự nhận theo thứ đang có. Tên tệp cửa vào khai được (units.entry). Luật, công cụ, bộ sinh trang và skill riêng của đơn vị cũng đặt trong .harness/.",
+      "files": [
+        "core/gate/gate-paths.js",
+        "core/adapters/storage/unit-docs.js",
+        "core/adapters/project/extensions.js",
+        "core/adapters/git/docs-leaks.js",
+        "core/adapters/jobs/brief-facts.js",
+        "core/adapters/jobs/transfer-facts.js",
+        "core/core/rules/track.js",
+        "core/core/rules/wrap-up.js",
+        "core/core/rules/lib/docs-tracking.js",
+        "core/core/sessions/brief.js",
+        "core/core/sessions/transfer.js",
+        "core/cli/new-service.js",
+        "core/cli/doctor.js",
+        "servicedocs/mcp/docs/",
+        "servicedocs/core/rules/owned.js",
+        "diagrams/mcp/diagrams/diagrams.js",
+        "diagrams/mcp/diagrams/tools.js",
+        "context/mcp/context/",
+        "context/core/context/auto-diagrams.js",
+        "portal/mcp/portal/portal.js",
+        "portal/mcp/portal/service-page.js",
+        "core/FORMAT.md"
+      ],
+      "surface": { "config": ["units.layout", "units.entry", "units.dirs"], "commands": ["new-service"] },
+      "impact": "Đơn vị đã có docs/ hoặc tệp cửa vào ở gốc giữ nguyên chỗ cũ, không phải dời gì. Đơn vị chưa có gì của harness, và dự án cài mới, theo bố cục .harness/. docs/ và CLAUDE.md sẵn có của một repo theo bố cục .harness/ không bị harness đọc hay ghi. Mã riêng của bạn có ghép chuỗi docs/ hay CLAUDE.md của đơn vị thì nên chuyển sang hàm của cổng workspace.",
+      "verified": "Dự án thử cố ý khác bố cục cũ, chạy lệnh, máy chủ công cụ và luật thật rồi soát từng tệp được tạo; bảng mười chín tổ hợp bố cục; phép quét tĩnh cấm viết cứng đường dẫn ghi chép; ảnh chụp hành vi của dự án theo bố cục cũ không lệch.",
+      "unverified": "Chưa có lệnh dời ghi chép của đơn vị cũ sang .harness/. Chưa chạy bằng phiên Claude Code thật trên dự án theo bố cục mới."
+    },
+    {
+      "id": "ghi-chep-khong-vao-git",
+      "kind": "added",
+      "block": "core",
+      "title": "Ghi chép của đơn vị có thể không vào git của repo đó",
+      "after": "Khai units.docs là local (cho cả dự án hoặc từng đơn vị) thì ghi chép trong .harness/ không cần commit: cổng đọc và kho tra cứu đọc thẳng từ đĩa, lệnh tạo đơn vị không ghi gì vào .gitignore của repo.",
+      "files": [
+        "core/gate/gate-paths.js",
+        "context/mcp/context/context.js",
+        "portal/mcp/portal/service-page.js",
+        "diagrams/mcp/diagrams/tools.js",
+        "core/cli/new-service.js"
+      ],
+      "surface": { "config": ["units.docs"] },
+      "impact": "Mặc định vẫn là committed: cổng đọc chỉ hiện nội dung đã commit. Ở chế độ local, sơ đồ dữ liệu tự sinh không chạy qua công cụ, và ghi chép chỉ lên cổng đọc ở lần dựng kế tiếp.",
+      "verified": "Dự án thử ở chế độ local: cổng đọc và kho tra cứu có nội dung chưa commit; repo của nhóm không có tệp nào bị thêm.",
+      "unverified": "Ghi chép ở chế độ local chưa tự dựng lại cổng đọc sau mỗi lần ghi."
+    },
+    {
+      "id": "cong-duyet-khai-duoc",
+      "kind": "added",
+      "block": "core",
+      "title": "Cổng duyệt khai được, chỉ theo hướng chặt hơn",
+      "after": "Cấu hình cổng duyệt (tệp chỉ người dùng sửa) nhận: judge (model, hoặc strict là không gọi mô hình, chỉ nhận câu duyệt đã khai), approveWords (câu duyệt riêng, phải khớp trọn tin nhắn), plan.heading và plan.labels (tên gọi khác cho khuôn kế hoạch), plan.extra (mục bắt buộc thêm). Từng đơn vị khai thêm mục bắt buộc qua phần tại chỗ đã được xác nhận.",
+      "files": ["core/gate/plan-format.js", "core/gate/gate-classify.js", "core/FORMAT.md"],
+      "surface": { "config": ["gate.judge", "gate.approveWords", "gate.plan"] },
+      "impact": "Không khai gì thì khuôn sáu mục và cách phán như cũ. Không khai báo nào bớt được mục gốc hay tắt được bước duyệt. Khai báo viết sai bị bỏ qua và cổng dùng mặc định.",
+      "verified": "Hai mươi ba khai báo cố nới lỏng đều cho ra đúng khuôn gốc; bảng câu duyệt và bộ phán strict.",
+      "unverified": "Khai báo viết sai bị bỏ qua mà chưa có phép kiểm sức khỏe nêu ra. Chưa chạy bằng phiên Claude Code thật với khuôn có mục thêm."
+    },
+    {
+      "id": "nang-cap-co-gop",
+      "kind": "added",
+      "block": "core",
+      "title": "Lệnh upgrade: nâng cấp mà giữ phần người cài đã sửa trong mã của gói",
+      "after": "upgrade status nêu tệp gói bạn đã sửa và khối bạn tự thêm; check báo có bản mới; preview so ba bản của từng tệp (bản gốc của bản đang cài, bản trên đĩa, bản mới) và nói gộp tới đâu; prepare dựng sẵn gói mới cùng phần đã gộp. Tệp bạn đã sửa không bao giờ bị thay hay bị xóa. Lệnh cài giữ khối bạn tự thêm. doctor nêu tệp của gói đã bị sửa. Đầu phiên có một dòng báo khi có bản mới.",
+      "files": [
+        "core/cli/upgrade.js",
+        "core/cli/upgrade-apply.js",
+        "core/core/release/upgrade-plan.js",
+        "core/adapters/git/package-source.js",
+        "core/cli/cli.js",
+        "core/cli/install.js",
+        "core/cli/doctor.js",
+        "core/adapters/jobs/brief-facts.js",
+        "core/skills/harness-upgrade.md",
+        "core/skills/services.md"
+      ],
+      "surface": { "commands": ["upgrade status", "upgrade check", "upgrade preview", "upgrade prepare"], "skills": ["harness-upgrade", "services"] },
+      "impact": "Lệnh install trần vẫn thay nguyên mã của gói như cũ (bản cũ vào chỗ cất). Muốn giữ phần đã sửa thì đi đường upgrade. Cần một bản clone đủ lịch sử của kho gói.",
+      "verified": "Bảng đủ mọi tổ hợp của ba bản với bất biến tệp đã sửa không bị thay; kho gói thật hai bản và dự án đã sửa đủ kiểu; một lần diễn tập từ bản 1.5.0 thật.",
+      "unverified": "Chưa chạy trên dự án thật của người dùng khác. Gộp theo dòng không hiểu nghĩa: gộp sạch chưa chứng minh chạy đúng."
+    },
+    {
+      "id": "danh-sach-tep-doi-tu-sinh",
+      "kind": "added",
+      "block": "core",
+      "title": "Gói kèm CHANGED.md: tệp mã và tên hàm công khai đã đổi so với bản trước",
+      "after": "Lệnh đóng gói sinh CHANGED.md từ lịch sử: tệp mã thêm, sửa, bỏ, và tên xuất của bề mặt công khai thêm hay bỏ. Tên hàm công khai của gói từ nay chỉ thêm, không đổi tên.",
+      "files": ["core/core/release/changed.js", "core/cli/public-export.js"],
+      "surface": { "commands": ["public-export"] },
+      "impact": "Khối mở rộng gọi hàm của gói: đọc mục tên xuất bị bỏ trước khi nâng cấp.",
+      "verified": "Test khóa bề mặt công khai; gói 1.6.0 đóng thử có CHANGED.md sinh từ mốc của bản 1.5.0.",
+      "unverified": "Không có."
+    },
+    {
+      "id": "may-chu-cong-cu-thoat-som",
+      "kind": "fixed",
+      "block": "core",
+      "title": "Máy chủ công cụ thoát khi ống vào đóng lúc còn lời gọi đang xử lý",
+      "before": "Bên gọi đóng ống vào ngay sau khi gửi thì máy chủ thoát trước khi trả lời xong, lời gọi cuối mất kết quả.",
+      "after": "Máy chủ trả lời hết các lời gọi đang xử lý rồi mới thoát.",
+      "files": ["core/mcp/mcp-surface.js"],
+      "impact": "Kịch bản tự động gọi công cụ rồi đóng ống ngay không còn mất kết quả.",
+      "verified": "Dựng lại lỗi trước khi sửa; test tự động.",
+      "unverified": "Không có."
+    }
+  ],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

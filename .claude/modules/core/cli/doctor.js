@@ -19,7 +19,12 @@ function run(root) {
   if (cfg.broken) err('.claude/project/project.json không đọc được (JSON hỏng): harness coi như dự án không có đơn vị nào.');
   else if (!cfg.exists) warn('chưa có .claude/project/project.json: harness dùng bố cục cũ (chế độ tương thích). Dự án mới: mở skill onboard.');
   else ok(`cấu hình dự án "${cfg.name}": thư mục cha ${cfg.units.parents.length ? cfg.units.parents.map((p) => `${p}/`).join(', ') : '(không có)'}; luật riêng: ${Object.entries(cfg.policies).filter(([, v]) => v === true || (Array.isArray(v) && v.length)).map(([k]) => k).join(', ') || 'không'}`);
-  for (const p of cfg.units.parents) if (!fs.existsSync(path.join(root, ...p.split('/')))) warn(`thư mục cha ${p}/ khai trong cấu hình nhưng chưa có trên đĩa.`);
+  // Gốc mã: nơi đường dẫn của đơn vị tính từ đó. Khai sai thì harness ở lại thư mục mở phiên và KHÔNG thấy đơn vị nào ở chỗ định trỏ tới.
+  const wsp = P.workspace(root);
+  if (wsp.problem) err(`gốc mã: ${wsp.problem}. Các luật theo đơn vị đang không áp cho mã ở đó; sửa workspace.root trong cấu hình dự án.`);
+  else if (wsp.declared) ok(`gốc mã nằm ngoài thư mục mở phiên: ${wsp.dir}`);
+  for (const p of P.unitParents(root)) if (!fs.existsSync(path.join(wsp.dir, ...p.split('/')))) warn(`thư mục cha ${p}/ khai trong cấu hình nhưng chưa có trên đĩa.`);
+  if (cfg.units.parents.includes('.') && !wsp.declared) warn('thư mục cha "." bị bỏ qua: chỉ dùng được khi dự án khai gốc mã riêng (workspace.root).');
   for (const s of cfg.policies.unitSheets) { try { new RegExp(s); } catch { err(`policies.unitSheets có mẫu hỏng: ${s}`); } }
 
   // 1b. Bố cục, khối, bộ khuôn, settings.json so với tệp tự khai, luật mở rộng của dự án
@@ -65,6 +70,16 @@ function run(root) {
     if (errs.length) warn(`khối mở rộng lỗi lúc chạy ${errs.length} lần trong 24 giờ (luật lỗi hay quá giờ thì cho qua): ${[...new Set(errs.map((x) => `${x.key} ${x.rule}`))].join(', ')}. Xem: node ${cli} extension list`);
   } catch (e) { warn(`không kiểm được luật và khối mở rộng: ${e.message}`); }
 
+  // Phần người cài đã sửa trong mã của gói: được phép, nhưng phải thấy được (bản mới của gói gộp với phần này, không đè).
+  try {
+    const c = require('./upgrade').localChanges(root);
+    if (c.known && (c.modified.length || c.blocks.length || c.missing.length)) {
+      if (c.modified.length) warn(`mã của gói đã bị sửa ở ${c.modified.length} tệp (${c.modified.slice(0, 5).join(', ')}${c.modified.length > 5 ? ', ...' : ''}). Xem đủ: node .claude/modules/core/cli/cli.js upgrade status. Khi lên bản mới dùng "upgrade preview" để gộp, đừng cài đè.`);
+      if (c.blocks.length) ok(`khối tự thêm: ${c.blocks.join(', ')}`);
+      if (c.missing.length) err(`thiếu ${c.missing.length} tệp của gói (${c.missing.slice(0, 5).join(', ')}): cài lại bản đang dùng.`);
+    }
+  } catch (e) { warn(`không so được mã đang cài với dấu của gói: ${e.message}`); }
+
   // 2. Đơn vị
   const units = P.serviceEntries(root);
   if (!units.length && !cfg.broken) warn('chưa có đơn vị nào: các luật theo đơn vị (đọc tài liệu trước khi sửa, phạm vi theo kế hoạch) chưa có gì để áp. Mở skill onboard.');
@@ -72,8 +87,16 @@ function run(root) {
   for (const u of units) {
     const miss = [];
     if (!P.serviceHasRepo(root, u.name)) miss.push('chưa có kho git (harness chỉ coi thư mục có kho git là đơn vị)');
-    const docs = map ? (map.unitDocs[u.name] || map.serviceDocs) : ['CLAUDE.md', 'docs/agent/STATUS.md'];
-    for (const d of docs) if (!fs.existsSync(path.join(u.dir, ...d.split('/')))) miss.push(`thiếu ${d}`);
+    const docs = map ? (map.unitDocs[u.name] || map.serviceDocs) : ['CLAUDE.md', 'docs/agent/STATUS.md']; // tên logic
+    for (const d of docs) if (!fs.existsSync(P.unitPath(root, u.name, d))) miss.push(`thiếu ${P.unitPathRel(root, u.name, d)}`);
+    const lay = P.unitLayout(root, u.name);
+    // Đơn vị có ghi chép ở CẢ hai chỗ: harness chỉ dùng một chỗ, chỗ kia nằm im và dễ bị tưởng là đang dùng.
+    if (lay.layout === 'harness' && [['agent', 'STATUS.md'], ['_generated', 'traceability.md'], ['_generated', 'overview.md']].some((x) => fs.existsSync(path.join(u.dir, 'docs', ...x)))) warn(`đơn vị ${u.name}: ghi chép đang dùng ở ${lay.docsRel}/ nhưng docs/ ở gốc đơn vị cũng có tệp theo khuôn của harness; harness KHÔNG đọc chỗ đó.`); // tên logic
+    if (lay.local && fs.existsSync(path.join(u.dir, '.git'))) {
+      let ex = '';
+      try { ex = fs.readFileSync(path.join(u.dir, '.git', 'info', 'exclude'), 'utf8'); } catch { /* chưa có */ }
+      if (!ex.split(/\r?\n/).includes(`/${lay.localRel}/`)) warn(`đơn vị ${u.name}: khai ghi chép tại chỗ nhưng ${lay.localRel}/ chưa nằm trong .git/info/exclude, nên git của đơn vị vẫn thấy nó. Chạy: node .claude/modules/core/cli/new-service.js ${u.name}`);
+    }
     if (miss.length) warn(`đơn vị ${u.name} (${P.serviceRel(root, u.name)}): ${miss.join('; ')}. Bổ sung khung: node .claude/modules/core/cli/new-service.js ${u.name}`);
     else ok(`đơn vị ${u.name} (${P.serviceRel(root, u.name)})`);
   }
@@ -94,11 +117,15 @@ function run(root) {
     if (!(h.problems || []).length) ok('cổng duyệt: tệp đủ, khớp MANIFEST, hook trỏ tới tệp thật');
   } catch (e) { err(`không kiểm được cổng duyệt: ${e.message}`); }
 
-  // 5. Máy chủ MCP bsn-docs khai ở gốc
+  // 5. Máy chủ MCP của harness khai ở gốc: mỗi khối đang bật một máy chủ
   try {
     const mcp = JSON.parse(fs.readFileSync(path.join(root, '.mcp.json'), 'utf8'));
-    if (mcp && mcp.mcpServers && mcp.mcpServers['bsn-docs']) ok('.mcp.json khai máy chủ bsn-docs');
-    else err('.mcp.json thiếu mục bsn-docs: phiên không có công cụ của harness (mở một phiên mới ở gốc để harness tự thêm, rồi gõ /mcp).');
+    const have = (mcp && mcp.mcpServers) || {};
+    const want = P.mcpServers(root);
+    const miss = want.filter((s) => !have[s.name]);
+    if (!miss.length) ok(`.mcp.json khai ${want.length} máy chủ của harness: ${want.map((s) => s.name).join(', ')}`);
+    else err(`.mcp.json thiếu máy chủ của harness: ${miss.map((s) => s.name).join(', ')}; công cụ của khối đó không có trong phiên (chạy: node ${P.codeRel(root, 'cli/cli.js')} setup, rồi gõ /mcp).`);
+    if (have[P.MCP_LEGACY] && want.length) warn(`.mcp.json còn máy chủ cũ ${P.MCP_LEGACY} (cả bộ công cụ một cục) bên cạnh các máy chủ theo khối: công cụ bị khai hai lần. Chạy: node ${P.codeRel(root, 'cli/cli.js')} setup (gỡ mục cũ nếu nó là của harness).`);
   } catch { err('chưa có .mcp.json ở gốc dự án, hoặc tệp hỏng: phiên không có công cụ của harness (mở một phiên mới ở gốc để harness tự tạo, rồi gõ /mcp).'); }
 
   // 5b. Cổng MCP: máy chủ đã khai, đã xác nhận chưa, đang chạy hay hỏng.

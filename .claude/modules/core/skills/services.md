@@ -1,6 +1,6 @@
 ---
 name: services
-description: Chỉ đường chung khi làm việc trong một đơn vị (dịch vụ) của dự án - đơn vị nằm ở đâu, bắt đầu một việc thế nào, đọc tài liệu nào theo thứ tự nào, trình kế hoạch theo khuôn, việc nào dùng skill nào, thế nào là làm đúng. Mở TRƯỚC lần sửa đầu tiên trong một đơn vị và trước lời gọi ghi đầu tiên của công cụ bsn-docs.
+description: Chỉ đường chung khi làm việc trong một đơn vị (dịch vụ) của dự án - đơn vị nằm ở đâu, bắt đầu một việc thế nào, đọc tài liệu nào theo thứ tự nào, trình kế hoạch theo khuôn, việc nào dùng skill nào, thế nào là làm đúng. Mở TRƯỚC lần sửa đầu tiên trong một đơn vị và trước lời gọi ghi đầu tiên của công cụ MCP của harness.
 ---
 
 # Làm việc trong một đơn vị của dự án
@@ -8,12 +8,12 @@ description: Chỉ đường chung khi làm việc trong một đơn vị (dịc
 Skill này là bản chỉ đường, không phải nội dung của đơn vị nào. Điều riêng của từng đơn vị nằm trong tài liệu của chính đơn vị đó; ở đây chỉ nói đi đâu để đọc và làm theo thứ tự nào. Khuôn chung của dự án: `.claude/modules/core/FORMAT.md`.
 
 ## Khi nào dùng
-- Trước lần sửa đầu tiên trong một đơn vị, và trước lời gọi ghi đầu tiên của công cụ `bsn-docs`. Hook `guard-skill.js` chặn cho tới khi skill này được mở.
+- Trước lần sửa đầu tiên trong một đơn vị, và trước lời gọi ghi đầu tiên của công cụ MCP của harness. Hook `guard-skill.js` chặn cho tới khi skill này được mở.
 - Khi vừa nhận một việc mà chưa rõ nó thuộc đơn vị nào, phải đọc gì, hay phải dùng skill nào.
 - Mở lại sau mỗi lần ngữ cảnh bị nén: hook tính lại từ đầu.
 
 ## Trước khi làm
-- Phiên phải mở ở gốc dự án (thư mục chứa `.claude/`). Mở trong thư mục đơn vị thì không có hook, không có công cụ `bsn-docs`, không có skill.
+- Phiên phải mở ở gốc dự án (thư mục chứa `.claude/`). Mở trong thư mục đơn vị thì không có hook, không có công cụ MCP của harness, không có skill.
 - Tóm tắt đầu phiên có "CHƯA CÀI ĐẶT DỰ ÁN" thì mở skill `onboard` trước.
 - Một phiên làm MỘT đơn vị, do người dùng giao. Việc đụng đơn vị khác thì ghi yêu cầu vào `docs/handoff/`, không tự sửa.
 - Mọi lần sửa đều qua cổng duyệt: tổng hợp yêu cầu, trình kế hoạch, DỪNG chờ người dùng đồng ý ở lượt sau.
@@ -73,12 +73,13 @@ Dự án khai danh sách bắt buộc khác (`skills.serviceDocs`, `skills.unitD
 | Tìm hiểu một việc trước khi sửa; từ vựng; quan hệ máy không đọc ra | `context` |
 | Trang của đơn vị trên cổng HTML | `service-page` |
 | Thêm một đơn vị mới | `new-service` |
+| Nâng cấp harness lên bản mới của gói (agent báo từng mục thay đổi, người dùng duyệt, agent cài); xem dự án đã sửa gì trong mã của gói | `harness-upgrade` |
 
 Dự án có thể khai thêm skill riêng; bảng đầy đủ việc nào cần skill nào là phần `skills` của `.claude/project/project.json`.
 
 ## Thế nào là làm đúng
 - **Chỉ ghi điều đã đọc thấy trong mã hoặc người dùng đã chốt.** Điều chưa kiểm với hệ thống thật thì ghi rõ là chưa kiểm.
-- **Tài liệu có cấu trúc ghi qua công cụ** `bsn-docs` với `service="<tên>"`. Không tự viết Mermaid.
+- **Tài liệu có cấu trúc ghi qua công cụ MCP của harness** với `service="<tên>"`. Không tự viết Mermaid.
 - **Điều riêng của đơn vị ở trong đơn vị**, không ghi vào `CLAUDE.md` gốc, không tạo skill chung cho nó.
 - **Không có bí mật trong mã, tài liệu, nhật ký.** Chỉ ghi tên biến môi trường.
 - **Làm trọn mục tiêu đã duyệt.** Chỗ còn thiếu khiến mục tiêu chưa đạt trọn thì xử lý luôn trong lượt và báo ở cuối. Chỉ dừng hỏi khi đụng đơn vị ngoài kế hoạch, khó hoàn tác, đưa ra ngoài máy (đẩy, publish, deploy), hoặc đổi điều người dùng đã chốt.

@@ -65,7 +65,7 @@ function docOfFile(ws, map, abs) {
   const service = ws.serviceOf(abs);
   const reads = map.files.flatMap((f) => f.reads);
   if (ws.isService(service)) {
-    const doc = [...docsOfUnit(map, service), ...reads].find((d) => same(path.join(ws.serviceDir(service), ...d.split('/')), abs));
+    const doc = [...docsOfUnit(map, service), ...reads].find((d) => same(path.join(ws.serviceDir(service), ...ws.unitRel(service, d).split('/')), abs));
     if (doc) return { service, doc };
   }
   const doc = reads.find((d) => same(path.join(ws.root, ...d.split('/')), abs));
@@ -76,13 +76,17 @@ function docOfFile(ws, map, abs) {
 // `action` theo hợp đồng sự kiện (ports/events.js). Skill không tồn tại và tệp tài liệu không tồn tại thì KHÔNG đòi
 // (thà không chặn còn hơn làm phiên kẹt); test giữ cho bảng nối khớp thực tế.
 function requirementsFor(ws, map, action, toolServer) {
+  // `toolServer`: tên một máy chủ, hoặc hàm hỏi "đây có phải máy chủ của harness không" (harness có vài máy chủ, mỗi khối một cái).
+  const isOwn = typeof toolServer === 'function' ? toolServer : (s) => s === toolServer;
   const skills = [];
   const docs = [];
   let service = '';
   let applies = false;
   const addDoc = (svc, d) => {
-    const abs = svc ? path.join(ws.serviceDir(svc), ...d.split('/')) : path.join(ws.root, ...d.split('/'));
-    if (ws.exists(abs) && !docs.some((x) => x.service === svc && x.doc === d)) docs.push({ service: svc, doc: d, rel: svc ? `${ws.serviceRel(svc)}/${d}` : d });
+    // Tài liệu của đơn vị khai bằng TÊN LOGIC trong bảng nối; chỗ thật do bố cục của đơn vị quyết (ws.unitRel).
+    const real = svc ? ws.unitRel(svc, d) : d;
+    const abs = svc ? path.join(ws.serviceDir(svc), ...real.split('/')) : path.join(ws.root, ...d.split('/'));
+    if (ws.exists(abs) && !docs.some((x) => x.service === svc && x.doc === d)) docs.push({ service: svc, doc: d, rel: svc ? `${ws.serviceRel(svc)}/${real}` : d });
   };
   const wantDocs = (svc) => {
     if (!ws.isService(svc)) return;
@@ -91,7 +95,7 @@ function requirementsFor(ws, map, action, toolServer) {
   };
   if (action.type === 'call-tool' || action.type === 'run-command') {
     // Tên công cụ để tra bảng: tên ngắn của bsn-docs (bảng cũ khai theo tên này), rồi tên đầy đủ của công cụ (Bash, mcp__<máy chủ>__<tên>).
-    const names = [...(action.type === 'call-tool' && action.server === toolServer ? [action.name] : []), action.tool].filter(Boolean);
+    const names = [...(action.type === 'call-tool' && isOwn(action.server) ? [action.name] : []), action.tool].filter(Boolean);
     const need = toolSkills(map, names);
     if (!need || !need.length) return { skills, docs, service };
     applies = true;
@@ -100,8 +104,8 @@ function requirementsFor(ws, map, action, toolServer) {
   } else if (action.type === 'write-file') {
     const abs = action.file;
     if (!abs) return { skills, docs, service };
-    const rel = posix(path.relative(ws.root, abs));
-    if (rel.startsWith('..') || path.isAbsolute(rel)) return { skills, docs, service };
+    if (!ws.inside(abs)) return { skills, docs, service };
+    const rel = ws.projectRel(abs); // mẫu tệp của bảng nối tính trên đường dẫn này
     let withDocs = true;
     const svc = ws.serviceOf(abs);
     const unit = ws.isService(svc) ? svc : '';
@@ -157,12 +161,17 @@ function health(ws, { hookCommands, ledgerOpens, skillMatchers }) {
     if (!ws.skillExists(s)) problems.push(`${name} nhắc skill "${s}" nhưng không có .claude/skills/${s}/SKILL.md`);
   }
   if (Array.isArray(skillMatchers)) {
+    const servers = typeof ws.mcpServerNames === 'function' ? ws.mcpServerNames() : ['bsn-docs'];
     const res = skillMatchers.map((m) => { try { return new RegExp(`^(?:${m})$`); } catch { return null; } }).filter(Boolean);
     for (const t of map.tools) {
-      // tên ngắn (không có __) là công cụ của bsn-docs: hook khớp theo tên đầy đủ mcp__bsn-docs__<tên>
-      const full = t.key.includes('__') || /^[A-Z]/.test(t.key) ? t.key : `mcp__bsn-docs__${t.key}`;
-      const probe = full.replace(/\*/g, 'x');
-      if (!res.some((re) => re.test(probe))) problems.push(`${name} khai công cụ "${t.key}" nhưng settings.json không gọi guard-skill.js cho công cụ đó: khai mà KHÔNG chặn (thêm tên vào matcher của nhóm guard-skill)`);
+      // tên ngắn (không có __) là công cụ của harness: hook khớp theo tên đầy đủ mcp__<máy chủ>__<tên>. Mẫu của hook phủ cả máy chủ
+      // (mcp__<máy chủ>__.*), nên thử với máy chủ lõi và với từng máy chủ khối: thiếu một máy chủ nào là công cụ của nó không bị chặn.
+      const fulls = t.key.includes('__') || /^[A-Z]/.test(t.key) ? [t.key] : servers.map((s) => `mcp__${s}__${t.key}`);
+      for (const full of fulls) {
+        const probe = full.replace(/\*/g, 'x');
+        if (res.some((re) => re.test(probe))) continue;
+        problems.push(`${name} khai công cụ "${t.key}" nhưng settings.json không gọi guard-skill.js cho ${full}: khai mà KHÔNG chặn (thêm tên máy chủ vào matcher của nhóm guard-skill)`);
+      }
     }
   }
   for (const need of ['guard-skill.js', 'ledger.js" record', 'ledger.js" prompt', 'ledger.js" start']) {

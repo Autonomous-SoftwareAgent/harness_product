@@ -5,7 +5,7 @@ description: Thêm, tùy biến, xác nhận, gỡ và soi tình trạng máy ch
 
 # Máy chủ MCP sau cổng của harness
 
-Claude Code chỉ thấy MỘT máy chủ MCP của dự án (tên `bsn-docs`). Phía sau nó là cổng: bộ công cụ tài liệu của harness, và mọi máy chủ MCP khai trong `.claude/project/mcp.json`. Thêm, sửa, gỡ một máy chủ thì phiên đang mở có ngay công cụ mới trong vài giây; không ai phải gõ `/mcp` hay mở lại phiên.
+Harness có vài máy chủ MCP, mỗi khối một cái (`harness`, `harness-docs`, `harness-diagrams`, `harness-context`, `harness-portal`) và `harness-mcp` là cổng: mọi máy chủ MCP khai trong `.claude/project/mcp.json` chạy phía sau cổng đó, không có mục riêng trong `.mcp.json`. Thêm, sửa, gỡ một máy chủ thì phiên đang mở có ngay công cụ mới trong vài giây; không ai phải gõ `/mcp` hay mở lại phiên.
 
 ## Khi nào dùng
 - Người dùng muốn thêm một máy chủ MCP (trình duyệt Playwright, một máy chủ HTTP công khai, máy chủ tự viết), bớt công cụ của nó, đổi tên, hay gỡ nó.
@@ -16,7 +16,7 @@ Claude Code chỉ thấy MỘT máy chủ MCP của dự án (tên `bsn-docs`). 
 ## Trước khi làm
 - Máy chủ MCP là mã của bên thứ ba chạy với quyền của người dùng, và có thể gửi dữ liệu ra ngoài. Vì vậy máy chủ mới CHỈ chạy sau khi được xác nhận, và phiên Claude chỉ xác nhận được khi người dùng đã duyệt kế hoạch nêu đúng máy chủ đó.
 - Khóa truy cập không bao giờ ghi vào tệp: đặt vào biến môi trường của máy, trong khai báo viết `${TÊN_BIẾN}`. Lệnh `add` từ chối giá trị trông như khóa.
-- Tên máy chủ: 2 đến 24 chữ thường hoặc số, bắt đầu bằng chữ. Tên này đứng đầu tên công cụ: `mcp__bsn-docs__<tên>_<công cụ>`.
+- Tên máy chủ: 2 đến 24 chữ thường hoặc số, bắt đầu bằng chữ. Tên này đứng đầu tên công cụ: `mcp__harness-mcp__<tên>_<công cụ>`.
 - Sửa `.claude/project/mcp.json` là sửa tệp của harness: đi qua cổng duyệt như mọi lần sửa.
 
 ## Các bước
@@ -58,11 +58,11 @@ Máy chủ đòi đăng nhập qua trình duyệt (Atlassian, Google Drive, Micr
 - Chạy `mcp trust` khi kế hoạch chưa được duyệt, hoặc kế hoạch không ghi mã: lệnh từ chối và in mã cần ghi. Không tìm đường khác; sổ xác nhận (`.claude/local/mcp/`) được cổng duyệt bảo vệ.
 - Sửa lệnh chạy sau khi đã duyệt rồi thắc mắc vì sao bản mới chưa chạy: mã đã đổi, phải trình và duyệt lại.
 - Ghi khóa thẳng vào `headers` hay `env`: tệp khai báo được commit. Dùng `${TÊN_BIẾN}`; thiếu biến thì máy chủ bị đánh dấu hỏng và lời báo nêu tên biến.
-- Bảo người dùng gõ `/mcp` sau khi thêm máy chủ: không cần. Chỉ cần khi kết quả công cụ có dòng "CẢNH BÁO bsn-docs".
+- Bảo người dùng gõ `/mcp` sau khi thêm máy chủ: không cần. Chỉ cần khi kết quả công cụ có dòng "CẢNH BÁO" kèm tên một máy chủ của harness.
 - Khai mọi công cụ là `writes` cho chắc: công cụ đọc bị chặn oan, phiên phải trình kế hoạch cho việc chỉ xem.
 - Đưa máy chủ cần đăng nhập qua cổng: không được; nối ở tài khoản claude.ai.
 
 ## Cách kiểm
 - `node .claude/modules/core/cli/cli.js mcp list`: máy chủ ghi "đã xác nhận | đang chạy, N công cụ".
-- Trong phiên: công cụ `mcp__bsn-docs__<tên>_...` gọi được; công cụ khai `writes` bị chặn khi chưa có kế hoạch được duyệt.
+- Trong phiên: công cụ `mcp__harness-mcp__<tên>_...` gọi được; công cụ khai `writes` bị chặn khi chưa có kế hoạch được duyệt.
 - `node .claude/modules/core/cli/cli.js doctor` không có dòng cảnh báo "máy chủ MCP".

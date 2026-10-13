@@ -37,6 +37,7 @@ function repoLines(label, dir, only) {
 // parts: { scope, ledger } là sổ phạm vi và sổ phiên, do cửa vào (cli/transfer.js) đưa vào: bộ chuyển này không nhập bộ chuyển khác.
 function gather(root, unit, sid, parts = {}) {
   const facts = {};
+  if (unit && P.serviceEntries(root).some((u) => u.name === unit)) { facts.entryRel = P.unitPathRel(root, unit, 'CLAUDE.md'); facts.statusRel = P.unitPathRel(root, unit, 'docs/agent/STATUS.md'); }
   try { facts.scope = String(parts.scope.statusText(root, sid) || '').split('\n').filter(Boolean); } catch (e) { facts.scope = [`không đọc được sổ phạm vi: ${e.message}`]; }
   if (!facts.scope.length) facts.scope = ['phiên giao không có kế hoạch nào đang được duyệt.'];
   try { const s = parts.ledger.skillsOf(root, sid); facts.skills = s.length ? [s.join(', ')] : ['chưa mở skill nào trong đợt hiện tại (hoặc không đọc được sổ phiên).']; } catch (e) { facts.skills = [`không đọc được sổ phiên: ${e.message}`]; }

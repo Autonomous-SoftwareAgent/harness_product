@@ -79,7 +79,7 @@ function render({ id, unit, name, from = {}, at, note, facts = {} }) {
     '',
     '## Việc đầu tiên của phiên mới',
     '1. Đọc trọn tờ này bằng công cụ Read (harness ghi nhận lần đọc; chưa đọc thì mỗi lượt đều bị nhắc).',
-    `2. Mở skill \`services\`, rồi đọc \`CLAUDE.md\` và \`docs/agent/STATUS.md\` của đơn vị \`${unit}\`.`,
+    `2. Mở skill \`services\`, rồi đọc \`${facts.entryRel || 'CLAUDE.md'}\` và \`${facts.statusRel || 'docs/agent/STATUS.md'}\` của đơn vị \`${unit}\`.`, // tên logic khi bên gom không cho đường dẫn thật
     '3. Trả lời người dùng: đã nhận bàn giao, hiểu việc kế tiếp là gì (ba dòng), và điều gì trong tờ này chưa rõ.',
     '4. CHƯA sửa gì. Lời duyệt của phiên trước KHÔNG chuyển sang phiên này: trình kế hoạch theo khuôn, chờ người dùng duyệt, rồi đăng ký phạm vi.',
     '',

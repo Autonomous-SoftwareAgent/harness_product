@@ -38,7 +38,7 @@ function scanServices() {
   return P.serviceEntries(core.BSN_DIR).filter((d) => SERVICE_RE.test(d.name)).map((d) => d.name);
 }
 
-const ownGenerator = (name) => path.join(GENERATORS, name, 'gen-service-page.js');
+const ownGenerator = (name) => P.unitGenerator(core.BSN_DIR, name, 'gen-service-page.js');
 
 // Các trang HTML của một dịch vụ trong cổng (chỉ cấp trên cùng của thư mục dịch vụ), nhãn lấy từ <title> của chính trang đó.
 function scanPages(name) {
@@ -170,6 +170,7 @@ function toolFiles() {
   for (const d of mcpDirs) walk(d);
   // Bộ sinh riêng nằm ngoài mcp/ ở bố cục khối (phần của dự án).
   if (fs.existsSync(GENERATORS) && !mcpDirs.some((d) => P.inside(GENERATORS, d))) walk(GENERATORS);
+  for (const d of P.trustedGeneratorDirs(core.BSN_DIR)) walk(d);
   // Bộ vẽ và hợp đồng sơ đồ nằm ngoài mcp/: sửa chúng cũng là đổi cách vẽ.
   for (const d of ['adapters/mermaid', 'core/diagrams']) for (const dir of P.codeDirs(core.BSN_DIR, d)) walk(dir);
   files.push(vendorMermaid());

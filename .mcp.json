@@ -1,9 +1,45 @@
 {
   "mcpServers": {
-    "bsn-docs": {
+    "harness": {
       "command": "node",
       "args": [
-        ".claude/modules/core/mcp/mcp-server.js"
+        ".claude/modules/core/mcp/mcp-server.js",
+        "core"
+      ]
+    },
+    "harness-mcp": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "mcp"
+      ]
+    },
+    "harness-docs": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "docs"
+      ]
+    },
+    "harness-diagrams": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "diagrams"
+      ]
+    },
+    "harness-context": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "context"
+      ]
+    },
+    "harness-portal": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "portal"
       ]
     }
   }

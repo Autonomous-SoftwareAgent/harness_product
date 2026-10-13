@@ -5,7 +5,8 @@
   "lang": "vi",
   "units": {
     "parents": [],
-    "dirs": {}
+    "dirs": {},
+    "layout": "harness"
   },
   "skills": {
     "mode": "enforce",

@@ -1,0 +1,104 @@
+{
+  "version": "1.7.0",
+  "date": "2026-10-13",
+  "summary": "Nâng cấp không còn bước chạy tay: harness dựng sẵn, agent báo từng mục thay đổi và xin ý kiến, người dùng duyệt, agent cài và kiểm, hỏng thì tự quay lại.",
+  "changes": [
+    {
+      "id": "to-thay-doi-cho-may",
+      "kind": "added",
+      "block": "core",
+      "title": "Mỗi bản của gói kèm một tờ thay đổi cho máy đọc",
+      "after": "Gói có .claude/modules/core/releases/<số bản>.json: từng thay đổi ghi loại, khối, tệp, hành vi trước và sau, khóa cấu hình và lệnh đổi, ảnh hưởng tới dự án đã cài, điểm cần người dùng quyết, đã kiểm và chưa kiểm. Lệnh đóng gói từ chối khi bản đang đóng thiếu tờ, tờ thiếu trường, một tệp đã đổi không thuộc mục nào, hoặc một mục trỏ tới tệp không đổi.",
+      "files": ["core/core/release/change-sheet.js", "core/cli/public-export.js", "core/FORMAT.md"],
+      "surface": { "commands": ["public-export"] },
+      "impact": "Dự án đã cài không phải làm gì. Ai tự đóng gói từ bản mã nguồn phải viết tờ thay đổi cho bản của mình.",
+      "verified": "Bảng lỗi của từng trường; đối chiếu tờ với tệp thật sự đã đổi; tờ của bản 1.6.0 và 1.7.0 được đối chiếu với lịch sử thật.",
+      "unverified": "Lệnh đóng gói không kiểm được lời mô tả hành vi có đúng không."
+    },
+    {
+      "id": "bao-cao-theo-muc",
+      "kind": "changed",
+      "block": "core",
+      "title": "Báo cáo nâng cấp nói từng mục thay đổi và chỗ nó chạm tới dự án",
+      "before": "upgrade preview và prepare chỉ liệt kê theo từng khối: tệp nào gói đổi, tệp nào bạn đã sửa, gộp tới đâu. Muốn biết hành vi nào đổi phải tự đọc sổ phát hành.",
+      "after": "Hai lệnh mở đầu bằng từng mục thay đổi của mọi bản đi qua (trước, sau, ảnh hưởng), ghép với dự án: mục nào chạm tệp bạn đã sửa và gộp ra sao, khóa cấu hình nào dự án đang khai, khối nào dự án không cài, bước chuyển cấu hình sẽ sửa gì, điểm nào chờ người dùng quyết. Phần theo từng tệp như cũ nằm sau. Thư mục dựng sẵn có thêm briefing.json (cùng nội dung cho máy).",
+      "files": ["core/cli/upgrade.js", "core/core/release/change-sheet.js"],
+      "surface": { "commands": ["upgrade preview", "upgrade prepare", "upgrade review"] },
+      "impact": "Kịch bản tự viết đọc lời của upgrade preview phải bỏ qua phần mở đầu mới, hoặc đọc briefing.json. Bản phát hành trước 1.6.0 không có tờ: báo cáo nói rõ đoạn đó chỉ có danh sách tệp.",
+      "verified": "Kho gói thật hai bản có tờ thay đổi và một dự án đã sửa đủ kiểu: từng dòng báo cáo được soát.",
+      "unverified": "Chưa chạy trên dự án thật của người dùng khác."
+    },
+    {
+      "id": "cai-theo-loi-duyet",
+      "kind": "changed",
+      "block": "core",
+      "title": "Agent cài bản mới sau khi người dùng duyệt; người dùng không phải chạy lệnh",
+      "before": "Bước cài là một script người dùng phải tự chạy ở terminal. Agent chỉ dựng sẵn và đưa lệnh.",
+      "after": "upgrade apply chạy được trong phiên khi kế hoạch người dùng vừa duyệt của chính phiên đó ghi mã duyệt upgrade:<bản>@<8 ký tự> của bản dựng sẵn. Mã tính từ toàn bộ nội dung sắp cài, nên nội dung đổi sau lúc duyệt là lời duyệt hết hiệu lực. Lệnh còn đối chiếu gói trong thư mục dựng sẵn với kho gói từng tệp, và chỉ nhận kho gói dự án đã ghi nhận; chọn kho mới trong phiên cần kế hoạch được duyệt có ghi mã upgrade-source của kho đó. Cổng duyệt cho sửa trong overlay/ của bản dựng sẵn trước khi có lời duyệt, để agent xử lý chỗ đụng nhau rồi mới trình. Sau khi cài, phiên nền đang rảnh được dựng lại.",
+      "files": [
+        "core/cli/upgrade.js",
+        "core/cli/upgrade-apply.js",
+        "core/cli/cli.js",
+        "core/gate/gate-paths.js",
+        "core/skills/harness-upgrade.md",
+        "core/skills/services.md",
+        "core/FORMAT.md"
+      ],
+      "surface": { "commands": ["upgrade apply", "upgrade review", "upgrade decide"], "skills": ["harness-upgrade", "services"] },
+      "impact": "Chạy thẳng apply.js của thư mục dựng sẵn trong một phiên Claude bị từ chối. Người dùng tự chạy upgrade apply ở terminal thì như cũ, không cần mã. Trong phiên, upgrade prepare với --from trỏ tới một kho chưa ghi nhận bị từ chối cho tới khi được duyệt.",
+      "verified": "Mười bảy đường không có lời duyệt đúng đều bị từ chối và dự án không đổi một byte: không có kế hoạch, kế hoạch nói việc khác, mã sai, mã cắt bớt, lời duyệt của phiên khác, cổng đã đóng, cờ mở giả mạo, không có mã phiên, chạy thẳng script, nội dung đổi sau lúc duyệt, gói bị sửa, tệp lạ trong gói, script cài bị sửa, kho gói khác kho đã ghi nhận.",
+      "unverified": "Lời duyệt do một mô hình phán và có thể hiểu nhầm. Mã duyệt chặn agent làm nhầm, không chặn một tiến trình cố ý chép tệp bằng lệnh khác."
+    },
+    {
+      "id": "kiem-sau-cai-tu-quay-lai",
+      "kind": "added",
+      "block": "core",
+      "title": "Kiểm sau khi cài; hỏng thì tự quay lại bản cũ",
+      "after": "Sau khi cài, bước cài kiểm toàn vẹn cổng duyệt, kiểm sức khỏe (lỗi có từ trước khi cài không tính), và chạy các lệnh kiểm dự án tự khai ở upgrade.verify. Hỏng bước nào, kể cả lệnh cài của gói mới báo lỗi, thì trả lại mã, skill và cấu hình như trước khi cài, in nguyên văn lỗi, thoát mã 2. Quay lại không sạch thì nói rõ, thoát mã 3 và đưa lệnh quay lại tay.",
+      "files": ["core/cli/upgrade-apply.js", "core/cli/upgrade.js", "core/gate/gate-paths.js", "core/FORMAT.md"],
+      "surface": { "config": ["upgrade.verify"], "commands": ["upgrade apply"] },
+      "impact": "Nên khai lệnh test của phần bạn đã sửa trong mã của gói và của khối riêng vào upgrade.verify: đó là phép kiểm duy nhất của phần ấy với bản mới.",
+      "verified": "Năm ca hỏng (sức khỏe, dấu vân tay cổng duyệt, lệnh cài, sinh cấu hình, lệnh kiểm của dự án): sau khi quay lại, mã, skill và cấu hình giống hệt trước khi cài theo dấu từng tệp. Ca quay lại không sạch và ca lỗi có từ trước.",
+      "unverified": "Tự quay lại không phủ thứ một phiên khác sửa trong lúc đang cài."
+    },
+    {
+      "id": "buoc-chuyen-cau-hinh",
+      "kind": "added",
+      "block": "core",
+      "title": "Bước chuyển cấu hình đi kèm bản phát hành",
+      "after": "Tờ thay đổi khai được các bước chuyển: một tệp JSON của dự án (.mcp.json, .claude/settings.json, tệp JSON ngay trong .claude/project/) và các thao tác set (mặc định không đè thứ đã có), remove, rename, replace. Bước cài tự chạy; báo cáo nói trước sẽ sửa gì. Bước có điều kiện chỉ chạy khi người dùng đã chọn đúng giá trị của một điểm cần quyết (ghi bằng upgrade decide).",
+      "files": ["core/core/release/migrate.js", "core/cli/upgrade-apply.js", "core/cli/upgrade.js", "core/FORMAT.md"],
+      "surface": { "commands": ["upgrade decide"] },
+      "impact": "Hai bản 1.6.0 và 1.7.0 không có bước chuyển nào: cấu hình của dự án không bị sửa.",
+      "verified": "Bốn thao tác, không đè thứ người dùng đã khai, chạy lại không đổi thêm, từ chối tệp ngoài danh sách cho phép và thao tác sai khuôn; một lần cài thử có hai bước chuyển, một bước theo điều kiện.",
+      "unverified": "Chưa có bản phát hành thật nào dùng tới bước chuyển."
+    },
+    {
+      "id": "tu-dung-san-o-nen",
+      "kind": "changed",
+      "block": "core",
+      "title": "Có bản mới thì harness tự dựng sẵn ở nền",
+      "before": "Mỗi ngày harness kiểm kho gói ở nền và đầu phiên có một dòng báo có bản mới; phải có người chạy upgrade check một lần trước đó.",
+      "after": "Việc chạy nền là upgrade auto: lấy bản mới về bản clone, có bản mới thì dựng sẵn gói mới, phần đã gộp và báo cáo vào thư mục trạng thái. Đầu phiên có một dòng trỏ agent tới báo cáo. Bản dựng sẵn còn đúng thì không dựng lại (phần agent đang xử lý dở được giữ). Lệnh cài ghi nhận kho gói khi cài từ một bản clone, nên lần kiểm đầu tiên tự chạy. Không bao giờ tự cài.",
+      "files": ["core/adapters/jobs/brief-facts.js", "core/cli/upgrade.js", "core/cli/install.js", "core/gate/gate-paths.js", "core/FORMAT.md"],
+      "surface": { "config": ["upgrade.auto"], "commands": ["upgrade auto"] },
+      "impact": "Thư mục trạng thái của dự án có thêm thư mục upgrade/<bản>/ chứa một bản sao của gói mới. Muốn như bản trước (chỉ báo): khai upgrade.auto là check. Tắt hẳn: off.",
+      "verified": "Ba giá trị của khóa và giá trị lạ; bản dựng sẵn còn đúng được giữ; tệp dự án đổi thì dựng lại; lời báo đầu phiên trước và sau khi cài.",
+      "unverified": "Chưa đo việc chạy nền trên một phiên thật kéo dài nhiều ngày."
+    },
+    {
+      "id": "cai-doi-cho-mot-luot",
+      "kind": "changed",
+      "block": "core",
+      "title": "Lệnh cài dựng bản mới ở cạnh rồi đổi chỗ",
+      "before": "Lệnh cài dời thư mục mã cũ đi rồi mới chép bản mới vào: suốt lúc chép, hook của phiên đang mở không tìm thấy tệp và được cho qua.",
+      "after": "Bản mới được chép đủ vào một thư mục cạnh bên, kèm khối bạn tự thêm, rồi hai lần đổi tên đưa nó vào chỗ. Khoảng không có mã thu lại còn giữa hai lần đổi tên.",
+      "files": ["core/cli/install.js"],
+      "surface": { "commands": ["install"] },
+      "impact": "Không có gì phải làm. Lệnh cài bị dừng giữa chừng có thể để lại thư mục .claude/modules.moi-<lúc>: xóa được.",
+      "verified": "Bộ test của lệnh cài: cài mới, chuyển bố cục cũ, nâng cấp, quay lại, giữ khối tự thêm.",
+      "unverified": "Khoảng giữa hai lần đổi tên vẫn có. Chưa đo trên máy có phần mềm đang giữ tệp trong thư mục mã."
+    }
+  ],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

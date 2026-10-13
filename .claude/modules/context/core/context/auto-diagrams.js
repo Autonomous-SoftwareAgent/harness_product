@@ -90,7 +90,8 @@ function moduleDeps(g) {
 }
 
 // 2. Các lớp đã khai và số lệnh nhập đi giữa chúng. Tệp không thuộc lớp nào gom vào một nút riêng.
-function layerDeps(g) {
+// opts.sourceDoc: đường dẫn thật của bản tổng quan trong đơn vị (bên gọi hỏi bố cục của đơn vị); không cho thì dùng tên logic.
+function layerDeps(g, { sourceDoc = 'docs/service.yaml' } = {}) { // tên logic
   const ls = layers(g);
   const files = codeFiles(g);
   if (!ls.length || !files.length) return null;
@@ -110,7 +111,7 @@ function layerDeps(g) {
     return { id: elId(i), label: short(l ? l.title : 'Ngoài các lớp đã khai'), lines: [`${mine.length} tệp`, ...mine.slice(0, 4).map((p) => short(p, 70)), ...(mine.length > 4 ? [`… và ${mine.length - 4} tệp nữa`] : [])].slice(0, 6), style: l ? STYLE[i % STYLE.length] : 'gray' };
   });
   const edges = [...count.entries()].sort().map(([k, v]) => { const [a, b] = k.split('>'); return { from: elId(idx.get(a)), to: elId(idx.get(b)), label: `${v} lệnh nhập`, line: v >= 5 ? 'thick' : 'solid' }; });
-  return { id: `${AUTO_PREFIX}cac-lop`, type: 'flowchart', title: 'Các lớp đã khai và lệnh nhập giữa chúng', tab: 'architecture', direction: 'TB', sources: ['docs/service.yaml'], groups: [], nodes, edges };
+  return { id: `${AUTO_PREFIX}cac-lop`, type: 'flowchart', title: 'Các lớp đã khai và lệnh nhập giữa chúng', tab: 'architecture', direction: 'TB', sources: [sourceDoc], groups: [], nodes, edges };
 }
 
 // 3. Cửa vào/ra của dịch vụ, dạng tầng: các loại cửa vào (mỗi loại một tầng), dịch vụ, rồi topic, bảng và thứ nó phụ thuộc.

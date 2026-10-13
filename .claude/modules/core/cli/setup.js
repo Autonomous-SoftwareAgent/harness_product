@@ -5,7 +5,10 @@
 //     trong từng sự kiện; lệnh neo vào gốc dự án bằng "$CLAUDE_PROJECT_DIR/..." và trỏ tới đường dẫn THẬT theo bố cục đang dùng.
 //   - Luật mở rộng của dự án (<thư mục dự án>/rules/) và luật của khối mở rộng đã xác nhận: một nhóm hooks/project-rules.js <loại>
 //     cho mỗi loại sự kiện có luật nghe.
-//   - Máy chủ MCP của lõi: mục trong .mcp.json, tên trong enabledMcpjsonServers, quyền "mcp__<tên>" trong permissions.allow.
+//   - Máy chủ MCP: mỗi khối đang bật một máy chủ (lõi, docs, diagrams, ...; gate-paths.mcpServers), cùng chạy MỘT tệp mồi, khác nhau ở đối số cuối.
+//     Mỗi máy chủ có mục trong .mcp.json, tên trong enabledMcpjsonServers, quyền "mcp__<tên>" trong permissions.allow. Mẫu `@mcp` trong matcher của
+//     hook thành mẫu phủ mọi máy chủ đó (và tên cũ "bsn-docs", để phiên đang mở không mất chốt). Mục "bsn-docs" của chính harness (máy chủ cũ một
+//     cục) bị gỡ khỏi .mcp.json, enabledMcpjsonServers và permissions; mục trùng tên mà là của người dùng thì giữ.
 // Phần người dùng tự thêm được giữ nguyên: nhóm hook có lệnh không trỏ vào mã harness, máy chủ MCP khác, quyền khác, mọi khóa khác.
 // Không ghi gì khi kết quả không đổi. Lệnh: node <harness>/cli/cli.js setup [--check | --dry-run].
 const fs = require('node:fs');
@@ -32,7 +35,8 @@ function harnessHooks(root) {
       if (!EVENTS.includes(h.event) || typeof h.file !== 'string') continue;
       const hook = { type: 'command', command: command(root, h.file, h.args), timeout: h.timeout || 10 };
       if (h.statusMessage) hook.statusMessage = h.statusMessage;
-      add(h.event, Number.isFinite(h.order) ? h.order : 500, h.matcher ? { matcher: h.matcher, hooks: [hook] } : { hooks: [hook] });
+      const matcher = typeof h.matcher === 'string' ? h.matcher.split('@mcp').join(P.mcpMatcher(root)) : '';
+      add(h.event, Number.isFinite(h.order) ? h.order : 500, matcher ? { matcher, hooks: [hook] } : { hooks: [hook] });
     }
   }
   // Luật mở rộng của dự án: một nhóm cho mỗi loại sự kiện có ít nhất một luật nghe (đọc khai `on` của luật; luật hỏng thì bỏ qua và báo ở doctor).
@@ -70,7 +74,12 @@ function harnessHooks(root) {
   return out;
 }
 
-const coreServer = (root) => { const c = P.enabledModules(root).enabled.find((m) => m.name === 'core'); return c && c.mcpServer; };
+const servers = (root) => P.mcpServers(root);
+// Mục "bsn-docs" trong .mcp.json là của chính harness (máy chủ cũ một cục) khi nó chạy tệp mồi của harness.
+const legacyOurs = (mcp) => {
+  const e = mcp && mcp.mcpServers && mcp.mcpServers[P.MCP_LEGACY];
+  return !e || [].concat((e && e.args) || []).some((a) => /mcp-server[.]js$/.test(String(a)) && /[.]claude[/]modules[/]|[.]claude[/]plugin[/]/.test(String(a).replace(/\\/g, '/')));
+};
 
 // settings.json mới từ settings hiện có (giữ phần của người dùng).
 function buildSettings(root, current) {
@@ -85,15 +94,18 @@ function buildSettings(root, current) {
   const order = [...Object.keys(hooks), ...EVENTS, ...Object.keys(user)].filter((e, i, a) => a.indexOf(e) === i);
   const next = {};
   for (const e of order) { const g = [...(mine[e] || []), ...(user[e] || [])]; if (g.length) next[e] = g; }
-  const srv = coreServer(root);
+  const srvs = servers(root);
   const core = P.enabledModules(root).enabled.find((m) => m.name === 'core');
-  if (srv) {
-    s.enabledMcpjsonServers = [...new Set([...(Array.isArray(s.enabledMcpjsonServers) ? s.enabledMcpjsonServers : []), srv.name])];
+  const dropLegacy = legacyOurs(readJson(path.join(root, '.mcp.json')));
+  if (srvs.length) {
+    const had = Array.isArray(s.enabledMcpjsonServers) ? s.enabledMcpjsonServers.filter((n) => !(dropLegacy && n === P.MCP_LEGACY)) : [];
+    s.enabledMcpjsonServers = [...new Set([...had, ...srvs.map((x) => x.name)])];
   }
-  const allow = (core && core.permissions && core.permissions.allow) || [];
-  if (allow.length) {
+  const allow = ((core && core.permissions && core.permissions.allow) || []).flatMap((a) => (a === '@mcp-servers' ? srvs.map((x) => `mcp__${x.name}`) : [a]));
+  if (allow.length || (s.permissions && Array.isArray(s.permissions.allow))) {
     s.permissions = s.permissions && typeof s.permissions === 'object' ? s.permissions : {};
-    s.permissions.allow = [...new Set([...(Array.isArray(s.permissions.allow) ? s.permissions.allow : []), ...allow])];
+    const cur = (Array.isArray(s.permissions.allow) ? s.permissions.allow : []).filter((a) => !(dropLegacy && a === `mcp__${P.MCP_LEGACY}`));
+    s.permissions.allow = [...new Set([...cur, ...allow])];
   }
   // Khóa `hooks` giữ đúng chỗ của nó trong tệp (để tệp không đổi khi nội dung không đổi).
   if (Object.keys(next).length) s.hooks = next; else delete s.hooks;
@@ -102,10 +114,16 @@ function buildSettings(root, current) {
 
 function buildMcp(root, current) {
   const m = current && typeof current === 'object' ? JSON.parse(JSON.stringify(current)) : {};
-  const srv = coreServer(root);
-  if (!srv) return m;
+  const srvs = servers(root);
+  if (!srvs.length) return m;
   m.mcpServers = m.mcpServers && typeof m.mcpServers === 'object' ? m.mcpServers : {};
-  m.mcpServers[srv.name] = { ...(m.mcpServers[srv.name] || {}), command: 'node', args: [P.codeRel(root, srv.file)] };
+  // Mục cũ của harness đổi tên thành máy chủ lõi (giữ trường người dùng đã thêm như env), trừ khi máy chủ lõi đã có.
+  if (m.mcpServers[P.MCP_LEGACY] && legacyOurs(m)) {
+    const core = srvs.find((x) => x.block === 'core');
+    if (core && !m.mcpServers[core.name]) m.mcpServers[core.name] = m.mcpServers[P.MCP_LEGACY];
+    delete m.mcpServers[P.MCP_LEGACY];
+  }
+  for (const s of srvs) m.mcpServers[s.name] = { ...(m.mcpServers[s.name] || {}), command: 'node', args: [P.codeRel(root, s.file), s.block] };
   return m;
 }
 

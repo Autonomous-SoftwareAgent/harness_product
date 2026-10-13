@@ -19,7 +19,7 @@ const autoProvider = () => { const f = P.provided(core.BSN_DIR, 'autoDiagrams');
 const model = require('../../core/diagrams/model');
 const { contentHash, elementNames, termMatches, canonical, coverage, TYPE_LABEL } = model;
 const GET_MAX = 6000; // trần ký tự của một lần đọc sơ đồ ở dạng gọn
-const dir = () => path.join(core.ROOT, 'docs', 'diagrams');
+const dir = () => core.at('docs/diagrams');
 const fileOf = (id) => path.join(dir(), `${id}.yaml`);
 const serviceName = () => core.serviceName();
 // Phần giải thích có cũ so với hình không. Dấu không khớp thẳng thì hỏi lịch sử git của tệp sơ đồ: giải thích viết cho một bản
@@ -65,8 +65,8 @@ function save({ spec }) {
     if (old && old.explain) { r.spec.explain = old.explain; kept = staleOf(r.spec) ? ' Phần giải thích cũ được giữ nhưng hình đã đổi: viết lại bằng diagram_explain.' : ''; }
   }
   core.writeText(fileOf(r.spec.id), yaml.stringify(canonical(r.spec)));
-  return `Đã ghi sơ đồ '${r.spec.id}' (${r.spec.type}, tab ${r.spec.tab}) của ${serviceName()} vào docs/diagrams/${r.spec.id}.yaml. ` +
-    `Sơ đồ lên trang của dịch vụ sau khi repo dịch vụ commit (cổng chỉ hiện bản đã commit).${kept}`;
+  return `Đã ghi sơ đồ '${r.spec.id}' (${r.spec.type}, tab ${r.spec.tab}) của ${serviceName()} vào ${core.rel('docs/diagrams')}/${r.spec.id}.yaml. ` +
+    `${core.LAYOUT.local ? 'Sơ đồ lên trang của dịch vụ ở lần dựng cổng kế tiếp (ghi chép tại chỗ, không qua commit).' : 'Sơ đồ lên trang của dịch vụ sau khi repo dịch vụ commit (cổng chỉ hiện bản đã commit).'}${kept}`;
 }
 
 // Ghi phần giải thích bốn mục cho một sơ đồ ĐÃ LƯU. Không đổi hình. Mục "Chi tiết" phải nói về phần tử có thật trên hình.
@@ -205,6 +205,8 @@ function generate(input, opts = {}) {
   let cfg;
   if (opts.allowConfig === false) {
     if (given.length) throw new Error(`Công cụ này chỉ SINH LẠI theo cấu hình đã commit; không nhận ${given.join(', ')}. Tạo lần đầu hoặc đổi cấu hình: \`node .claude/modules/core/cli/cli.js --service ${serviceName()} diagram-generate <tệp.json>\`.`);
+    // Ghi chép tại chỗ không qua commit nên không có bản người dùng đã xem: công cụ không tự chạy lệnh nào ở chế độ đó.
+    if (opts.local) throw new Error(`Đơn vị ${serviceName()} giữ ghi chép tại chỗ (không commit), nên công cụ này không chạy lệnh tạo bảng. Sinh lại bằng dòng lệnh: \`node .claude/modules/core/cli/cli.js --service ${serviceName()} diagram-generate ${id}\`.`);
     const committed = opts.committedText ? specs.parse(yaml.parse(opts.committedText)).spec : null;
     if (!committed || !committed.generated) throw new Error(`Sơ đồ '${id}' chưa có bản tự sinh ĐÃ COMMIT trong ${serviceName()}. Tạo lần đầu bằng dòng lệnh: \`node .claude/modules/core/cli/cli.js --service ${serviceName()} diagram-generate <tệp.json>\`, rồi commit.`);
     cfg = { ...committed.generated, sources: committed.sources, title: input.title || (old || committed).title };
@@ -238,7 +240,7 @@ function checkWarnings() {
     rows.push(spec);
     if (spec.generated && spec.generated.basis !== sourcesBasis(spec.sources)) out.push(`[diagrams] ${id}: tệp khai cấu trúc bảng (${spec.sources.join(', ')}) đã đổi sau lần sinh; sinh lại bằng diagram_generate id="${id}"`);
   }
-  if (!rows.length && !fs.existsSync(path.join(core.ROOT, 'docs', 'service.yaml'))) return out; // dịch vụ vừa tạo, chưa có gì để đòi
+  if (!rows.length && !fs.existsSync(core.at('docs/service.yaml'))) return out; // dịch vụ vừa tạo, chưa có gì để đòi
   const missing = coverage(rows, declaredNa()).filter((c) => c.missing).map((c) => c.label);
   if (missing.length) out.push(`[diagrams] chưa đủ bộ sơ đồ, còn thiếu loại: ${missing.join(', ')} (khai bằng diagram_save / diagram_generate; loại không áp dụng thì ghi lý do vào architecture.diagram_na bằng service_doc_set)`);
   return out;

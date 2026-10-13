@@ -1,12 +1,12 @@
 ---
 name: service-docs
-description: Ghi tài liệu của một dịch vụ bằng công cụ bsn-docs: ba tầng thiết kế, đặc tả, hiện thực; docs/service.yaml; sổ vấn đề P-nnn. Dùng khi ghi hay sửa tài liệu, chốt quyết định thiết kế, điền đặc tả, gắn mã với đặc tả, ghi một vấn đề, hoặc khi docs check báo lệch.
+description: Ghi tài liệu của một dịch vụ bằng công cụ MCP của harness: ba tầng thiết kế, đặc tả, hiện thực; docs/service.yaml; sổ vấn đề P-nnn. Dùng khi ghi hay sửa tài liệu, chốt quyết định thiết kế, điền đặc tả, gắn mã với đặc tả, ghi một vấn đề, hoặc khi docs check báo lệch.
 ---
 
 # Ghi tài liệu của một dịch vụ
 
 ## Khi nào dùng
-Ghi hay sửa tài liệu của một dịch vụ. Phiên mở ở gốc dự án. Đơn vị nằm ở thư mục khai trong `.claude/project/project.json`. Mọi lời gọi `bsn-docs` truyền `service="<tên>"`.
+Ghi hay sửa tài liệu của một dịch vụ. Phiên mở ở gốc dự án. Đơn vị nằm ở thư mục khai trong `.claude/project/project.json`. Mọi lời gọi công cụ ghi tài liệu truyền `service="<tên>"`.
 
 Việc liền kề:
 - Sơ đồ: skill `diagrams`.
@@ -19,7 +19,7 @@ Hook chặn lời gọi ghi cho tới khi phiên đã mở skill `services`, ski
 - Trong dịch vụ chỉ có Markdown và dữ liệu cho agent. Không tạo HTML trong dịch vụ.
 - Tệp do công cụ sở hữu, sửa tay sẽ bị hook từ chối: `docs/modules/*/{1-design,2-spec,3-impl}.md`, `docs/_generated/`, `docs/service.yaml`, `docs/diagrams/`.
 - Tệp sửa tay bình thường: `docs/agent/STATUS.md`, `DECISIONS.md`, `CONVENTIONS.md`, `CLAUDE.md` và README của dịch vụ.
-- Số công cụ phải đủ như tóm tắt đầu phiên nêu. Thiếu, hoặc thấy dòng "CẢNH BÁO bsn-docs": báo người dùng gõ `/mcp` để nối lại, đừng tìm đường khác.
+- Số công cụ phải đủ như tóm tắt đầu phiên nêu. Thiếu, hoặc thấy dòng "CẢNH BÁO" kèm tên máy chủ của harness: báo người dùng gõ `/mcp` để nối lại, đừng tìm đường khác.
 
 ## Các bước
 1. Xác định việc cần ghi thuộc dòng nào trong bảng "Việc nào dùng công cụ nào".

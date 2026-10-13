@@ -8,6 +8,8 @@
 //   - đang chạy mà lời gọi quá giờ hoặc đứt nối 3 lần liên tiếp thì TẠM NGẮT: công cụ của nó rút khỏi danh sách của phiên;
 //   - thử lại theo nhịp thưa dần (5 giây, 15 giây, 1 phút, 5 phút); nối lại được thì công cụ tự hiện lại;
 //   - mỗi thay đổi ghi ra một tệp tình trạng cho `cli.js mcp list`, doctor và tóm tắt đầu phiên đọc.
+// Harness có vài máy chủ MCP, mỗi khối một cái (cùng một tệp mồi, khác nhau ở khối): chỉ máy chủ của khối `mcp` (và máy chủ cũ một cục, không
+// có khối) giữ các máy chủ phía sau; máy chủ của khối khác chỉ chạy công cụ cục bộ của khối đó, nên một cái hỏng không kéo theo cái khác.
 // Khai báo hay sổ xác nhận đổi thì cổng tự nối cái mới, ngắt cái bị gỡ, và báo Claude Code lấy lại danh sách (không ai phải gõ /mcp).
 const fs = require('node:fs');
 const path = require('node:path');
@@ -25,8 +27,10 @@ const FAILS_TO_PAUSE = 3;
 const DEFAULT_START_MS = 30000;
 const DEFAULT_CALL_MS = 120000;
 
-function create({ dir, root, send }) {
+function create({ dir, root, send, block = '' }) {
   const WORKER = path.join(dir, 'mcp-worker.js');
+  const external = !block || block === 'mcp'; // có giữ các máy chủ MCP phía sau không
+  const hasLocal = block !== 'mcp'; // có công cụ cục bộ không (khối `mcp` chỉ là cổng)
   let stopped = false;
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!stopped) fn(); }, ms); if (t.unref) t.unref(); timers.add(t); return t; };
@@ -47,7 +51,7 @@ function create({ dir, root, send }) {
         finish({ crash: err.trim().split('\n').slice(-6).join(' | ').slice(0, 800) || `tiến trình thoát mã ${code}` });
       });
       child.stdin.on('error', () => { /* tiến trình chết sớm: sự kiện close lo */ });
-      child.stdin.end(JSON.stringify(req));
+      child.stdin.end(JSON.stringify(block ? { ...req, block } : req));
     });
   }
   // Dấu của mọi tệp mã công cụ (mọi khối, trừ test và thư viện tải về): đổi thì lấy lại danh sách công cụ cục bộ.
@@ -69,7 +73,7 @@ function create({ dir, root, send }) {
       return out.sort().join('|');
     } catch { return 'không đọc được'; }
   }
-  let localTools = null; // bản tốt gần nhất; lớp dưới hỏng thì vẫn trả bản này
+  let localTools = hasLocal ? null : []; // bản tốt gần nhất; lớp dưới hỏng thì vẫn trả bản này
   let localStamp = lowerStamp();
   let localChecking = false;
   async function listLocal() {
@@ -78,7 +82,7 @@ function create({ dir, root, send }) {
     return localTools;
   }
   async function watchLocal() {
-    if (localChecking || !localTools) return; // chưa ai hỏi danh sách thì chưa có gì để báo đổi
+    if (!hasLocal || localChecking || !localTools) return; // chưa ai hỏi danh sách thì chưa có gì để báo đổi
     const now = lowerStamp();
     if (now === localStamp) return;
     localChecking = true;
@@ -96,6 +100,7 @@ function create({ dir, root, send }) {
 
   const publicState = (b) => ({ name: b.name, type: b.decl.type, status: b.status, error: b.error, since: b.since, tools: exposed(b).length, fp: b.fp, dropped: b.dropped.slice(0, 5) });
   function writeStatus() {
+    if (!external) return; // tình trạng máy chủ phía sau chỉ do máy chủ giữ chúng ghi
     try {
       const file = path.join(P.mcpStateDir(root), `${process.pid}.json`);
       fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -218,12 +223,10 @@ function create({ dir, root, send }) {
   }
   function watch() {
     if (stopped) return;
-    const s = C.watchStamp(root);
-    if (s !== lastStamp) { lastStamp = s; reconcile(); }
+    if (external) { const s = C.watchStamp(root); if (s !== lastStamp) { lastStamp = s; reconcile(); } }
     watchLocal().catch(() => {});
   }
-  lastStamp = C.watchStamp(root);
-  reconcile();
+  if (external) { lastStamp = C.watchStamp(root); reconcile(); }
   const tick = setInterval(watch, WATCH_MS); if (tick.unref) tick.unref();
   const beat = setInterval(writeStatus, 20000); if (beat.unref) beat.unref();
 
@@ -283,7 +286,7 @@ function create({ dir, root, send }) {
       for (const t of timers) clearTimeout(t);
       for (const b of backends.values()) { if (b.client) { try { b.client.close(); } catch { /* bỏ qua */ } } }
       backends.clear();
-      try { fs.rmSync(path.join(P.mcpStateDir(root), `${process.pid}.json`), { force: true }); } catch { /* bỏ qua */ }
+      if (external) { try { fs.rmSync(path.join(P.mcpStateDir(root), `${process.pid}.json`), { force: true }); } catch { /* bỏ qua */ } }
     },
   };
 }

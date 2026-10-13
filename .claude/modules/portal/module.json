@@ -4,6 +4,7 @@
   "api": "0.1",
   "uses": ["core", "servicedocs", "diagrams", "context"],
   "does": "cổng HTML ba tab cho người đọc, dựng lại sau mỗi commit, dò gói và publish",
+  "mcpBlock": "portal",
   "tools": [{ "file": "mcp/portal/tools.js", "order": 40 }],
   "commands": ["cli/commands/portal.js"],
   "provides": { "portal": "mcp/portal/portal.js" },

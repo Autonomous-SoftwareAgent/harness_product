@@ -1,8 +1,8 @@
 'use strict';
 // spec: LEDG-S-002
-// LUẬT đủ kiến thức (trước khi phiên ghi tệp hoặc gọi công cụ ghi của bsn-docs): CHẶN khi phiên chưa nạp đủ kiến thức cho việc đó.
+// LUẬT đủ kiến thức (trước khi phiên ghi tệp hoặc gọi công cụ ghi của máy chủ MCP của harness): CHẶN khi phiên chưa nạp đủ kiến thức cho việc đó.
 // "Việc nào cần gì" khai ở MỘT nơi: bảng nối skills-map.json. "Phiên đã nạp gì" lấy từ sổ phiên (do luật ledger ghi).
-//   - Công cụ ghi của bsn-docs: cần skill tổng quát, skill của công cụ đó, và tài liệu bắt buộc của dịch vụ được ghi.
+//   - Công cụ ghi của harness (mọi máy chủ khối): cần skill tổng quát, skill của công cụ đó, và tài liệu bắt buộc của dịch vụ được ghi.
 //   - Sửa tệp trong một dịch vụ: cần skill tổng quát và tài liệu bắt buộc của dịch vụ đó (CLAUDE.md, docs/agent/STATUS.md).
 //   - Tệp khớp một mẫu trong bảng nối (tờ khai báo, workflow): thêm skill của mẫu đó.
 // Công cụ đọc không bị chặn. Chế độ trong bảng nối: "enforce" (chặn), "remind" (chỉ nhắc), "off".
@@ -10,13 +10,14 @@
 // KHÔNG chặn (thà không chặn còn hơn làm phiên kẹt).
 const { deny, note } = require('../../ports/events');
 const K = require('./lib/knowledge');
+const N = require('./lib/mcp-names');
 
-const TOOL_SERVER = 'bsn-docs';
+const TOOL_SERVER = N.LEGACY; // tên cũ; máy chủ theo khối nhận qua N.isOwn
 
 async function run(event, { workspace: ws, store }) {
   const map = K.loadMap(ws);
   if (!map || map.mode === 'off' || !event.session) return null;
-  const req = K.requirementsFor(ws, map, event.action, TOOL_SERVER);
+  const req = K.requirementsFor(ws, map, event.action, (s) => N.isOwn(s, N.prefixOf(ws)));
   if (!req.skills.length && !req.docs.length) return null;
   return store.ledger(async (book) => {
     const agent = event.agent;

@@ -29,14 +29,14 @@ Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và đi�
 Khối: `core` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên, máy chủ MCP, bộ cài), `servicedocs` (tài liệu ba tầng), `diagrams` (sơ đồ), `context` (kho ngữ nghĩa), `portal` (trang HTML cho người đọc), `guard-push` (từ cấm, chặn đẩy). Chỉ bật một số khối: khóa `modules` trong `project.json` (hoặc `"preset": "light"`), rồi `node .claude/modules/core/cli/cli.js setup`.
 
 ## Máy chủ MCP khác, và chuyển việc sang phiên mới
-- Máy chủ `bsn-docs` của harness là một cổng: máy chủ MCP khác khai trong `.claude/project/mcp.json` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy `mcp trust`. Cách làm: skill `mcp-servers`.
+- Harness có một máy chủ MCP cho mỗi khối đang bật (`harness`, `harness-docs`, ...); `harness-mcp` là cổng: máy chủ MCP khác khai trong `.claude/project/mcp.json` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy `mcp trust`. Cách làm: skill `mcp-servers`.
 - Việc đang dở chuyển sang một phiên mới bằng `node .claude/modules/core/cli/session.js transfer`, kèm tờ bàn giao mà phiên mới phải đọc. Cách làm: skill `transfer-session`.
 
 ## Thêm luật của riêng dự án
 Đặt `.claude/project/rules/<id>.js` xuất `{ id, on, api: "0.1", run(event, ports) }` (sự kiện và quyết định: `.claude/modules/core/ports/events.js`), rồi chạy `setup` để khai hook. Mã trong `.claude/modules/` không phải sửa.
 
 ## Gỡ ra
-`install <dự án> --undo` quay lại trạng thái trước lần cài gần nhất. Gỡ hẳn: xóa nhóm hook trỏ vào `.claude/modules/` trong `.claude/settings.json`, mục `bsn-docs` trong `.mcp.json`, rồi xóa `.claude/modules/`, `.claude/project/` và thư mục trạng thái của harness trong `.claude/`.
+`install <dự án> --undo` quay lại trạng thái trước lần cài gần nhất. Gỡ hẳn: xóa nhóm hook trỏ vào `.claude/modules/` trong `.claude/settings.json`, các mục `harness*` trong `.mcp.json`, rồi xóa `.claude/modules/`, `.claude/project/` và thư mục trạng thái của harness trong `.claude/`.
 
 ## Giới hạn
 - Lời chặn và lời nhắc của lõi có tiếng Việt và tiếng Anh (`"lang": "en"` trong `project.json`); skill và tài liệu của gói là tiếng Việt.

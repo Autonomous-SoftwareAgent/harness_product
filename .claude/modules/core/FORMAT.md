@@ -7,7 +7,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 ## Từ ngữ
 - **Đơn vị** (hay dịch vụ): một phần của dự án có mã, tài liệu và nhịp sửa riêng, thường là một repo git riêng. Mọi luật "một phiên một đơn vị", "đọc tài liệu trước khi sửa", "sửa trong phạm vi kế hoạch" tính theo đơn vị.
 - **Gốc dự án**: thư mục chứa `.claude/` và `.mcp.json`. Phiên Claude Code luôn mở ở đây (hook và MCP chỉ nạp ở gốc).
-- **Ghi qua công cụ**: tệp chỉ được ghi bằng công cụ MCP `bsn-docs` (hook chặn ghi tay, `docs check` phát hiện lệch bằng băm).
+- **Ghi qua công cụ**: tệp chỉ được ghi bằng công cụ MCP của harness (hook chặn ghi tay, `docs check` phát hiện lệch bằng băm).
 
 ## Ở gốc dự án
 
@@ -17,7 +17,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `.claude/project/` | Phần của dự án: `project.json`, công tắc, khối mở rộng `extensions/`, luật kiểu cũ `rules/`, bộ sinh trang riêng `generators/`. Nâng cấp không bao giờ đụng | Agent qua skill `onboard`, người dùng | Có |
 | `.claude/project/project.json` | Cấu hình dự án | Agent qua skill `onboard`, sau khi người dùng duyệt | Có |
 | `.claude/skills/`, `.claude/settings.json` | Skill (chỗ Claude Code đọc); khai hook. Bộ cài (`setup`) viết phần của harness, giữ phần của dự án | Bộ cài, dự án | Có |
-| `.mcp.json` | Khai máy chủ MCP `bsn-docs` | Harness tự tạo hay tự thêm mục khi mở phiên | Có |
+| `.mcp.json` | Khai các máy chủ MCP của harness (mỗi khối đang bật một mục, đối số cuối là tên khối) | Harness tự tạo hay tự thêm mục khi mở phiên | Có |
 | `CLAUDE.md` | Luật chung của dự án: quy trình duyệt kế hoạch, một phiên một đơn vị, đọc gì trước khi sửa, việc gì dùng skill nào | Agent (onboard), người dùng duyệt | Có |
 | `docs/handoff/` | Yêu cầu giữa các phiên: một tờ một việc, có dòng `Trạng thái: open` hoặc `done` | Mọi phiên | Khi có việc chéo đơn vị |
 | `docs/system/decisions.md` | Quyết định chung của cả dự án, mỗi mục `## S-nnn: tiêu đề`; chỉ thêm, đổi ý thì ghi mục mới | Agent khi người dùng chốt | Khi có quyết định chung |
@@ -26,6 +26,8 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `.claude/local/extensions/` | Bản đã xác nhận của các khối mở rộng và sổ xác nhận; mỗi máy một bản, không commit | Chỉ người dùng (`extension trust`), ngoài Claude | Không |
 
 ## Trong mỗi đơn vị
+
+Bảng dưới viết đường dẫn theo TÊN LOGIC. Ở bố cục gom (`units.layout: "harness"`, mặc định của dự án mới) mọi thứ trong bảng nằm trong `<đơn vị>/.harness/`: `CLAUDE.md` là `.harness/CLAUDE.md`, `docs/...` là `.harness/docs/...`; thư mục `docs/` và `CLAUDE.md` ở gốc đơn vị khi đó là của repo, harness không đụng. Ở bố cục cũ (`legacy`) đường dẫn đúng như bảng.
 
 | Tệp | Là gì | Ai ghi | Bắt buộc |
 |---|---|---|---|
@@ -68,22 +70,77 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | Trường | Nghĩa |
 |---|---|
 | `preset` | Bộ khuôn có sẵn: `full` (mọi khối, luật repo gốc không đẩy và `docs/` không lên remote bật) hoặc `light` (chỉ lõi và chặn đẩy; mỗi đơn vị chỉ cần `CLAUDE.md`, `STATUS.md`). Khóa nào dự án khai thì thắng bộ khuôn |
-| `lang` | Ngôn ngữ của lời chặn và lời nhắc của hook: `vi` (mặc định) hoặc `en`. Khuôn kế hoạch luôn giữ tên mục tiếng Việt |
+| `lang` | Ngôn ngữ của lời chặn và lời nhắc của hook: `vi` (mặc định) hoặc `en`. Tên mục của khuôn kế hoạch mặc định là tiếng Việt; tên gọi khác khai ở cấu hình cổng duyệt (`plan.labels`) |
 | `modules` | Khối được bật; không khai là mọi khối đang có. `core` luôn bật; khối bật mà khối nó dùng không bật thì bị tắt theo (`doctor` nêu). Đổi xong chạy `cli.js setup` để viết lại hook |
+| `mcp.prefix` | Tiền tố tên các máy chủ MCP của harness (mặc định `harness`): khối lõi mang tên đó, các khối khác `<tiền tố>-<khối>` (`harness-docs`, `harness-diagrams`, `harness-context`, `harness-portal`), cổng tới máy chủ khác là `<tiền tố>-mcp`. Đổi xong chạy `cli.js setup` rồi mở lại phiên |
 | `units.parents` | Thư mục chứa đơn vị: mỗi thư mục con (tên chữ thường, số, gạch ngang) là một đơn vị. Thư mục đầu là nơi đơn vị mới được tạo |
 | `units.dirs` | Đơn vị nằm ở chỗ riêng: `{ tên: thư mục }`, hoặc `{ tên: { "dir": ..., "reads": [tệp ngoài thư mục mà kho ngữ nghĩa đọc thêm] } }` |
-| `defaultUnit` | Đơn vị mặc định của công cụ `bsn-docs` khi không truyền `service`; rỗng là luôn phải truyền |
+| `defaultUnit` | Đơn vị mặc định của công cụ ghi tài liệu khi không truyền `service`; rỗng là luôn phải truyền |
 | `skills.mode` | `enforce` (chặn), `remind` (chỉ nhắc), `off` |
 | `skills.overview` | Skill tổng quát, cần cho mọi việc có yêu cầu |
 | `skills.serviceDocs` | Tài liệu phải đọc (bằng công cụ Read) trước khi sửa một đơn vị, đường dẫn trong đơn vị |
 | `skills.unitDocs` | Thay `serviceDocs` cho riêng một đơn vị |
-| `skills.tools` | Công cụ nào cần skill nào. Khóa là tên công cụ `bsn-docs` (`design_record`) hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__<máy chủ>__<tên>`); dấu `*` khớp mọi chuỗi; giá trị là một skill hoặc danh sách skill. Công cụ ngoài `bsn-docs` phải có trong matcher của nhóm hook `guard-skill.js` ở `.claude/settings.json` (lệnh `doctor` báo khi thiếu) |
+| `skills.tools` | Công cụ nào cần skill nào. Khóa là tên công cụ của harness (`design_record`) hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__<máy chủ>__<tên>`); dấu `*` khớp mọi chuỗi; giá trị là một skill hoặc danh sách skill. Công cụ ngoài harness phải có trong matcher của nhóm hook `guard-skill.js` ở `.claude/settings.json` (lệnh `doctor` báo khi thiếu) |
 | `skills.readonly` | Công cụ chỉ đọc, không bao giờ bị chặn (thắng mẫu `*`) |
 | `skills.files` | Mẫu đường dẫn (biểu thức chính quy, tính từ gốc) cần thêm skill và tài liệu phải đọc. `reads` tính trong đơn vị chứa tệp, hoặc từ gốc nếu tệp không thuộc đơn vị nào. `serviceDocs: false` thì không đòi tài liệu của đơn vị |
 | `policies.rootNeverPush` | Repo gốc không bao giờ được đẩy lên remote |
 | `policies.docsNeverPush` | Nội dung `docs/` ở gốc không bao giờ lên remote, kể cả bản chép trong repo khác |
 | `policies.unitSheets` | Mẫu đường dẫn của "tờ của một đơn vị" nằm trong thư mục đơn vị khác; nhóm bắt đầu tiên là tên đơn vị chủ |
 | `policies.readOnlyDirs` | Thư mục chỉ để đọc (mã bên ngoài để tham khảo): sửa ở đó thì hỏi người dùng |
+| `workspace.root` | Gốc mã, khi mã KHÔNG nằm trong thư mục mở phiên: đường dẫn tuyệt đối, hoặc tương đối tính từ thư mục mở phiên (được đi ra ngoài, ví dụ `../code`). Khai thì `units.parents` và `units.dirs` tính từ đó; thư mục mở phiên vẫn giữ `.claude/`, trạng thái, tài liệu chung và cổng HTML. Không khai: gốc mã là thư mục mở phiên. Khai sai (không phải thư mục, trỏ vào `.claude/`) thì harness ở lại thư mục mở phiên và `doctor` báo LỖI |
+| `units.parents` có `"."` | Chính gốc mã là thư mục chứa đơn vị (các repo nằm ngay dưới nó). Chỉ nhận khi có `workspace.root` |
+| `units.dirs` dạng đầy đủ | Thêm `"base": "home"` (đơn vị nằm ở thư mục mở phiên dù dự án có gốc mã riêng), `"layout"`, `"docs"` (khai riêng cho đơn vị đó, thắng khóa của dự án) |
+| `units.layout` | Phần tại chỗ của đơn vị đặt ở đâu. `harness`: gom trong `<đơn vị>/.harness/` (tệp cửa vào `.harness/CLAUDE.md`, ghi chép `.harness/docs/`); thư mục `docs/` và `CLAUDE.md` ở gốc đơn vị khi đó là của repo. `legacy`: tệp cửa vào và `docs/` ở gốc đơn vị. Không khai: đơn vị đã có `.harness/docs` hay `.harness/<tệp cửa vào>` thì `harness`; đã có `docs/` hay tệp cửa vào ở gốc thì `legacy`; chưa có gì thì `harness` |
+| `units.entry` | Tên tệp cửa vào của đơn vị (mặc định `CLAUDE.md`), cho repo không được có tệp tên đó |
+| `units.docs` | `committed` (mặc định): ghi chép vào git của đơn vị, cổng HTML và kho ngữ nghĩa đọc bản đã commit. `local`: ghi chép KHÔNG vào git của đơn vị (chỉ ở bố cục `harness`); `new-service.js` ghi `/.harness/` vào `.git/info/exclude`; cổng và kho đọc từ đĩa |
+| `upgrade.auto` | Việc harness tự làm ở nền đầu phiên khi kho gói có bản mới. `prepare` (mặc định): lấy bản mới về bản clone rồi DỰNG SẴN (gói mới, phần đã gộp, báo cáo theo từng mục thay đổi) vào thư mục trạng thái, để agent trình người dùng. `check`: chỉ báo có bản mới. `off`: không làm gì. Không có giá trị nào nghĩa là tự cài: cài luôn cần người dùng duyệt |
+| `upgrade.verify` | Các lệnh kiểm dự án tự khai, chạy sau khi cài bản mới: mảng các lệnh, mỗi lệnh là một mảng đối số (`[["npm", "test"]]`), chạy ở gốc dự án, không qua shell. Lệnh nào thoát khác 0 thì bước cài tự quay lại bản cũ. Dùng cho test của phần bạn đã sửa trong mã của gói và của khối riêng |
+
+Trong tài liệu này và trong bảng việc -> skill, đường dẫn kiểu `CLAUDE.md`, `docs/agent/STATUS.md`, `docs/service.yaml` của một đơn vị là TÊN LOGIC: chỗ thật do `units.layout` quyết (`.harness/docs/agent/STATUS.md` ở bố cục `harness`). Mã của harness và khối mở rộng hỏi chỗ thật qua `gate-paths` (`unitPath`, `unitPathRel`), không tự ghép chữ `docs`.
+
+## Cấu hình cổng duyệt: `.claude/project/gate.config.json`
+
+Chỉ người dùng sửa tệp này (hook chặn phiên ghi vào nó).
+
+```json
+{
+  "mode": "enforce",
+  "judge": "model",
+  "approveWords": ["bắt đầu đi", "triển khai"],
+  "plan": { "heading": ["Plan"], "labels": { "Dịch vụ": ["Service"], "Rủi ro": ["Risks"] }, "extra": ["Kiểm thử"] }
+}
+```
+
+| Trường | Nghĩa |
+|---|---|
+| `judge` | Ai phán câu trả lời của người dùng khi nó không phải một câu đồng ý ngắn, rõ. `model` (mặc định): hỏi một model. `strict`: không gọi model nào; mọi tin không phải lời duyệt là việc mới (cổng đang mở thì đóng, kế hoạch đang chờ vẫn chờ thêm vài lượt) |
+| `approveWords` | Câu duyệt của dự án, thêm vào các câu đồng ý ngắn có sẵn ("ok", "duyệt", "làm đi"...). Chỉ khớp khi CẢ tin nhắn đúng bằng một câu đã khai (bỏ dấu câu, không phân biệt hoa thường). Tối đa 20 câu, mỗi câu tối đa 6 từ và 40 ký tự, không có dấu hỏi; câu không hợp lệ bị bỏ qua |
+| `plan.heading` | Tên gọi khác của tiêu đề `## Kế hoạch` |
+| `plan.labels` | Tên gọi khác của sáu mục gốc. Sáu mục vẫn bắt buộc; đây chỉ là cho gọi bằng tên khác |
+| `plan.extra` | Mục bắt buộc THÊM của dự án. Một đơn vị đòi thêm mục cho kế hoạch nêu tên nó bằng khóa `plan.extra` trong `module.json` của khối mở rộng của nó (chỉ có hiệu lực từ bản người dùng đã xác nhận) |
+
+Không khóa nào bớt được một mục gốc, làm một mục thành tùy chọn hay tắt bước duyệt. Khai hỏng thì phần hỏng bị bỏ, khuôn gốc giữ nguyên.
+
+## Bộ khung và phần mở rộng được
+
+Bộ khung, giống nhau ở mọi dự án: quy trình yêu cầu -> kế hoạch -> duyệt -> đăng ký phạm vi -> làm; ba chỗ đặt (`.claude/modules/` mã của gói, `.claude/project/` phần của dự án, `<đơn vị>/.harness/` phần của từng đơn vị); hợp đồng khối và tên hàm công khai (chỉ thêm, không đổi); một cửa cho hook, máy chủ công cụ và dòng lệnh; dấu của từng tệp gói (`FILES.json`).
+
+| Bạn cần | Cách làm | Khi có bản mới |
+|---|---|---|
+| Dự án có hình dạng khác (mã ở đâu, ghi chép ở đâu, tên gọi, mục thêm của kế hoạch) | Khai trong `project.json`, `gate.config.json` | Không phải làm gì |
+| Thêm luật, công cụ, lệnh | Khối mở rộng của dự án hoặc của đơn vị (mục dưới), hoặc một khối riêng trong `.claude/modules/<tên>/` có `module.json` | Được giữ nguyên |
+| Đổi cách một phần của gói hoạt động mà cấu hình không với tới | Sửa tệp của gói. Được phép: `doctor` và `upgrade status` liệt kê tệp đã sửa | Harness dựng sẵn bản gộp ba bên; agent báo từng mục thay đổi, bạn duyệt, agent cài và kiểm (skill `harness-upgrade`). Đừng cài đè bằng `install` |
+
+Năm khối ngoài lõi (`servicedocs`, `diagrams`, `context`, `portal`, `guard-push`) không thuộc bộ khung: bật, tắt bằng `modules`, hoặc sửa theo môi trường của dự án.
+
+## Nâng cấp: tờ thay đổi, mã duyệt, bước chuyển cấu hình
+Người dùng không gõ lệnh nào để nâng cấp. Thứ tự: harness dựng sẵn ở nền (`upgrade.auto`); agent đọc báo cáo và trình người dùng từng mục thay đổi; người dùng duyệt; agent chạy `upgrade apply`; bước cài tự kiểm và tự quay lại khi hỏng.
+
+- **Tờ thay đổi** `.claude/modules/core/releases/<số bản>.json`, mỗi bản một tệp, cho máy đọc. Mỗi mục có `kind` (`added`, `changed`, `removed`, `fixed`), `block`, `title`, `before`, `after`, `files` (tệp hoặc thư mục kết thúc bằng `/`, tính từ thư mục mã), `surface` (khóa cấu hình, lệnh, công cụ, skill, hook đổi), `impact` (dự án đã cài thấy gì), `migrations`, `decisions` (điểm người dùng phải quyết), `verified`, `unverified`. Lệnh đóng gói từ chối khi bản đang đóng chưa có tờ, tờ thiếu trường, một tệp đã đổi không thuộc mục nào, hoặc một mục trỏ tới tệp không đổi.
+- **Báo cáo** `BAO-CAO.md` trong thư mục dựng sẵn ghép các tờ của mọi bản đi qua với dự án: mục nào chạm tệp bạn đã sửa và gộp ra sao, khóa nào dự án đang khai, khối nào dự án không cài, bước chuyển sẽ sửa gì. Bản phát hành trước khi có tờ thay đổi thì báo cáo nói rõ là chỉ có danh sách tệp.
+- **Mã duyệt** `upgrade:<bản>@<8 ký tự>` tính từ toàn bộ nội dung sắp cài (gói mới, phần đã gộp, bản kê, script cài, câu trả lời các điểm cần quyết). Trong phiên Claude, `upgrade apply` chỉ chạy khi kế hoạch người dùng vừa duyệt của chính phiên đó ghi nguyên mã này, gói trong thư mục dựng sẵn còn trùng từng tệp với kho gói, và kho gói là kho dự án đã ghi nhận. Người dùng tự chạy lệnh ở terminal thì không cần mã. Đây là chốt chặn agent làm nhầm; nó không chặn được một tiến trình cố ý chép tệp bằng lệnh khác.
+- **Bước chuyển cấu hình** là dữ liệu trong tờ thay đổi, không phải mã: một tệp JSON của dự án (chỉ `.mcp.json`, `.claude/settings.json`, tệp JSON ngay trong `.claude/project/`) và các thao tác `set` (mặc định không đè thứ đã có), `remove`, `rename`, `replace`. Chạy lại không đổi thêm. Bước có `when` chỉ chạy khi người dùng đã chọn đúng giá trị của một điểm cần quyết.
+- **Sau khi cài**, bước cài kiểm toàn vẹn cổng duyệt, kiểm sức khỏe (lỗi có từ trước khi cài không tính) và chạy `upgrade.verify`. Hỏng bước nào thì trả lại mã, skill, cấu hình như trước khi cài, và in nguyên văn lỗi.
 
 ## Khối mở rộng: luật, công cụ, lệnh riêng của dự án và của từng đơn vị
 Dự án hay một đơn vị thêm luật chặn, công cụ, lệnh của riêng mình mà không sửa mã harness. Cùng một khuôn, khác chỗ đặt:
@@ -100,7 +157,7 @@ Dự án hay một đơn vị thêm luật chặn, công cụ, lệnh của riê
 | Phần | Tệp xuất | Ghi chú |
 |---|---|---|
 | Luật | `{ id, on: [loại sự kiện], matcher?, run(ctx) }` | `run` trả `ctx.block(lý do)`, `ctx.ask(lý do)`, `ctx.note(lời)` hoặc `null`. Không có "cho qua": khối chỉ chặn thêm, không nới được luật của harness hay của khối khác (gộp: chặn mạnh nhất thắng) |
-| Công cụ | `{ name, description, inputSchema?, write?, run(args, ctx) }` | Trên máy chủ `bsn-docs` tên là `<tên khối>_<name>` (gạch ngang thành gạch dưới); không nhận tham số `service` |
+| Công cụ | `{ name, description, inputSchema?, write?, run(args, ctx) }` | Trên máy chủ `harness` (khối lõi) tên là `<tên khối>_<name>` (gạch ngang thành gạch dưới); không nhận tham số `service` |
 | Lệnh | `{ name, description, run(argv, ctx) }` | `cli.js extension run <khóa> <name> [...]` |
 
 `ctx` (hợp đồng bản 1.0, chỉ thêm, không bỏ): `kind`, `scope`, `unit` (`{ name, dir }` hoặc `null`), `session`, `prompt`, `reply`, `action` (`type`, `tool`, `file`, `writes`, `command`, `name`, `args`), `fs` (`read`, `exists`, `list`; công cụ có `write: true` và lệnh có thêm `write`), `git.isCommitted(tệp)`, `unitOf(tệp)`. Mọi đường dẫn tính từ thư mục của khối (thư mục đơn vị, hoặc gốc dự án), kiểu posix; `fs` từ chối đường dẫn ra ngoài. Khối không `require` mã của harness: nâng cấp harness không làm gãy khối. Đây là quy ước của hợp đồng, không phải hộp cát: mã của khối chạy với quyền của người dùng, nên mới cần xác nhận.

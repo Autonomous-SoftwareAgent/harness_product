@@ -1,6 +1,6 @@
 ---
 name: diagrams
-description: Thêm, sửa, giải thích và soát sơ đồ của một dịch vụ bằng dữ liệu qua công cụ bsn-docs; năm loại: luồng, trình tự, trạng thái, dữ liệu, lớp. Dùng khi cần vẽ sơ đồ, khi mã đổi làm sơ đồ sai, khi sơ đồ tự sinh cần giải thích, hoặc docs check báo thiếu loại. Không tự viết Mermaid.
+description: Thêm, sửa, giải thích và soát sơ đồ của một dịch vụ bằng dữ liệu qua công cụ MCP của harness; năm loại: luồng, trình tự, trạng thái, dữ liệu, lớp. Dùng khi cần vẽ sơ đồ, khi mã đổi làm sơ đồ sai, khi sơ đồ tự sinh cần giải thích, hoặc docs check báo thiếu loại. Không tự viết Mermaid.
 ---
 
 # Sơ đồ khai bằng dữ liệu

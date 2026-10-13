@@ -1,4 +1,5 @@
 'use strict';
+// spec: HOOK-S-018
 // spec: HOOK-S-007
 // spec: HOOK-S-009
 // BỘ CHUYỂN dự án: làm cổng "dự án" (ports/workspace.js) bằng cây thư mục và các tệp cấu hình trên đĩa.
@@ -16,7 +17,7 @@ const posix = (p) => String(p).split(path.sep).join('/');
 function loadedOnce(root) {
   const sha = (parts) => { const h = crypto.createHash('sha256'); let any = false; for (const f of parts) { try { h.update(fs.readFileSync(f)); any = true; } catch { h.update('(thiếu)'); } } return any ? h.digest('hex').slice(0, 12) : ''; };
   const out = [];
-  const guide = sha([path.join(root, 'CLAUDE.md')]);
+  const guide = sha([path.join(root, 'CLAUDE.md')]); // gốc dự án
   if (guide) out.push({ id: 'instructions', label: 'CLAUDE.md ở gốc dự án', stamp: guide });
   let surface = '';
   try { surface = P.codePath(root, 'mcp/mcp-server.js'); } catch { /* không có khối nào giữ máy chủ */ }
@@ -45,7 +46,7 @@ const KEEP_LOADED_MS = 14 * 24 * 3600 * 1000;
 function loadedDiff(root, sid, id) {
   if (id !== 'instructions' || !sid) return null;
   let cur;
-  try { cur = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'); } catch { return null; }
+  try { cur = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'); } catch { return null; } // gốc dự án
   const dir = P.loadedDir(root);
   const file = path.join(dir, `${P.safeId(sid)}.md`);
   let old = null;
@@ -62,6 +63,24 @@ function loadedDiff(root, sid, id) {
   return { added: b.filter((l) => l.trim() && !sa.has(l)), removed: a.filter((l) => l.trim() && !sb.has(l)) };
 }
 
+// Đường dẫn kiểu posix của `abs` trong dự án: tính từ thư mục mở phiên; tệp nằm ở gốc mã khai riêng (ngoài thư mục mở phiên) thì tính từ gốc mã.
+function projectRel(root, abs) {
+  const from = (base) => path.relative(base, abs).split(path.sep).join('/');
+  const home = from(root);
+  if (!home.startsWith('..') && !path.isAbsolute(home)) return home;
+  const code = from(P.workspaceRoot(root));
+  return !code.startsWith('..') && !path.isAbsolute(code) ? code : home;
+}
+
+// Đường dẫn thật trong đơn vị -> tên logic (ports/workspace.js, unitLogical).
+function unitLogical(layout, real) {
+  const rel = String(real).split(path.sep).join('/');
+  const logical = P.unitLogicalRel(layout, rel);
+  if (logical) return logical;
+  const clash = rel === P.LOGICAL_ENTRY || rel === P.LOGICAL_DOCS || rel.startsWith(`${P.LOGICAL_DOCS}/`);
+  return clash ? `./${rel}` : rel;
+}
+
 function create(root) {
   return {
     root,
@@ -71,7 +90,8 @@ function create(root) {
     bannedListRel: posix(path.relative(root, P.bannedListPath(root))),
     norm: (p) => P.norm(p),
     caseKey: (s) => (process.platform === 'win32' ? String(s).toLowerCase() : String(s)),
-    inside: (abs) => P.inside(abs, root),
+    inside: (abs) => P.inside(abs, root) || P.inside(abs, P.workspaceRoot(root)),
+    projectRel: (abs) => projectRel(root, abs),
     resolveToken: (token, cwd) => P.resolveToken(token, cwd),
     exists: (abs) => fs.existsSync(abs),
     serviceOf: (abs) => P.serviceOf(root, abs),
@@ -89,12 +109,19 @@ function create(root) {
     entryExists: (name) => fs.existsSync(P.codePath(root, `hooks/${name}`)),
     policy: (name) => P.policy(root, name),
     sheetOwner: (abs) => P.sheetOwner(root, abs),
+    unitRel: (name, logical) => P.unitPathRel(root, name, logical),
+    unitLogical: (name, real) => unitLogical(P.unitLayout(root, name), real),
+    unitLocal: (name) => P.unitLayout(root, name).local,
+    unitSkills: (name) => P.unitSkills(root, name),
     loadedOnce: () => loadedOnce(root),
     externalWrite: (tool) => require('./mcp-servers').writeOwner(root, tool),
+    // Máy chủ MCP của harness (mỗi khối một cái): tiền tố tên và tên mọi máy chủ đang khai (kể cả tên cũ, để phiên đang mở còn được chốt).
+    mcpPrefix: () => P.mcpPrefix(root),
+    mcpServerNames: () => [...P.mcpServers(root).map((s) => s.name), P.MCP_LEGACY],
     loadedDiff: (sid, id) => loadedDiff(root, sid, id),
     transferPending: (sid) => require('./transfers').pending(root, sid),
     transferRead: (abs, sid) => require('./transfers').markRead(root, abs, sid),
   };
 }
 
-module.exports = { create, loadWords, skillExists, allSkills, loadedOnce, loadedDiff };
+module.exports = { create, unitLogical, loadWords, skillExists, allSkills, loadedOnce, loadedDiff };

@@ -83,7 +83,7 @@ const TOOLS = [
       'Gọi sau khi mã đổi cấu trúc bảng (docs check sẽ nhắc). Cần PostgreSQL local của hạ tầng chung đang chạy. Công cụ này KHÔNG nhận lệnh mới: tạo sơ đồ tự sinh lần đầu (hoặc đổi lệnh) làm bằng dòng lệnh ' +
       '`node .claude/modules/core/cli/cli.js --service <tên> diagram-generate <tệp.json>` rồi commit (skill diagrams). Sau khi sinh: viết hoặc viết lại phần giải thích bằng diagram_explain.',
     inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Mã sơ đồ dữ liệu tự sinh đã có' }, title: { type: 'string', description: 'Đổi tiêu đề (tùy chọn)' } }, required: ['id'] },
-    run: (a) => diagrams.generate(a, { allowConfig: false, committedText: committed(core.ROOT, `docs/diagrams/${a && a.id}.yaml`) }),
+    run: (a) => diagrams.generate(a, { allowConfig: false, local: core.LAYOUT.local, committedText: core.LAYOUT.local ? null : committed(core.ROOT, `${core.rel('docs/diagrams')}/${a && a.id}.yaml`) }),
   },
 ];
 

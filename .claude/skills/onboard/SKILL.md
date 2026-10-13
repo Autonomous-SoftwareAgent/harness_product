@@ -46,13 +46,13 @@ Harness không biết gì về dự án cho tới khi `.claude/project/project.j
 | `CLAUDE.md` của đơn vị | Giữ nguyên; thiếu một trong bốn mục bắt buộc thì thêm mục đó | `new-service.js` tạo khung, rồi điền từ mã |
 | `docs/agent/STATUS.md` | Giữ nguyên | `new-service.js` tạo khung; thêm dòng nhật ký đầu tiên |
 | Tài liệu có cấu trúc | Dùng skill `service-docs`, `diagrams` | Chỉ tạo khi người dùng bật; công cụ tự tạo khung ở lần ghi đầu |
-| `.mcp.json` | Harness tự thêm mục `bsn-docs` khi mở phiên | Harness tự tạo khi mở phiên |
+| `.mcp.json` | Harness tự thêm một mục cho mỗi khối đang bật (`harness`, `harness-docs`, ...) khi mở phiên | Harness tự tạo khi mở phiên |
 
 ## Lỗi hay gặp
 - Ghi `project.json` trước khi được duyệt: cổng duyệt chặn, và đó là đúng.
 - Đoán đơn vị theo tên thư mục mà không có bằng chứng (repo riêng, tệp khai dự án riêng).
 - Khai thư mục cha quá rộng (ví dụ gốc dự án): mọi thư mục cấp một, kể cả `docs/`, thành đơn vị. Khai đúng thư mục chứa đơn vị, hoặc khai từng đơn vị trong `units.dirs`.
-- Khai công cụ ngoài `bsn-docs` trong `skills.tools` mà quên thêm tên đó vào matcher của nhóm hook `guard-skill.js` trong `.claude/settings.json`: khai mà không chặn (`doctor` báo).
+- Khai công cụ ngoài harness trong `skills.tools` mà quên thêm tên đó vào matcher của nhóm hook `guard-skill.js` trong `.claude/settings.json`: khai mà không chặn (`doctor` báo).
 - Viết nội dung tài liệu theo trí nhớ thay vì theo mã.
 
 ## Cách kiểm

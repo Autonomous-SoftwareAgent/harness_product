@@ -1,0 +1,200 @@
+{
+  "version": "2.0.0",
+  "date": "2026-10-13",
+  "summary": "Máy chủ MCP của harness tách theo khối: thay vì một máy chủ giữ cả bộ công cụ, mỗi khối đang bật có máy chủ riêng; một cái hỏng không kéo theo cái khác.",
+  "changes": [
+    {
+      "id": "may-chu-theo-khoi",
+      "kind": "changed",
+      "block": "core",
+      "title": "Mỗi khối một máy chủ MCP thay cho một máy chủ giữ cả bộ công cụ",
+      "before": "Một máy chủ tên bsn-docs giữ mọi công cụ của harness (phạm vi của phiên, tài liệu, sơ đồ, kho ngữ nghĩa, cổng HTML) và cả cổng tới các máy chủ MCP khác. Tên đầy đủ của công cụ là mcp__bsn-docs__<công cụ>. Máy chủ đó hỏng hay chậm thì cả bộ công cụ mất theo.",
+      "after": "Mỗi khối đang bật có một máy chủ, cùng chạy một tệp mồi, khác nhau ở đối số cuối của .mcp.json: harness (phạm vi của phiên và chuyển phiên), harness-docs (ba tầng, tài liệu của dịch vụ, sổ vấn đề), harness-diagrams (sơ đồ), harness-context (kho ngữ nghĩa, soát sơ đồ tự sinh), harness-portal (dựng cổng), harness-mcp (cổng tới các máy chủ MCP khác khai ở .claude/project/mcp.json). Mỗi công cụ nằm ở đúng một máy chủ; hợp lại vẫn đúng bộ công cụ cũ. Tên đầy đủ là mcp__<máy chủ>__<công cụ>, ví dụ mcp__harness-docs__design_record. Tắt một khối ở cấu hình dự án thì máy chủ của nó biến mất. Công cụ của máy chủ phía sau cổng có tên mcp__harness-mcp__<máy chủ>_<công cụ>. Chạy tệp mồi không đối số vẫn cho máy chủ cũ một cục, để phiên đang mở không gãy.",
+      "files": [
+        "core/mcp/mcp-surface.js",
+        "core/mcp/mcp-tools.js",
+        "core/mcp/mcp-worker.js",
+        "core/mcp/gateway/hub.js",
+        "core/gate/gate-paths.js",
+        "core/module.json",
+        "servicedocs/module.json",
+        "diagrams/module.json",
+        "context/module.json",
+        "portal/module.json",
+        "guard-push/module.json"
+      ],
+      "surface": {
+        "config": [
+          "mcp.prefix (project.json)",
+          ".mcp.json",
+          ".claude/settings.json: enabledMcpjsonServers, permissions.allow, matcher của hook"
+        ],
+        "tools": [
+          "mọi công cụ của harness đổi tên đầy đủ: mcp__bsn-docs__<công cụ> thành mcp__<máy chủ theo khối>__<công cụ>"
+        ],
+        "hooks": [
+          "guard-skill",
+          "guard-banned",
+          "guard-mcp"
+        ]
+      },
+      "migrations": [
+        "may-chu-mcp-json",
+        "may-chu-settings-json"
+      ],
+      "impact": "Mọi phiên Claude Code đang mở phải gõ /mcp (hoặc mở lại) một lần để thấy tên mới; phiên chưa nối lại vẫn gọi được công cụ qua máy chủ cũ. Mỗi phiên chạy thêm vài tiến trình Node (mỗi máy chủ một tiến trình, tốn thêm bộ nhớ). Kịch bản, tài liệu hay quyền đã ghi tên mcp__bsn-docs__... phải đổi sang tên mới. Khai quyền theo từng công cụ (mcp__bsn-docs__<công cụ>) không tự đổi: bước chuyển chỉ đổi quyền theo cả máy chủ.",
+      "verified": "Chạy thật từng máy chủ qua giao thức: mỗi công cụ ở đúng một máy chủ, hợp lại đúng 24 công cụ; không đối số cho đúng bộ cũ; giết một máy chủ thì máy chủ khác vẫn trả lời; tắt một khối thì máy chủ của nó biến mất; hook chặn theo skill và từ cấm phủ mọi máy chủ.",
+      "unverified": "Chưa chạy trên dự án thật của người dùng khác; chưa đo mức bộ nhớ tăng thêm trên máy yếu; thêm một khối bật sau khi đã mở phiên cần mở lại phiên (chưa kiểm cách Claude Code nối máy chủ mới giữa phiên)."
+    },
+    {
+      "id": "luat-nhan-moi-may-chu",
+      "kind": "changed",
+      "block": "core",
+      "title": "Các luật chặn nhận công cụ của mọi máy chủ của harness",
+      "before": "Luật đủ kiến thức, từ cấm và sổ phiên chỉ nhận công cụ của máy chủ tên bsn-docs.",
+      "after": "Ba luật hỏi một hàm chung (có phải máy chủ của harness không): tên theo khối, tên cũ bsn-docs và tiền tố dự án khai đều được nhận. Máy chủ lạ có công cụ trùng tên thì không bị các luật này. Phép kiểm sức khỏe báo khi settings.json thiếu mẫu hook cho một máy chủ khai trong .mcp.json: khai mà không chặn.",
+      "files": [
+        "core/core/rules/lib/mcp-names.js",
+        "core/core/rules/lib/knowledge.js",
+        "core/core/rules/skill.js",
+        "core/core/rules/ledger.js",
+        "guard-push/core/rules/banned.js",
+        "core/adapters/project/workspace.js",
+        "core/ports/workspace.js"
+      ],
+      "surface": {
+        "hooks": [
+          "guard-skill",
+          "guard-banned",
+          "ledger"
+        ]
+      },
+      "impact": "Không có gì phải làm. Dự án có luật mở rộng tự đọc tên máy chủ từ sự kiện thì nên so theo tiền tố thay vì so với bsn-docs.",
+      "verified": "Test luật với tên cũ, tên theo khối, tiền tố khai riêng và máy chủ lạ.",
+      "unverified": "Luật mở rộng của dự án người cài không được kiểm."
+    },
+    {
+      "id": "bo-cai-may-chu-theo-khoi",
+      "kind": "changed",
+      "block": "core",
+      "title": "Bộ cài, kiểm sức khỏe và lời nhắc đầu phiên làm việc với nhiều máy chủ",
+      "before": "setup sinh một mục bsn-docs trong .mcp.json, một tên trong enabledMcpjsonServers, một quyền mcp__bsn-docs; doctor và lời nhắc đầu phiên kiểm đúng mục đó.",
+      "after": "setup sinh mỗi khối đang bật một mục (đối số cuối là tên khối), tên trong enabledMcpjsonServers, quyền theo máy chủ, và mẫu phủ mọi máy chủ trong matcher của hook (cả tên cũ, để phiên đang mở không mất chốt). Mục bsn-docs của chính harness được đổi tên thành máy chủ lõi (giữ trường bạn đã thêm như env) và gỡ khỏi enabledMcpjsonServers và permissions; mục trùng tên mà là của người dùng thì giữ. doctor báo máy chủ nào thiếu và báo khi còn mục cũ bên cạnh. Lời nhắc đầu phiên nêu tên các máy chủ và tổng số công cụ.",
+      "files": [
+        "core/cli/setup.js",
+        "core/cli/doctor.js",
+        "core/adapters/jobs/brief-facts.js",
+        "core/core/sessions/brief.js"
+      ],
+      "surface": {
+        "commands": [
+          "setup",
+          "doctor"
+        ],
+        "config": [
+          ".mcp.json",
+          ".claude/settings.json"
+        ]
+      },
+      "impact": "Chạy setup (hoặc nâng cấp, tự chạy setup) đổi .mcp.json và settings.json như mô tả; phần người dùng tự thêm được giữ. Khối nào bạn tắt thì không có máy chủ.",
+      "verified": "Test bộ cài trên cây có máy chủ cũ, có máy chủ của người dùng và có mục trùng tên của người dùng; chạy lại không đổi gì; doctor và lời nhắc đầu phiên.",
+      "unverified": "Chưa kiểm cây dự án dùng bố cục cũ trước khối (đã được chuyển ở các bản trước)."
+    },
+    {
+      "id": "buoc-chuyen-may-chu",
+      "kind": "added",
+      "block": "core",
+      "title": "Hai bước chuyển cấu hình đổi tên máy chủ cũ cho dự án đã cài",
+      "after": "Khi nâng cấp từ bản 1.x: .mcp.json đổi tên mục bsn-docs thành harness (giữ nguyên mọi trường người dùng đã thêm như env); .claude/settings.json đổi bsn-docs thành harness trong enabledMcpjsonServers và mcp__bsn-docs thành mcp__harness trong permissions.allow. Rồi bước setup của nâng cấp đặt đối số khối và thêm các máy chủ còn lại.",
+      "files": [
+        "core/FORMAT.md"
+      ],
+      "surface": {
+        "config": [
+          ".mcp.json",
+          ".claude/settings.json"
+        ]
+      },
+      "impact": "Báo cáo nâng cấp liệt kê hai bước này trước khi cài. Dự án đặt mcp.prefix khác mặc định thì bước chuyển đổi sang tên mặc định, và bộ cài thêm các máy chủ theo tiền tố đã khai; mục harness thừa nên xóa tay.",
+      "verified": "Test bước chuyển trên dữ liệu thật của bản 1.x; chạy lại không đổi thêm; nội dung gốc không bị sửa.",
+      "unverified": "Đây là lần đầu bước chuyển cấu hình được dùng trong một bản phát hành thật."
+    },
+    {
+      "id": "loi-va-skill-theo-ten-moi",
+      "kind": "changed",
+      "block": "core",
+      "title": "Skill, khuôn khai báo và lời in nói về các máy chủ theo khối",
+      "before": "Skill, FORMAT.md, lời của lệnh tạo đơn vị mới và tệp hướng dẫn xuất kèm gói gọi bộ công cụ là \"máy chủ bsn-docs\".",
+      "after": "Cùng các tệp đó nói công cụ MCP của harness và nêu tên máy chủ theo khối khi cần (ví dụ tên đầy đủ của công cụ ở máy chủ cổng là mcp__harness-mcp__<máy chủ>_<công cụ>). FORMAT.md có thêm khóa mcp.prefix.",
+      "files": [
+        "core/FORMAT.md",
+        "core/cli/new-service.js",
+        "core/cli/public-export.js",
+        "core/skills/mcp-servers.md",
+        "core/skills/onboard.md",
+        "core/skills/services.md",
+        "core/skills/skill-map.md",
+        "diagrams/skills/diagrams.md",
+        "servicedocs/skills/service-docs.md"
+      ],
+      "surface": {
+        "skills": [
+          "mcp-servers",
+          "onboard",
+          "services",
+          "skill-map",
+          "diagrams",
+          "service-docs"
+        ],
+        "config": [
+          "mcp.prefix"
+        ]
+      },
+      "impact": "Chỉ là lời hướng dẫn; không đổi hành vi. Skill của bạn sao từ các bản này; nếu bạn đã sửa skill, báo cáo nâng cấp nêu chỗ gộp.",
+      "verified": "Test tài liệu: tên công cụ trong hướng dẫn khớp bộ công cụ, không viết cứng số công cụ, skill nhắc tới đều có thật.",
+      "unverified": "Chưa đọc lại từng skill bằng một phiên Claude thật sau khi đổi lời."
+    }
+  ],
+  "migrations": [
+    {
+      "id": "may-chu-mcp-json",
+      "file": ".mcp.json",
+      "ops": [
+        {
+          "op": "rename",
+          "path": [
+            "mcpServers",
+            "bsn-docs"
+          ],
+          "to": "harness"
+        }
+      ]
+    },
+    {
+      "id": "may-chu-settings-json",
+      "file": ".claude/settings.json",
+      "ops": [
+        {
+          "op": "replace",
+          "path": [
+            "enabledMcpjsonServers"
+          ],
+          "from": "bsn-docs",
+          "to": "harness"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "permissions",
+            "allow"
+          ],
+          "from": "mcp__bsn-docs",
+          "to": "mcp__harness"
+        }
+      ]
+    }
+  ],
+  "housekeeping": [
+    "core/RELEASES.md"
+  ]
+}

@@ -7,6 +7,7 @@
 // spec: HOOK-S-004
 // spec: GATE-S-004
 // spec: HOOK-S-009
+// spec: HOOK-S-018
 // Nơi DUY NHẤT sinh đường dẫn của harness (trạng thái theo phiên, nhật ký, cấu hình) và quy định tệp nào được bảo vệ.
 // Hook, gate và các hook theo dõi docs đều lấy đường dẫn từ đây; test quét tĩnh sẽ đỏ nếu thấy ".claude/.state" viết cứng nơi khác.
 const fs = require('node:fs');
@@ -116,6 +117,24 @@ const listDirs = (dir) => { try { return fs.readdirSync(dir, { withFileTypes: tr
 const codeRel = (root, logical) => path.relative(root, codePath(root, logical)).split(path.sep).join('/');
 // Bộ sinh trang riêng của một đơn vị (phần của dự án): bố cục cũ .claude/modules/portal/mcp/portal/generators/<tên>, bố cục khối .claude/project/generators/<tên>.
 const generatorsDir = (root) => (isModular(root) ? path.join(root, ...PROJECT_HOME, 'generators') : path.join(root, ...LEGACY_HOME, 'mcp', 'portal', 'generators'));
+// Bộ sinh trang riêng của MỘT đơn vị, tệp `file`: bản ĐÃ XÁC NHẬN của khối mở rộng của đơn vị (<đơn vị>/.harness/generators/, người dùng xác
+// nhận thì được chép vào chỗ chỉ người dùng ghi) đứng trước; không có thì phần của dự án (generatorsDir). Mã trong repo của đơn vị chưa
+// xác nhận không bao giờ được chạy.
+function unitGenerator(root, unit, file) {
+  const own = path.join(trustDir(root), `unit-${unit}`, 'generators', file);
+  return fs.existsSync(own) ? own : path.join(generatorsDir(root), unit, file);
+}
+// Thư mục bộ sinh đã xác nhận của mọi đơn vị (để tính dấu của bộ dựng cổng).
+function trustedGeneratorDirs(root) {
+  let names = [];
+  try { names = fs.readdirSync(trustDir(root), { withFileTypes: true }).filter((d) => d.isDirectory() && d.name.startsWith('unit-')).map((d) => d.name).sort(); } catch { /* chưa có khối nào được xác nhận */ }
+  return names.map((n) => path.join(trustDir(root), n, 'generators')).filter((d) => fs.existsSync(d));
+}
+// Skill riêng của một đơn vị: <đơn vị>/.harness/skills/<tên>/SKILL.md. Trả tên các skill, đã sắp xếp.
+function unitSkills(root, name) {
+  const dir = path.join(serviceDir(root, name), UNIT_EXT_DIR, 'skills');
+  try { return fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, 'SKILL.md'))).map((d) => d.name).sort(); } catch { return []; }
+}
 // Công tắc của kho ngữ nghĩa (phần của dự án): bố cục cũ .claude/project/context.config.json, bố cục khối .claude/project/context.config.json.
 const contextConfigPath = (root) => (isModular(root) ? path.join(root, ...PROJECT_HOME, 'context.config.json') : path.join(root, ...LEGACY_HOME, 'mcp', 'context.config.json'));
 // Thư mục chứa phần của dự án: cấu hình (project.json và các tệp nó trỏ), cấu hình cổng duyệt và phạm vi, phần mở rộng.
@@ -169,6 +188,28 @@ function provided(root, name) {
   for (const m of enabledModules(root).enabled) if (m.provides && typeof m.provides[name] === 'string') return codePath(root, m.provides[name]);
   return '';
 }
+// MÁY CHỦ MCP của harness, mỗi khối một cái: khối `core` (phạm vi, chuyển phiên) mang tên <tiền tố>, khối `mcp` (cổng tới máy chủ MCP
+// khác) mang <tiền tố>-mcp, mỗi khối khác khai `mcpBlock` trong tệp tự khai (docs, diagrams, ...) mang <tiền tố>-<khối>. Tắt một khối thì
+// máy chủ của nó biến mất khỏi danh sách. Mọi máy chủ chạy cùng MỘT tệp mồi, khác nhau ở đối số cuối của .mcp.json (tên khối).
+// Tên cũ "bsn-docs" (một máy chủ giữ cả bộ công cụ) vẫn chạy khi không có đối số; luật vẫn nhận tên đó để phiên đang mở không mất chốt.
+const MCP_LEGACY = 'bsn-docs';
+const mcpPrefix = (root) => projectConfig(root).mcp.prefix;
+const mcpServerName = (prefix, block) => (block === 'core' ? prefix : `${prefix}-${block}`);
+function mcpServers(root) {
+  const prefix = mcpPrefix(root);
+  const out = [];
+  for (const m of enabledModules(root).enabled) {
+    if (m.name === 'core' && m.mcpServer && typeof m.mcpServer.file === 'string') {
+      for (const block of (Array.isArray(m.mcpServer.blocks) && m.mcpServer.blocks.length ? m.mcpServer.blocks : ['core'])) out.push({ name: mcpServerName(prefix, block), block, module: 'core', file: m.mcpServer.file });
+    } else if (typeof m.mcpBlock === 'string' && /^[a-z][a-z0-9]*$/.test(m.mcpBlock)) {
+      const core = enabledModules(root).enabled.find((x) => x.name === 'core');
+      if (core && core.mcpServer) out.push({ name: mcpServerName(prefix, m.mcpBlock), block: m.mcpBlock, module: m.name, file: core.mcpServer.file });
+    }
+  }
+  return out;
+}
+// Mẫu tên công cụ (cho matcher của hook) phủ MỌI công cụ của mọi máy chủ harness, kể cả tên cũ.
+const mcpMatcher = (root) => [...mcpServers(root).map((s) => s.name), MCP_LEGACY].map((n) => `mcp__${n}__.*`).join('|');
 const moduleEnabled = (root, name) => { const ms = moduleManifests(root); return !ms.length || enabledModules(root).enabled.some((m) => m.name === name); };
 // KHỐI MỞ RỘNG: phần riêng của dự án và của từng đơn vị (luật, công cụ, lệnh), cùng một khuôn module.json.
 //   cả dự án   <thư mục dự án>/extensions/<tên>/module.json
@@ -194,6 +235,11 @@ const projectConfigPath = (root) => path.join(projectDir(root), 'project.json');
 // Giá trị của chế độ tương thích: cây chưa có project.json chạy như trước khi có cấu hình dự án.
 const LEGACY = { name: '', defaultUnit: '', units: { parents: [SERVICES_DIR], dirs: 'units.json' }, skills: 'skills-map.json', policies: { rootNeverPush: true, docsNeverPush: true, unitSheets: ['^infra/services/([a-z][a-z0-9-]*)\\.json$'], readOnlyDirs: ['external'] } }; // harness-export: bố cục cũ
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return undefined; } };
+const MCP_PREFIX = 'harness';
+const MCP_PREFIX_RE = /^[a-z][a-z0-9]{0,30}(-[a-z0-9]{1,20}){0,2}$/;
+const UNIT_LAYOUTS = ['harness', 'legacy'];
+const UNIT_ENTRY = 'CLAUDE.md';
+const ENTRY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}\.md$/;
 // Trả { exists, broken, units: { parents, dirsRaw }, skillsRaw, skillsFile, policies }. Đọc lại mỗi lần (hook là tiến trình ngắn).
 function projectConfig(root) {
   const file = projectConfigPath(root);
@@ -208,9 +254,13 @@ function projectConfig(root) {
   const cfg = preset && typeof preset === 'object' ? { ...preset, ...own, policies: { ...(preset.policies || {}), ...(own.policies || {}) } } : own;
   const part = (v) => (typeof v === 'string' ? { file: path.join(pluginDir(root), path.basename(v)), value: readJson(path.join(pluginDir(root), path.basename(v))) } : { file: '', value: v });
   const u = cfg.units && typeof cfg.units === 'object' ? cfg.units : {};
-  const parents = (Array.isArray(u.parents) ? u.parents : []).map((p) => cleanRel(p)).filter((p) => p && !p.startsWith('.claude'));
+  const ws = cfg.workspace && typeof cfg.workspace === 'object' && !Array.isArray(cfg.workspace) ? cfg.workspace : {};
+  // "." = chính gốc mã là thư mục chứa đơn vị (các repo nằm ngay dưới nó). Chỉ nhận khi dự án khai gốc mã riêng: ở "nhà" thì "." sẽ biến
+  // mọi thư mục cấp một (docs, tài liệu chung) thành đơn vị.
+  const parents = (Array.isArray(u.parents) ? u.parents : []).map((p) => (p === '.' && typeof ws.root === 'string' && ws.root.trim() ? '.' : cleanRel(p))).filter((p) => p && !p.startsWith('.claude'));
   const sk = part(cfg.skills);
   const pol = cfg.policies && typeof cfg.policies === 'object' ? cfg.policies : {};
+  const up = cfg.upgrade && typeof cfg.upgrade === 'object' && !Array.isArray(cfg.upgrade) ? cfg.upgrade : {};
   return {
     exists, broken,
     preset: presetName, presetMissing: Boolean(presetName) && !(preset && typeof preset === 'object'),
@@ -222,7 +272,24 @@ function projectConfig(root) {
     name: typeof cfg.name === 'string' && cfg.name.trim() ? cfg.name.trim() : (exists ? path.basename(path.resolve(root)) : 'dự án'),
     // Đơn vị mặc định của công cụ bsn-docs khi lời gọi không truyền `service`. '' = luôn phải truyền.
     defaultUnit: typeof cfg.defaultUnit === 'string' && UNIT_NAME_RE.test(cfg.defaultUnit) ? cfg.defaultUnit : '',
-    units: { parents: [...new Set(parents)], dirsRaw: part(u.dirs).value },
+    units: {
+      parents: [...new Set(parents)], dirsRaw: part(u.dirs).value,
+      // Phần tại chỗ của đơn vị: bố cục ('harness' = gom trong <đơn vị>/.harness/, 'legacy' = docs/ và tệp cửa vào ở gốc đơn vị,
+      // '' = tự nhận theo thứ đang có), tên tệp cửa vào, và ghi chép có vào git của đơn vị không ('local' = không).
+      layout: UNIT_LAYOUTS.includes(u.layout) ? u.layout : '',
+      entry: typeof u.entry === 'string' && ENTRY_NAME_RE.test(u.entry) ? u.entry : UNIT_ENTRY,
+      docs: u.docs === 'local' ? 'local' : 'committed',
+    },
+    // Nơi chứa mã khi nó KHÔNG nằm trong thư mục mở phiên: đường dẫn tuyệt đối, hoặc tương đối tính từ thư mục mở phiên (được đi ra ngoài).
+    workspaceRaw: typeof ws.root === 'string' ? ws.root.trim() : '',
+    // Nâng cấp: việc harness tự làm ở nền đầu phiên khi có bản mới ('prepare' = kiểm rồi dựng sẵn, 'check' = chỉ kiểm, 'off' = không làm),
+    // và các lệnh kiểm dự án tự khai, chạy sau khi cài (mỗi lệnh là một mảng đối số, không qua shell; lệnh nào hỏng thì quay lại bản cũ).
+    upgrade: {
+      auto: ['prepare', 'check', 'off'].includes(up.auto) ? up.auto : 'prepare',
+      verify: (Array.isArray(up.verify) ? up.verify : []).filter((c) => Array.isArray(c) && c.length > 0 && c.every((x) => typeof x === 'string' && x.length > 0)),
+    },
+    // Máy chủ MCP của harness: mỗi khối một máy chủ tên <tiền tố>[-<khối>]; tiền tố mặc định "harness".
+    mcp: { prefix: typeof (cfg.mcp && cfg.mcp.prefix) === 'string' && MCP_PREFIX_RE.test(cfg.mcp.prefix) ? cfg.mcp.prefix : MCP_PREFIX },
     skillsRaw: sk.value && typeof sk.value === 'object' ? sk.value : null,
     skillsFile: sk.file || file,
     policies: {
@@ -237,7 +304,10 @@ const policy = (root, name) => projectConfig(root).policies[name];
 // Tệp `abs` là "tờ của một đơn vị" nằm trong thư mục của đơn vị khác (luật unitSheets: tờ đó là của
 // chính đơn vị được nêu tên): trả tên đơn vị chủ (nhóm bắt đầu tiên của mẫu), hoặc ''. Mẫu hỏng thì bỏ qua.
 function sheetOwner(root, abs) {
-  const rel = path.relative(root, path.resolve(abs)).split(path.sep).join('/');
+  // Tờ nằm ở thư mục mở phiên, hoặc ở gốc mã khi dự án khai gốc mã riêng: mẫu tính trên đường dẫn từ nơi chứa nó.
+  const from = (base) => path.relative(base, path.resolve(abs)).split(path.sep).join('/');
+  let rel = from(root);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) rel = from(workspaceRoot(root));
   if (rel.startsWith('..') || path.isAbsolute(rel)) return '';
   for (const s of projectConfig(root).policies.unitSheets) {
     let m = null;
@@ -246,9 +316,24 @@ function sheetOwner(root, abs) {
   }
   return '';
 }
-// Thư mục chứa đơn vị (tính từ gốc). Thư mục đầu là nơi đơn vị mới được tạo.
-const unitParents = (root) => projectConfig(root).units.parents;
-const servicesDir = (root) => { const p = unitParents(root); return p.length ? path.join(root, ...p[0].split('/')) : root; };
+// GỐC MÃ: thư mục mà đường dẫn của đơn vị (units.parents, units.dirs) tính từ đó. Không khai workspace.root thì là thư mục mở phiên
+// ("nhà"), như trước. Khai thì mã được nằm ở chỗ khác hẳn; "nhà" vẫn giữ .claude/, trạng thái, tài liệu chung và cổng HTML.
+// Trả { dir, declared, problem }: khai sai (trỏ vào .claude/, không phải thư mục) thì dùng "nhà" và nêu `problem` cho phép kiểm sức khỏe.
+function workspace(root) {
+  const home = path.resolve(root);
+  const raw = projectConfig(root).workspaceRaw;
+  if (!raw) return { dir: home, declared: false, problem: '' };
+  const dir = path.resolve(home, raw);
+  if (inside(dir, path.join(home, '.claude'))) return { dir: home, declared: true, problem: `workspace.root "${raw}" trỏ vào .claude/ (không được)` };
+  let ok = false;
+  try { ok = fs.statSync(dir).isDirectory(); } catch { /* chưa có */ }
+  if (!ok) return { dir: home, declared: true, problem: `workspace.root "${raw}" không phải một thư mục đang có` };
+  return { dir, declared: norm(dir) !== norm(home), problem: '' };
+}
+const workspaceRoot = (root) => workspace(root).dir;
+// Thư mục chứa đơn vị (tính từ gốc mã). Thư mục đầu là nơi đơn vị mới được tạo.
+const unitParents = (root) => { const p = projectConfig(root).units.parents; return p.includes('.') && !workspace(root).declared ? p.filter((x) => x !== '.') : p; };
+const servicesDir = (root) => { const p = unitParents(root); const w = workspaceRoot(root); return p.length ? path.join(w, ...p[0].split('/')) : w; };
 // Đơn vị có tài liệu nằm NGOÀI thư mục chứa đơn vị: một repo git riêng ở chỗ khác trong dự án nhưng được harness đối xử như một dịch vụ
 // (tài liệu qua bsn-docs, sơ đồ, kho ngữ nghĩa, trang trên cổng, hook giữ phạm vi). Khai ở .claude/project/units.json: { "<tên>": "<thư mục tính từ gốc dự án>" }.
 // Ví dụ { "deploy": "deploy" }. Tên theo luật tên dịch vụ; thư mục là đường dẫn tương đối không chứa "..". Tệp thiếu hay hỏng = không có đơn vị ngoài.
@@ -277,60 +362,143 @@ function parseUnits(root) {
     // Tệp đọc thêm: trong dự án, không thoát ra ngoài, không phải trạng thái của harness, và không nằm trong chính thư mục của đơn vị (thứ đó đã được đọc).
     const reads = (full && Array.isArray(value.reads) ? value.reads : []).map(cleanRel)
       .filter((r) => r && !r.startsWith('.claude/.state/') && !r.startsWith('.claude/local/') && r !== clean && !r.startsWith(`${clean}/`));
-    out[name] = { dir: clean, reads: [...new Set(reads)].slice(0, MAX_UNIT_READS) };
+    // Thư mục của đơn vị tính từ GỐC MÃ; riêng đơn vị nằm dưới .claude/ (mã của chính harness), hoặc khai "base": "home", tính từ "nhà".
+    const atHome = clean.split('/')[0] === '.claude' || (full && value.base === 'home');
+    out[name] = {
+      dir: clean, base: atHome ? 'home' : 'workspace', reads: [...new Set(reads)].slice(0, MAX_UNIT_READS),
+      layout: full && UNIT_LAYOUTS.includes(value.layout) ? value.layout : '',
+      docs: full && (value.docs === 'local' || value.docs === 'committed') ? value.docs : '',
+    };
   }
   return out;
 }
+// Thư mục thật của các đơn vị khai riêng: { tên: đường dẫn tuyệt đối }.
+function unitDirs(root) {
+  const w = workspaceRoot(root);
+  return Object.fromEntries(Object.entries(parseUnits(root)).map(([name, u]) => [name, path.join(u.base === 'home' ? path.resolve(root) : w, ...u.dir.split('/'))]));
+}
+// Đường dẫn kiểu posix của `abs` tính từ "nhà" (dùng trong lời nhắc và để ghép lại với gốc). Gốc mã nằm ngoài "nhà" thì bắt đầu bằng "../";
+// khác ổ đĩa (Windows) thì là đường dẫn tuyệt đối.
+const relFromHome = (root, abs) => path.relative(path.resolve(root), abs).split(path.sep).join('/');
+// { tên: đường dẫn tính từ "nhà" } của các đơn vị khai riêng. Gốc mã trùng "nhà" thì đúng bằng giá trị đã khai.
 function extraUnits(root) {
-  return Object.fromEntries(Object.entries(parseUnits(root)).map(([name, u]) => [name, u.dir]));
+  return Object.fromEntries(Object.entries(unitDirs(root)).map(([name, dir]) => [name, relFromHome(root, dir)]));
 }
 // Các tệp ngoài thư mục mà đơn vị `name` khai để kho ngữ nghĩa đọc thêm (đường dẫn kiểu posix tính từ gốc dự án). Không khai thì [].
 const unitReads = (root, name) => (parseUnits(root)[name] || { reads: [] }).reads;
 // Thư mục của đơn vị `name`: đơn vị khai riêng; hoặc thư mục con của một thư mục cha đang có thật; chưa có thì ở thư mục cha đầu tiên.
 function serviceDir(root, name) {
-  const extra = extraUnits(root)[name];
-  if (extra) return path.join(root, ...extra.split('/'));
-  const parents = unitParents(root);
-  for (const p of parents) { const d = path.join(root, ...p.split('/'), name); if (fs.existsSync(d)) return d; }
+  const extra = unitDirs(root)[name];
+  if (extra) return extra;
+  const w = workspaceRoot(root);
+  for (const p of orderedParents(root)) { const d = path.join(w, ...p.split('/'), name); if (fs.existsSync(d)) return d; }
   return path.join(servicesDir(root), name);
 }
-// Dịch vụ có kho git để harness đọc bản đã commit: thư mục có .git riêng, hoặc một đơn vị ngoài nằm TRONG repo gốc
-// (không có .git riêng, dùng kho của repo gốc; ví dụ chính harness ở .claude/modules).
+// Dịch vụ có kho git để harness đọc bản đã commit: thư mục có .git riêng, hoặc một đơn vị khai riêng nằm TRONG repo chứa nó
+// (không có .git riêng: đơn vị ở "nhà" dùng kho của repo gốc, ví dụ chính harness ở .claude/modules; đơn vị ở gốc mã dùng kho của gốc mã).
 function serviceHasRepo(root, name) {
   if (!name) return false;
   const dir = serviceDir(root, name);
   if (fs.existsSync(path.join(dir, '.git'))) return true;
-  return Boolean(extraUnits(root)[name]) && fs.existsSync(dir) && fs.existsSync(path.join(root, '.git'));
+  const u = parseUnits(root)[name];
+  return Boolean(u) && fs.existsSync(dir) && fs.existsSync(path.join(u.base === 'home' ? path.resolve(root) : workspaceRoot(root), '.git'));
 }
-// Đường dẫn của một dịch vụ tính từ gốc dự án, kiểu posix: "<thư mục cha>/<tên>" hoặc thư mục của đơn vị khai riêng.
-const serviceRel = (root, name) => extraUnits(root)[name] || path.relative(root, serviceDir(root, name)).split(path.sep).join('/');
+// Đường dẫn của một dịch vụ tính từ "nhà", kiểu posix: "<thư mục cha>/<tên>" hoặc thư mục của đơn vị khai riêng ("../..." khi gốc mã nằm ngoài).
+const serviceRel = (root, name) => relFromHome(root, serviceDir(root, name));
 // Tên dịch vụ chứa đường dẫn tuyệt đối `abs` (thư mục con trực tiếp của một thư mục cha khai trong cấu hình, hoặc một đơn vị khai riêng),
 // hoặc '' nếu không thuộc dịch vụ nào.
 function serviceOf(root, abs) {
   const target = path.resolve(abs);
-  for (const [name, rel] of Object.entries(extraUnits(root))) {
-    const r = path.relative(path.join(root, ...rel.split('/')), target);
+  for (const [name, dir] of Object.entries(unitDirs(root))) {
+    const r = path.relative(dir, target);
     if (r === '' || (!r.startsWith('..') && !path.isAbsolute(r))) return name;
   }
-  for (const p of unitParents(root)) {
-    const parts = path.relative(path.join(root, ...p.split('/')), target).split(path.sep);
-    if (parts[0] && parts[0] !== '..' && !path.isAbsolute(parts[0])) return parts[0];
+  const w = workspaceRoot(root);
+  const hold = containerNames(root);
+  for (const p of orderedParents(root)) {
+    const parts = path.relative(path.join(w, ...p.split('/')), target).split(path.sep);
+    if (parts[0] && parts[0] !== '..' && !path.isAbsolute(parts[0]) && !(p === '.' && hold.has(parts[0]))) return parts[0];
   }
   return '';
+}
+// Thư mục cha "." (chính gốc mã) xét SAU các thư mục cha khác, và không coi là đơn vị những thư mục cấp một chỉ để CHỨA đơn vị
+// (đoạn đầu của một thư mục cha khác, hay của một đơn vị khai riêng nằm sâu hơn một cấp): không thì "nhom/gamma" bị tính cho đơn vị "nhom".
+const orderedParents = (root) => { const p = unitParents(root); return [...p.filter((x) => x !== '.'), ...p.filter((x) => x === '.')]; };
+function containerNames(root) {
+  const out = new Set();
+  for (const p of unitParents(root)) if (p !== '.') out.add(p.split('/')[0]);
+  for (const u of Object.values(parseUnits(root))) if (u.base === 'workspace' && u.dir.includes('/')) out.add(u.dir.split('/')[0]);
+  return out;
 }
 // Mọi thư mục có thể là dịch vụ: thư mục con có tên hợp lệ của các thư mục cha, cộng các đơn vị khai riêng có thư mục thật. [{ name, dir }], sắp theo tên.
 function serviceEntries(root) {
   const out = new Map();
-  for (const p of unitParents(root)) {
-    const parent = path.join(root, ...p.split('/'));
-    try { for (const d of fs.readdirSync(parent, { withFileTypes: true })) if (d.isDirectory() && UNIT_NAME_RE.test(d.name) && !out.has(d.name)) out.set(d.name, path.join(parent, d.name)); } catch { /* chưa có thư mục cha */ }
+  const w = workspaceRoot(root);
+  const hold = containerNames(root);
+  for (const p of orderedParents(root)) {
+    const parent = path.join(w, ...p.split('/'));
+    try { for (const d of fs.readdirSync(parent, { withFileTypes: true })) if (d.isDirectory() && UNIT_NAME_RE.test(d.name) && !out.has(d.name) && !(p === '.' && hold.has(d.name))) out.set(d.name, path.join(parent, d.name)); } catch { /* chưa có thư mục cha */ }
   }
-  for (const [name, rel] of Object.entries(extraUnits(root))) {
-    const dir = path.join(root, ...rel.split('/'));
+  for (const [name, dir] of Object.entries(unitDirs(root))) {
     try { if (fs.statSync(dir).isDirectory()) out.set(name, dir); } catch { /* khai mà chưa có thư mục */ }
   }
   return [...out.entries()].map(([name, dir]) => ({ name, dir })).sort((a, b) => a.name.localeCompare(b.name));
 }
+
+// PHẦN TẠI CHỖ CỦA ĐƠN VỊ: thứ harness đặt trong thư mục của một đơn vị (tệp cửa vào, ghi chép, phần mở rộng). Mọi mã cần đường dẫn
+// của các thứ đó hỏi ở đây bằng TÊN LOGIC ("CLAUDE.md", "docs/agent/STATUS.md", "docs/service.yaml"...), không tự ghép chữ "docs".
+//   bố cục 'harness': gom trong <đơn vị>/.harness/  (.harness/<tệp cửa vào>, .harness/docs/...)
+//   bố cục 'legacy':  <đơn vị>/<tệp cửa vào>, <đơn vị>/docs/...
+// Chọn bố cục: đơn vị khai `layout` -> dự án khai `units.layout` -> tự nhận (đã có .harness/docs hay .harness/<tệp cửa vào> thì 'harness';
+// đã có docs/ hay tệp cửa vào ở gốc đơn vị thì 'legacy'; chưa có gì thì 'harness' ở dự án có project.json, 'legacy' ở cây cũ).
+// `local`: ghi chép không vào git của đơn vị (chỉ ở bố cục 'harness'); khi đó cổng HTML và kho ngữ nghĩa đọc từ đĩa thay vì bản đã commit.
+const LOGICAL_ENTRY = 'CLAUDE.md';
+const LOGICAL_DOCS = 'docs';
+function unitLayoutAt(root, dir, over = {}) {
+  const cfg = projectConfig(root);
+  const entry = cfg.units.entry;
+  const has = (...p) => fs.existsSync(path.join(dir, ...p));
+  let layout = over.layout || cfg.units.layout;
+  if (!layout) {
+    if (has(UNIT_EXT_DIR, LOGICAL_DOCS) || has(UNIT_EXT_DIR, entry)) layout = 'harness';
+    // Dự án đã cài từ trước không khai gì: đơn vị đã có docs/ hay tệp cửa vào ở gốc thì GIỮ bố cục cũ (thà giữ nguyên còn hơn lặng lẽ
+    // đổi chỗ và làm các luật theo đường dẫn thôi chặn). Dự án mới khai rõ "layout": "harness" trong khuôn project.json.
+    else if (has(entry) || has(LOGICAL_DOCS)) layout = 'legacy';
+    else layout = cfg.exists ? 'harness' : 'legacy';
+  }
+  const harness = layout === 'harness';
+  return {
+    layout,
+    local: harness && (over.docs || cfg.units.docs) === 'local',
+    entryRel: harness ? `${UNIT_EXT_DIR}/${entry}` : entry,
+    docsRel: harness ? `${UNIT_EXT_DIR}/${LOGICAL_DOCS}` : LOGICAL_DOCS,
+    localRel: UNIT_EXT_DIR,
+  };
+}
+const unitLayout = (root, name) => unitLayoutAt(root, serviceDir(root, name), parseUnits(root)[name] || {});
+// Bố cục của thư mục đơn vị `dir` (tuyệt đối): là thư mục của một đơn vị đã biết thì theo khai báo của đơn vị đó.
+function unitLayoutOfDir(root, dir) {
+  const name = serviceOf(root, dir);
+  return name && norm(serviceDir(root, name)) === norm(dir) ? unitLayout(root, name) : unitLayoutAt(root, dir);
+}
+// Tên logic -> đường dẫn thật tính từ thư mục đơn vị (kiểu posix). Tên không thuộc phần tại chỗ thì giữ nguyên.
+function unitRealRel(layout, logical) {
+  const rel = String(logical).replace(/\\/g, '/');
+  if (rel === LOGICAL_ENTRY) return layout.entryRel;
+  if (rel === LOGICAL_DOCS) return layout.docsRel;
+  if (rel.startsWith(`${LOGICAL_DOCS}/`)) return `${layout.docsRel}${rel.slice(LOGICAL_DOCS.length)}`;
+  return rel;
+}
+// Chiều ngược: đường dẫn thật tính từ thư mục đơn vị -> tên logic; không thuộc phần tại chỗ thì ''.
+function unitLogicalRel(layout, real) {
+  const rel = String(real).replace(/\\/g, '/');
+  if (rel === layout.entryRel) return LOGICAL_ENTRY;
+  if (rel === layout.docsRel) return LOGICAL_DOCS;
+  if (rel.startsWith(`${layout.docsRel}/`)) return `${LOGICAL_DOCS}${rel.slice(layout.docsRel.length)}`;
+  return '';
+}
+const unitPathRel = (root, name, logical) => unitRealRel(unitLayout(root, name), logical);
+const unitPath = (root, name, logical) => path.join(serviceDir(root, name), ...unitPathRel(root, name, logical).split('/'));
 
 const harnessDir = (root) => codePath(root, 'gate');
 // Bố cục khối: cấu hình cổng duyệt và mốc chuyển đổi là của dự án (.claude/project/), dấu vân tay là của sản phẩm (.claude/modules/).
@@ -406,6 +574,12 @@ function exemptDirs(root, input = {}) {
   const dirs = [os.tmpdir(), path.join(os.homedir(), '.claude'), path.resolve(root, '..', 'docs', 'handoff')];
   if (!fs.existsSync(path.join(root, '.git'))) dirs.push(path.join(root, 'docs', 'handoff')); // root là gốc dự án (không phải một đơn vị)
   if (typeof input.scratchpad_dir === 'string' && input.scratchpad_dir) dirs.push(input.scratchpad_dir);
+  // Phần "của bạn" trong một bản nâng cấp ĐÃ DỰNG SẴN (chưa cài): agent xử lý chỗ đụng nhau ở đây TRƯỚC khi trình người dùng, để người
+  // dùng duyệt đúng thứ sẽ được cài. Không phải mã đang chạy; mã duyệt tính trên nội dung nên sửa sau lúc duyệt là lời duyệt hết hiệu lực.
+  try {
+    const up = path.join(stateDir(root), 'upgrade');
+    for (const d of fs.readdirSync(up, { withFileTypes: true })) if (d.isDirectory() && /^\d+\.\d+\.\d+$/.test(d.name)) dirs.push(path.join(up, d.name, 'overlay'));
+  } catch { /* chưa dựng sẵn bản nào */ }
   return dirs;
 }
 
@@ -413,7 +587,10 @@ module.exports = {
   safeId, stateDir, sessionFile, gateStatePath, scopeStatePath, docsStatePath, diagLogPath, ledgerPath, LEDGER_FILE, evalDbPath, EVAL_FILE, dbBackupsDir, skillsMapPath, skillsDir, scopeConfigPath, scopeMode, localDir, bannedListPath,
   locksDir, lockPath, docsJournalPath, docsBackupsDir,
   SERVICES_DIR, LEGACY_CONFIG: LEGACY, pluginDir, projectConfigPath, projectConfig, policy, sheetOwner, unitParents, servicesDir, serviceDir, serviceOf, serviceRel, serviceEntries, extraUnits, unitReads, serviceHasRepo, HARNESS_UNIT_DIR,
+  unitGenerator, trustedGeneratorDirs, unitSkills,
+  workspace, workspaceRoot, unitDirs, unitLayout, unitLayoutAt, unitLayoutOfDir, unitRealRel, unitLogicalRel, unitPathRel, unitPath, LOGICAL_ENTRY, LOGICAL_DOCS,
   harnessDir, configPath, manifestPath, migratedAtPath, versionPath,
+  MCP_LEGACY, mcpPrefix, mcpServers, mcpMatcher,
   MODULE_ORDER, rootFrom, isModular, modulesHome, harnessHome, codeIndex, moduleDirs, codePath, codeDirs, codeRel, projectDir, generatorsDir, contextConfigPath, moduleManifests, enabledModules, moduleEnabled, contributions, provided,
   UNIT_EXT_DIR, extensionsDir, trustDir, trustFile, extensionErrorsPath, mcpConfigPath, mcpTrustFile, mcpStateDir, loadedDir, transfersDir,
   norm, slashes, inside, isProtectedPath, isProtectedTarget, resolveToken, exemptDirs, PROTECTED_BASENAMES,

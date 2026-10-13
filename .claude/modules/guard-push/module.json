@@ -5,7 +5,7 @@
   "uses": ["core"],
   "does": "chặn từ cấm khi ghi, chặn đẩy repo gốc, chặn nội dung docs/ lên remote",
   "hooks": [
-    { "event": "PreToolUse", "order": 50, "matcher": "Write|Edit|NotebookEdit|mcp__bsn-docs__.*", "file": "hooks/guard-banned.js", "timeout": 10 },
+    { "event": "PreToolUse", "order": 50, "matcher": "Write|Edit|NotebookEdit|@mcp", "file": "hooks/guard-banned.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 60, "matcher": "Bash", "file": "hooks/guard-push.js", "timeout": 10 }
   ]
 }

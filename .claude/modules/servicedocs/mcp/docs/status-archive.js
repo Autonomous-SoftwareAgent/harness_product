@@ -48,10 +48,10 @@ const archiveRows = (text) => (text ? text.split(/\r?\n/).filter((l) => ROW.test
 
 function run({ keep = 15 } = {}) {
   return core.transaction('status_archive', () => {
-    const dir = path.join(core.ROOT, 'docs', 'agent');
+    const dir = core.at('docs/agent');
     const sp = path.join(dir, 'STATUS.md');
     const ap = path.join(dir, 'STATUS-archive.md');
-    if (!core.fileExists(sp)) return `${core.serviceName()}: không có docs/agent/STATUS.md.`;
+    if (!core.fileExists(sp)) return `${core.serviceName()}: không có ${core.rel('docs/agent/STATUS.md')}.`;
     const before = core.readText(sp);
     const r = split(before, core.fileExists(ap) ? core.readText(ap) : '', { keep, service: core.serviceName() });
     if (r.skipped) return `${core.serviceName()}: không đổi gì (${r.skipped}).`;
@@ -61,7 +61,7 @@ function run({ keep = 15 } = {}) {
     if (total(before) + total(prevArchive) !== total(r.status) + total(r.archive)) throw new Error('status-archive: số dòng nhật ký trước và sau không khớp, hủy, không ghi gì');
     core.writeText(sp, r.status);
     core.writeText(ap, r.archive);
-    return `${core.serviceName()}: đã chuyển ${r.moved} dòng nhật ký cũ sang docs/agent/STATUS-archive.md, giữ ${r.kept} dòng mới nhất. STATUS.md: ${Math.round(Buffer.byteLength(before) / 1024)} KB -> ${Math.round(Buffer.byteLength(r.status) / 1024)} KB.`;
+    return `${core.serviceName()}: đã chuyển ${r.moved} dòng nhật ký cũ sang ${core.rel('docs/agent/STATUS-archive.md')}, giữ ${r.kept} dòng mới nhất. STATUS.md: ${Math.round(Buffer.byteLength(before) / 1024)} KB -> ${Math.round(Buffer.byteLength(r.status) / 1024)} KB.`;
   });
 }
 

@@ -3,6 +3,7 @@
 // spec: HOOK-S-010
 // spec: HOOK-S-014
 // spec: HOOK-S-015
+// spec: HOOK-S-016
 // ĐÓNG GÓI harness thành sản phẩm cài được cho dự án khác, từ bản ĐÃ COMMIT của repo này (không lẫn tệp đang sửa dở).
 //   node <harness>/cli/cli.js public-export <thư mục đích>
 // Bản nguồn đã ở BỐ CỤC KHỐI: gói là chính cây .claude/modules/<khối>/ của các khối đi vào gói, chép nguyên từng byte, bỏ phần
@@ -97,7 +98,7 @@ function productProject(sourceSkills, shipped) {
     name: '',
     defaultUnit: '',
     lang: 'vi',
-    units: { parents: [], dirs: {} },
+    units: { parents: [], dirs: {}, layout: 'harness' },
     skills: {
       mode: 'enforce',
       overview: 'services',
@@ -183,14 +184,14 @@ Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và đi�
 Khối: \`core\` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên, máy chủ MCP, bộ cài), \`servicedocs\` (tài liệu ba tầng), \`diagrams\` (sơ đồ), \`context\` (kho ngữ nghĩa), \`portal\` (trang HTML cho người đọc), \`guard-push\` (từ cấm, chặn đẩy). Chỉ bật một số khối: khóa \`modules\` trong \`project.json\` (hoặc \`"preset": "light"\`), rồi \`node .claude/modules/core/cli/cli.js setup\`.
 
 ## Máy chủ MCP khác, và chuyển việc sang phiên mới
-- Máy chủ \`bsn-docs\` của harness là một cổng: máy chủ MCP khác khai trong \`.claude/project/mcp.json\` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy \`mcp trust\`. Cách làm: skill \`mcp-servers\`.
+- Harness có một máy chủ MCP cho mỗi khối đang bật (\`harness\`, \`harness-docs\`, ...); \`harness-mcp\` là cổng: máy chủ MCP khác khai trong \`.claude/project/mcp.json\` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy \`mcp trust\`. Cách làm: skill \`mcp-servers\`.
 - Việc đang dở chuyển sang một phiên mới bằng \`node .claude/modules/core/cli/session.js transfer\`, kèm tờ bàn giao mà phiên mới phải đọc. Cách làm: skill \`transfer-session\`.
 
 ## Thêm luật của riêng dự án
 Đặt \`.claude/project/rules/<id>.js\` xuất \`{ id, on, api: "0.1", run(event, ports) }\` (sự kiện và quyết định: \`.claude/modules/core/ports/events.js\`), rồi chạy \`setup\` để khai hook. Mã trong \`.claude/modules/\` không phải sửa.
 
 ## Gỡ ra
-\`install <dự án> --undo\` quay lại trạng thái trước lần cài gần nhất. Gỡ hẳn: xóa nhóm hook trỏ vào \`.claude/modules/\` trong \`.claude/settings.json\`, mục \`bsn-docs\` trong \`.mcp.json\`, rồi xóa \`.claude/modules/\`, \`.claude/project/\` và thư mục trạng thái của harness trong \`.claude/\`.
+\`install <dự án> --undo\` quay lại trạng thái trước lần cài gần nhất. Gỡ hẳn: xóa nhóm hook trỏ vào \`.claude/modules/\` trong \`.claude/settings.json\`, các mục \`harness*\` trong \`.mcp.json\`, rồi xóa \`.claude/modules/\`, \`.claude/project/\` và thư mục trạng thái của harness trong \`.claude/\`.
 
 ## Giới hạn
 - Lời chặn và lời nhắc của lõi có tiếng Việt và tiếng Anh (\`"lang": "en"\` trong \`project.json\`); skill và tài liệu của gói là tiếng Việt.
@@ -198,6 +199,28 @@ Khối: \`core\` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế
 - Hook là hàng rào cho phiên Claude, không phải sandbox: người ngồi trước máy vẫn sửa được mọi thứ.
 - Thư viện vẽ sơ đồ (Mermaid, giấy phép MIT) đi kèm ở \`.claude/modules/diagrams/mcp/vendor/\`.
 `;
+
+// Tệp của GÓI đã đổi giữa hai mốc của repo nguồn (để đối chiếu với tờ thay đổi): [{ status: 'A'|'M'|'D', path }], đường dẫn tính từ thư mục
+// mã. Chỉ tính tệp đi vào gói; không tính chính các tờ thay đổi. Skill mà khối không giữ bản gốc (bản trong gói sinh từ .claude/skills của
+// dự án nguồn) được tính ở chỗ nó nằm trong gói: <khối>/skills/<tên>.md.
+function changedSince(root, prevRef, ref = 'HEAD') {
+  const HOME = '.claude/modules/';
+  const inner = (rel) => rel.slice(HOME.length);
+  const shippedPath = (rel) => { if (!rel.startsWith(HOME)) return false; const i = inner(rel); return SHIP.includes(i.split('/')[0]) && i.includes('/') && !EXCLUDE.some((re) => re.test(i)); };
+  const pairs = (args) => { const raw = String(git(root, ['diff', '--name-status', '--no-renames', '-z', prevRef, ref, '--', ...args], { encoding: 'utf8' }).stdout).split('\0').filter(Boolean); const o = []; for (let i = 0; i + 1 < raw.length; i += 2) o.push({ status: raw[i][0], path: raw[i + 1] }); return o; };
+  const out = pairs(['.claude/modules']).filter((x) => shippedPath(x.path)).map((x) => ({ status: x.status, path: inner(x.path) })).filter((x) => !/^core\/releases\/\d+\.\d+\.\d+\.json$/.test(x.path));
+  const now = new Set(String(git(root, ['ls-tree', '-r', '--name-only', '-z', ref, '--', '.claude/modules'], { encoding: 'utf8' }).stdout).split('\0').filter(Boolean));
+  const blockOf = {};
+  for (const m of SHIP) { try { for (const n of JSON.parse(String(git(root, ['show', `${ref}:${HOME}${m}/module.json`], { encoding: 'utf8' }).stdout)).skills || []) blockOf[n] = m; } catch { /* khối không có ở mốc này */ } }
+  for (const x of pairs(['.claude/skills'])) {
+    const m = /^\.claude\/skills\/([^/]+)\/SKILL\.md$/.exec(x.path);
+    if (!m || !blockOf[m[1]]) continue;
+    const own = `${blockOf[m[1]]}/skills/${m[1]}.md`;
+    if (now.has(`${HOME}${own}`) || out.some((c) => c.path === own)) continue; // khối giữ bản gốc: đã tính ở trên
+    out.push({ status: x.status, path: own });
+  }
+  return out.sort((p, q) => (p.path < q.path ? -1 : 1));
+}
 
 function run(root, dest) {
   const out = [];
@@ -274,6 +297,36 @@ function run(root, dest) {
   if (notes) put('RELEASES.md', notes);
   const noteErrs = notes ? require('../core/release/notes').check(notes, coreManifest.version) : ['bản đã commit không có tệp sổ phát hành'];
   if (noteErrs.length) out.push(`LỖI: sổ phát hành (${notesRel}) chưa đạt (${noteErrs.length}):`, ...noteErrs.map((e) => `  ${e}`));
+  // Phần chênh so với bản liền trước, sinh từ git: mốc là nhãn `product/<số bản trước>` của repo nguồn (đặt lúc phát hành bản đó).
+  const prevVersion = notes ? ((require('../core/release/notes').parse(notes)[1] || {}).version || '') : '';
+  const prevTag = prevVersion ? `product/${prevVersion}` : '';
+  if (prevTag && git(root, ['rev-parse', '-q', '--verify', `refs/tags/${prevTag}`]).status === 0) {
+    const shipped = (rel) => { if (!rel.startsWith(HOME)) return false; const inner = rel.slice(HOME.length); return SHIP.includes(inner.split('/')[0]) && inner.includes('/') && !EXCLUDE.some((re) => re.test(inner)); };
+    const raw = String(git(root, ['diff', '--name-status', '--no-renames', '-z', prevTag, 'HEAD', '--', '.claude/modules'], { encoding: 'utf8' }).stdout).split('\0').filter(Boolean);
+    const changedFiles = [];
+    for (let i = 0; i + 1 < raw.length; i += 2) if (shipped(raw[i + 1])) changedFiles.push({ status: raw[i][0], path: raw[i + 1] });
+    const ledgerAt = (ref) => { const r = git(root, ['show', `${ref}:${HOME}test/features.json`], { encoding: 'utf8' }); try { const e = JSON.parse(r.stdout).publicExports; if (!e) return null; const { _: note, ...rest } = e; return rest; } catch { return null; } };
+    put('CHANGED.md', require('../core/release/changed').render({ prev: prevVersion, cur: coreManifest.version, files: changedFiles, exports: { prev: ledgerAt(prevTag), cur: ledgerAt('HEAD') || {} } }));
+  } else if (prevVersion) out.push(`Ghi chú: repo nguồn không có nhãn ${prevTag} nên gói không có CHANGED.md (danh sách tệp và tên xuất đã đổi so với bản trước). Đặt nhãn đó ở commit đã đóng gói bản ${prevVersion}.`);
+  // TỜ THAY ĐỔI cho máy đọc (core/releases/<số bản>.json): bản đang đóng gói phải có, đủ trường, và khi có mốc của bản trước thì MỌI tệp
+  // đã đổi phải thuộc một mục của tờ (không có thay đổi nào không lời giải thích). Lệnh nâng cấp và agent ở dự án đã cài đọc tờ này.
+  {
+    const sheets = require('../core/release/change-sheet');
+    const inner = (rel) => rel.slice(HOME.length);
+    const packageFiles = files.filter((f) => f.startsWith(HOME)).map(inner);
+    const sheetRel = (v) => `${HOME}core/releases/${v}.json`;
+    const isSheet = (p) => /^core\/releases\/\d+\.\d+\.\d+\.json$/.test(p);
+    const changedForSheet = prevTag && git(root, ['rev-parse', '-q', '--verify', `refs/tags/${prevTag}`]).status === 0 ? changedSince(root, prevTag, 'HEAD') : null;
+    if (!tracked.includes(sheetRel(coreManifest.version))) out.push(`LỖI: bản ${coreManifest.version} chưa có tờ thay đổi cho máy đọc (${sheetRel(coreManifest.version)}): lệnh nâng cấp ở dự án đã cài không biết bản này đổi gì.`);
+    for (const rel of tracked.filter((r) => r.startsWith(HOME) && isSheet(inner(r))).sort()) {
+      const v = path.basename(rel, '.json');
+      let obj; try { obj = JSON.parse(committed(root, rel).toString('utf8')); } catch (e) { out.push(`LỖI: tờ thay đổi ${rel} không đọc được: ${e.message}`); continue; }
+      const cur = v === coreManifest.version;
+      const errs = sheets.check(obj, { version: v, changed: cur ? changedForSheet : null, packageFiles: cur ? packageFiles : null });
+      if (errs.length) out.push(`LỖI: tờ thay đổi ${rel} chưa đạt (${errs.length}):`, ...errs.map((e) => `  ${e}`));
+    }
+    if (prevVersion && !changedForSheet) out.push(`Ghi chú: không có nhãn ${prevTag} nên CHƯA đối chiếu được tờ thay đổi của bản ${coreManifest.version} với các tệp thật sự đã đổi.`);
+  }
   put('.gitattributes', '* -text\n'); // giữ nguyên từng byte: dấu vân tay tính trên nội dung tệp
 
   // 6. Dấu vân tay cổng duyệt và dấu từng tệp của sản phẩm (bộ cài dùng để biết tệp nào người dùng đã sửa).
@@ -322,4 +375,4 @@ function run(root, dest) {
   return { ok: !hits.length && !out.some((l) => l.startsWith('LỖI')), text: out.join('\n'), files: files.sort(), hits, broken, unknown: [...unknownPaths], debt };
 }
 
-module.exports = { run, EXCLUDE, SHIP, KNOWN, stripDecisions, exportConfig, productProject, productSettings, rewriteRequires, rewritePaths, placer };
+module.exports = { run, changedSince, EXCLUDE, SHIP, KNOWN, stripDecisions, exportConfig, productProject, productSettings, rewriteRequires, rewritePaths, placer };

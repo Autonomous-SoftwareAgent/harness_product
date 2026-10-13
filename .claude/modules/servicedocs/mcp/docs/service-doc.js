@@ -12,8 +12,8 @@ const yaml = require('../../../core/core/lib/yaml-lite');
 const { SCHEMA, SECTIONS, SEVERITY, PROBLEM_STATUS, DEP_KIND, LAYOUT, DIAGRAM_TYPES, ID_RE, PROBLEM_ID_RE, MAX, str, oneOf, id, listOf, obj, uniqueIds, all, line, title, text, lines, diagram, SECTION_CHECK, problem, validate, renderAgentMd: renderAgentMdPure } = require('../../core/docs/service-doc');
 const renderAgentMd = (doc) => renderAgentMdPure(doc, { rootName: path.basename(path.resolve(core.BSN_DIR)) });
 
-const file = () => path.join(core.ROOT, 'docs', 'service.yaml');
-const agentMd = () => path.join(core.ROOT, 'docs', '_generated', 'overview.md');
+const file = () => core.at('docs/service.yaml');
+const agentMd = () => core.at('docs/_generated/overview.md');
 const serviceName = () => core.serviceName();
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -40,7 +40,7 @@ function load() {
   try {
     doc = yaml.parse(core.readText(p));
   } catch (e) {
-    throw new Error(`docs/service.yaml của ${serviceName()} không đọc được (${e.message}). Tệp chỉ ghi qua công cụ bsn-docs; khôi phục bằng git hoặc bản sao lưu.`);
+    throw new Error(`${core.rel('docs/service.yaml')} của ${serviceName()} không đọc được (${e.message}). Tệp chỉ ghi qua công cụ bsn-docs; khôi phục bằng git hoặc bản sao lưu.`);
   }
   return doc;
 }
@@ -64,7 +64,7 @@ function setSection({ section, value }) {
   if (section === 'meta') { Object.assign(doc, { title: value.title, summary: value.summary }); if (value.first_tab) doc.first_tab = value.first_tab; else delete doc.first_tab; }
   else doc[section] = value;
   save(doc);
-  return `Đã ghi phần '${section}' của ${doc.service} vào docs/service.yaml và sinh lại docs/_generated/overview.md. Trang của dịch vụ cập nhật sau khi repo dịch vụ commit.`;
+  return `Đã ghi phần '${section}' của ${doc.service} vào ${core.rel('docs/service.yaml')} và sinh lại ${core.rel('docs/_generated/overview.md')}. ${core.LAYOUT.local ? 'Trang của dịch vụ cập nhật ở lần dựng cổng kế tiếp (ghi chép tại chỗ, không qua commit).' : 'Trang của dịch vụ cập nhật sau khi repo dịch vụ commit.'}`;
 }
 
 function problemRecord({ id: pid, title: t, severity, status, detail, refine, refs }) {
@@ -85,7 +85,7 @@ function problemRecord({ id: pid, title: t, severity, status, detail, refine, re
 
 function get() {
   const doc = load();
-  if (!doc) return `Dịch vụ ${serviceName()} chưa có docs/service.yaml. Tạo bằng service_doc_set (section: meta, business, architecture, progress) và problem_record.`;
+  if (!doc) return `Dịch vụ ${serviceName()} chưa có ${core.rel('docs/service.yaml')}. Tạo bằng service_doc_set (section: meta, business, architecture, progress) và problem_record.`;
   const errs = validate(doc);
   return `${yaml.stringify(doc)}${errs.length ? `\nKHÔNG HỢP LỆ:\n  - ${errs.join('\n  - ')}` : ''}`;
 }
@@ -98,7 +98,7 @@ function checkErrors() {
   const errs = validate(doc);
   if (doc.service !== serviceName()) errs.push(`service.yaml ghi service='${doc.service}' nhưng nằm trong dịch vụ '${serviceName()}'`);
   if (!errs.length && (!core.fileExists(agentMd()) || core.readText(agentMd()) !== renderAgentMd(doc))) {
-    errs.push('docs/_generated/overview.md không khớp docs/service.yaml (sửa tay? ghi lại bằng service_doc_set)');
+    errs.push(`${core.rel('docs/_generated/overview.md')} không khớp ${core.rel('docs/service.yaml')} (sửa tay? ghi lại bằng service_doc_set)`);
   }
   return errs.map((e) => `[service.yaml] ${e}`);
 }

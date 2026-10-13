@@ -7,14 +7,15 @@ const path = require('node:path');
 const SERVICE_RE = /^[a-z][a-z0-9-]{1,40}$/;
 const rel = (root, p) => path.relative(root, path.resolve(root, p)).split(path.sep).join('/');
 
-// Phân loại tệp đã đổi, tính theo đường dẫn trong service: 'status' | 'decisions' | 'artifact' | 'ignore' | 'code'
+// Phân loại tệp đã đổi, theo TÊN LOGIC của đường dẫn trong service (ws.unitLogical: phần tại chỗ của đơn vị luôn là docs/..., CLAUDE.md
+// dù nó nằm ở gốc đơn vị hay trong .harness/; tên bắt đầu bằng './' là tài liệu riêng của repo trùng tên, không phải mã): 'status' | 'decisions' | 'artifact' | 'ignore' | 'code'
 function classify(relPath) {
-  if (relPath.startsWith('..')) return 'ignore';
-  if (relPath === 'docs/agent/STATUS.md') return 'status';
-  if (relPath === 'docs/agent/DECISIONS.md') return 'decisions';
+  if (relPath.startsWith('..') || relPath.startsWith('./')) return 'ignore';
+  if (relPath === 'docs/agent/STATUS.md') return 'status'; // tên logic
+  if (relPath === 'docs/agent/DECISIONS.md') return 'decisions'; // tên logic
   if (relPath.startsWith('docs/') && relPath.includes('/artifacts/') && relPath.endsWith('.html')) return 'artifact';
   if (relPath.startsWith('docs/') || relPath.startsWith('.claude/')) return 'ignore';
-  if (relPath === 'CLAUDE.md' || relPath === 'README.md') return 'ignore'; // tài liệu ở gốc dịch vụ, không phải mã
+  if (relPath === 'CLAUDE.md' || relPath === 'README.md') return 'ignore'; // tên logic: tệp cửa vào của đơn vị, không phải mã
   if (relPath.startsWith('node_modules/') || relPath.startsWith('.git/')) return 'ignore';
   return 'code';
 }
@@ -33,7 +34,7 @@ async function track(event, service, { workspace: ws, store }) {
   const svc = serviceOrNull(ws, service);
   if (!svc) return;
   const r = rel(svc.root, file);
-  const kind = classify(r);
+  const kind = classify(ws.unitLogical(svc.name, r));
   if (kind === 'ignore') return;
   const state = await store.docsState(svc.name, event.session);
   if (kind === 'code') {
@@ -56,13 +57,14 @@ async function wrapUp(event, service, { workspace: ws, store, jobs }) {
   const problems = [];
 
   if (codeChanged && !state.status) {
+    const statusRel = ws.unitRel(svc.name, 'docs/agent/STATUS.md');
     const files = state.code.slice(0, 10).join(', ') + (state.code.length > 10 ? ', ...' : '');
     problems.push([
-      `Code was changed this session (${files}) but docs/agent/STATUS.md was not updated afterwards.`,
-      'Update docs/agent/STATUS.md (status table, goals, blocked items, add a log row). Also, if applicable:',
+      `Code was changed this session (${files}) but ${statusRel} was not updated afterwards.`,
+      `Update ${statusRel} (status table, goals, blocked items, add a log row). Also, if applicable:`,
       '- DECISIONS.md for project-wide decisions; module decisions go through the bsn-docs tool design_record.',
       '- spec/impl via bsn-docs (spec_fill, impl_link) so the module docs match the code.',
-      `- docs/service.yaml via bsn-docs (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (docs/portal) is rebuilt from it automatically.`,
+      `- ${ws.unitRel(svc.name, 'docs/service.yaml')} via bsn-docs (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (docs/portal) is rebuilt from it automatically.`,
     ].join('\n'));
   }
 

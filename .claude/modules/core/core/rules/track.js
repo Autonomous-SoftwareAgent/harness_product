@@ -40,7 +40,7 @@ async function run(event, { workspace: ws, store, jobs }, params = {}) {
   } catch { /* bỏ qua */ }
   // Theo dõi tài liệu chỉ áp cho service dùng bsn-docs (có docs/modules). Service chưa dùng (ví dụ mới tạo) thì không bị bắt cập nhật STATUS
   // và không bị tạo docs/_generated; luật phạm vi vẫn theo dõi nó như mọi service.
-  if (!ws.exists(path.join(ws.serviceDir(svc), 'docs', 'modules'))) return out;
+  if (!ws.exists(path.join(ws.serviceDir(svc), ...ws.unitRel(svc, 'docs/modules').split('/')))) return out;
   if (ws.entryExists(TRACK_ENTRY) && ws.exists(ws.serviceDir(svc))) {
     try { await D.track(event, svc, { workspace: ws, store }); } catch { /* việc theo dõi không bao giờ chặn công cụ */ }
   } else {

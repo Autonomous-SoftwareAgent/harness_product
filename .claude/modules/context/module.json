@@ -4,6 +4,7 @@
   "api": "0.1",
   "uses": ["core", "servicedocs", "diagrams"],
   "does": "kho ngữ nghĩa lập sau mỗi commit, hỏi trước khi tìm, sơ đồ tự sinh từ mã",
+  "mcpBlock": "context",
   "tools": [{ "file": "mcp/context/tools.js", "order": 30 }],
   "commands": ["cli/commands/context.js"],
   "checks": ["mcp/context/annotations.js"],

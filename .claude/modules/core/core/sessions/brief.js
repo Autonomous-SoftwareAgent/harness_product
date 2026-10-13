@@ -17,7 +17,7 @@
 //   advertise  có nhắc dùng kho ngữ nghĩa không
 //   notices    [lời nhắc về sơ đồ tự sinh của từng dịch vụ]
 //   scopeMode  chế độ của luật phạm vi
-//   toolCount  số công cụ của máy chủ bsn-docs (0 nếu không đếm được)
+//   toolCount  số công cụ của harness, cộng mọi máy chủ (0 nếu không đếm được); mcpServers: tên các máy chủ đó
 //   parents    [thư mục chứa đơn vị] theo cấu hình dự án
 //   mcpJson    'created' | 'added' | 'broken' khi .mcp.json ở gốc vừa được tạo, vừa thêm mục, hay hỏng; undefined khi đã đúng
 //   onboard    câu nói dự án chưa cài đặt gì (chưa có cấu hình, hoặc chưa khai đơn vị nào); undefined khi đã cài
@@ -30,7 +30,7 @@ const STATUS_BIG = 40 * 1024;
 function describe(s) {
   const name = s.name;
   const parts = [];
-  if (s.yaml === 'missing') parts.push('chưa có docs/service.yaml');
+  if (s.yaml === 'missing') parts.push(`chưa có ${s.yamlRel || 'docs/service.yaml'}`); // tên logic khi bên gom không cho đường dẫn thật
   else if (s.yaml === 'unreadable') parts.push('service.yaml KHÔNG đọc được');
   else { const high = s.yaml.high; parts.push(`${s.yaml.live} vấn đề chưa xong${high ? ` (${high} mức cao)` : ''}`); }
   if (!s.modules) parts.push('chưa dùng tài liệu ba tầng');
@@ -73,8 +73,8 @@ function compose(f) {
   // Dự án chưa khai cách tổ chức: harness chưa biết đơn vị nào, nên việc đầu tiên là chạy skill onboard.
   if (f.mcpJson) {
     lines.push(f.mcpJson === 'broken'
-      ? '- .mcp.json ở gốc dự án KHÔNG đọc được nên máy chủ MCP bsn-docs không chạy. Báo người dùng sửa tệp đó.'
-      : `- Harness vừa ${f.mcpJson === 'created' ? 'tạo' : 'thêm mục bsn-docs vào'} .mcp.json ở gốc dự án: báo người dùng gõ /mcp (hoặc mở lại phiên) để có công cụ bsn-docs.`);
+      ? '- .mcp.json ở gốc dự án KHÔNG đọc được nên máy chủ MCP của harness không chạy. Báo người dùng sửa tệp đó.'
+      : `- Harness vừa ${f.mcpJson === 'created' ? 'tạo' : 'thêm máy chủ của harness vào'} .mcp.json ở gốc dự án: báo người dùng gõ /mcp (hoặc mở lại phiên) để có công cụ của harness.`);
   }
   if (f.onboard) lines.push(`- CHƯA CÀI ĐẶT DỰ ÁN: ${f.onboard}. Việc đầu tiên: mở skill onboard và làm theo (đọc dự án, trình kế hoạch tổ chức, được duyệt thì ghi .claude/project/project.json, rồi chạy node .claude/modules/core/cli/cli.js doctor). Trong lúc chưa cài đặt, cổng duyệt kế hoạch vẫn chặn sửa tệp khi chưa duyệt.`);
   const where = f.parents && f.parents.length ? `Dịch vụ nằm trong ${f.parents.map((p) => `${p}/`).join(', ')}` : 'Đơn vị khai trong .claude/project/project.json';
@@ -109,7 +109,9 @@ function compose(f) {
   // Số công cụ ĐẾM từ danh sách thật của máy chủ lúc phiên mở. Đây là nơi DUY NHẤT nêu con số: tài liệu và skill không viết cứng nó
   // (test docs-consistency cấm), nên thêm hay bớt công cụ không phải sửa tệp hướng dẫn nào.
   const toolCount = f.toolCount;
-  lines.push(`- MCP bsn-docs phải có ${toolCount ? `${toolCount} công cụ` : 'đủ công cụ'} (có service_doc_set, problem_record, diagram_validate, diagram_save, diagram_explain, diagram_list, diagram_get, diagram_generate, diagram_review, context_explore, context_term, context_relate, portal_build). Thiếu, hoặc kết quả có "CẢNH BÁO bsn-docs", nghĩa là phiên đang chạy máy chủ cũ: báo người dùng gõ /mcp để nối lại.`);
+  const names = Array.isArray(f.mcpServers) ? f.mcpServers : [];
+  const servers = names.length ? `${names.length} máy chủ theo khối (${names[0]}, ${names[0]}-docs...)` : 'bsn-docs';
+  lines.push(`- MCP của harness: ${servers}, ${toolCount ? `${toolCount} công cụ cộng lại` : 'đủ công cụ'} (có service_doc_set, portal_build). Thiếu công cụ, hoặc kết quả có "CẢNH BÁO" kèm tên máy chủ của harness: phiên chạy máy chủ cũ, báo người dùng gõ /mcp.`);
   lines.push('- Quy trình: tổng hợp yêu cầu, trình kế hoạch, DỪNG chờ người dùng duyệt rồi mới sửa. Một phiên làm một dịch vụ.');
   return lines.join('\n');
 }

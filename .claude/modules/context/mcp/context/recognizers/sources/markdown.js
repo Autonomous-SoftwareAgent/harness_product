@@ -4,12 +4,12 @@
 const { ID } = require('../kit');
 
 const LIST = {
-  service: ['CLAUDE.md', 'README.md', 'docs/agent/STATUS.md', 'docs/agent/CONVENTIONS.md'],
-  root: ['CLAUDE.md', 'infra/README.md', 'docs/system/services.md', 'docs/system/harness-product.md'],
+  service: ['CLAUDE.md', 'README.md', 'docs/agent/STATUS.md', 'docs/agent/CONVENTIONS.md'], // tên logic
+  root: ['CLAUDE.md', /* gốc dự án */ 'infra/README.md', 'docs/system/services.md', 'docs/system/harness-product.md'],
 };
 
-function run(g, { files, scope }) {
-  for (const p of LIST[scope]) {
+function run(g, { files, scope, U }) {
+  for (const p of scope === 'service' ? LIST[scope].map(U) : LIST[scope]) {
     if (!files.has(p)) continue;
     files.get(p).split('\n').forEach((l, i) => {
       const m = /^(#{1,3})\s+(.+)$/.exec(l);

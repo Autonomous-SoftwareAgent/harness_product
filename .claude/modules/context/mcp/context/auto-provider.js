@@ -14,7 +14,7 @@ function autoDiagrams() {
   const notes = require('./annotations');
   let entries = [];
   try { const p = notes.fileOf('auto'); if (core.fileExists(p)) entries = (yaml.parse(core.readText(p)).diagrams) || []; } catch { entries = []; }
-  return require('../../core/context/auto-diagrams').forService(g, { project: require('../../../core/gate/gate-paths').projectConfig(require('../../../core/gate/gate-paths').rootFrom(__dirname)).name }).map((d) => ({ ...d, state: notes.autoState(entries, d.spec) }));
+  return require('../../core/context/auto-diagrams').forService(g, { sourceDoc: core.rel('docs/service.yaml'), project: require('../../../core/gate/gate-paths').projectConfig(require('../../../core/gate/gate-paths').rootFrom(__dirname)).name }).map((d) => ({ ...d, state: notes.autoState(entries, d.spec) }));
 }
 
 const autoExplain = (input) => require('./annotations').autoExplain(input);

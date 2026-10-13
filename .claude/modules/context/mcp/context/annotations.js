@@ -13,7 +13,7 @@ const specs = require('../../../diagrams/core/diagrams/spec');
 const ctx = require('./context');
 const auto = require('../../core/context/auto-diagrams');
 
-const dir = () => path.join(core.ROOT, 'docs', 'context');
+const dir = () => core.at('docs/context');
 const fileOf = (name) => path.join(dir(), `${name}.yaml`);
 const serviceName = () => core.serviceName();
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,7 +22,7 @@ const MAX = { term: 80, means: 400, also: 12, kind: 40, note: 300, evidence: 8 }
 function read(name, empty) {
   const p = fileOf(name);
   if (!core.fileExists(p)) return empty;
-  try { return yaml.parse(core.readText(p)); } catch (e) { throw new Error(`docs/context/${name}.yaml của ${serviceName()} không đọc được (${e.message}); khôi phục bằng git.`); }
+  try { return yaml.parse(core.readText(p)); } catch (e) { throw new Error(`${core.rel('docs/context')}/${name}.yaml của ${serviceName()} không đọc được (${e.message}); khôi phục bằng git.`); }
 }
 function write(name, doc) { core.makeDir(dir()); core.writeText(fileOf(name), yaml.stringify(doc)); }
 
@@ -110,7 +110,7 @@ function autoSpec(id) {
   const all = ctx.loadAll();
   const g = all && all.services[serviceName()];
   if (!g) return null;
-  const d = auto.forService(g, { project: require('../../../core/gate/gate-paths').projectConfig(require('../../../core/gate/gate-paths').rootFrom(__dirname)).name }).find((x) => x.spec.id === id);
+  const d = auto.forService(g, { sourceDoc: core.rel('docs/service.yaml'), project: require('../../../core/gate/gate-paths').projectConfig(require('../../../core/gate/gate-paths').rootFrom(__dirname)).name }).find((x) => x.spec.id === id);
   return d ? d.spec : null;
 }
 const isAuto = (id) => typeof id === 'string' && id.startsWith(auto.AUTO_PREFIX);
@@ -170,7 +170,7 @@ function checkErrors() {
     const p = fileOf(name);
     if (!core.fileExists(p)) continue;
     const text = core.readText(p);
-    try { if (yaml.stringify(yaml.parse(text)) !== text) out.push(`[context] docs/context/${name}.yaml không đúng dạng công cụ ghi (sửa tay?)`); } catch (e) { out.push(`[context] docs/context/${name}.yaml: ${e.message}`); }
+    try { if (yaml.stringify(yaml.parse(text)) !== text) out.push(`[context] ${core.rel('docs/context')}/${name}.yaml không đúng dạng công cụ ghi (sửa tay?)`); } catch (e) { out.push(`[context] ${core.rel('docs/context')}/${name}.yaml: ${e.message}`); }
   }
   return out;
 }

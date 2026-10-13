@@ -8,7 +8,7 @@ const { ID, isTestPath } = require('../kit');
 const cleanPath = (p) => String(p).split(/[\s<(]/)[0].replace(/\/+$/, '');
 const tail = (id) => id.split(':').slice(2).join(':');
 
-function run(g, { files, facts, infra }) {
+function run(g, { files, facts, infra, U }) {
   const layers = g.nodesOf('layer').map((n) => ({ id: tail(n.id), paths: ((n.attrs && n.attrs.paths) || []).map(cleanPath).filter(Boolean) }));
   const layerOf = (p) => {
     let best = null; let len = -1; let tie = false;
@@ -18,7 +18,7 @@ function run(g, { files, facts, infra }) {
   for (const f of facts.files) {
     const layer = f.test ? null : layerOf(f.path);
     const id = g.node(ID.file(g.svc, f.path), f.test ? 'test' : 'file', f.path, `${f.path}:1`, { conf: 'ma', text: `${f.lines} dòng${layer ? `, lớp ${layer}` : ''}`, attrs: { lang: f.lang, lines: f.lines, ...(layer ? { layer } : {}) } });
-    if (layer) g.edge(id, ID.doc('layer', g.svc, layer), 'thuộc lớp', 'docs/service.yaml');
+    if (layer) g.edge(id, ID.doc('layer', g.svc, layer), 'thuộc lớp', U('docs/service.yaml'));
   }
   for (const i of facts.imports) g.edge(ID.file(g.svc, i.from), ID.file(g.svc, i.to), 'nhập', `${i.from}:${i.line}`, 'ma');
   for (const d of facts.decls) g.edge(ID.file(g.svc, d.file), g.node(ID.sym(g.svc, d.file, d.name), 'symbol', d.name, `${d.file}:${d.line}`, { conf: 'ma', text: `${d.kind} trong ${d.file}` }), 'khai', `${d.file}:${d.line}`, 'ma');

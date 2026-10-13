@@ -28,6 +28,9 @@ const up = path.relative(dir, root).split(path.sep).join('/'); // từ thư mụ
 const base = path.basename(path.resolve(root)); // tên thư mục gốc của dự án , dùng trong chữ của khung
 const plain = !asService && (asUnit || Object.prototype.hasOwnProperty.call(P.extraUnits(root), name)); // đơn vị không phải dịch vụ nghiệp vụ
 const existed = fs.existsSync(dir);
+// Phần tại chỗ của đơn vị đặt ở đâu (gom trong .harness/, hay docs/ và tệp cửa vào ở gốc đơn vị) do gate-paths quyết; hỏi TRƯỚC khi tạo gì,
+// để đơn vị đang theo bố cục cũ được bổ sung đúng bố cục của nó. Tệp trong khung gọi bằng tên logic.
+const layout = P.unitLayout(root, name);
 // Mục về cấu trúc mã: dịch vụ nghiệp vụ theo ba lớp của dự án; đơn vị khác tự tả cấu trúc của nó (không ép ba lớp vào thứ không có ba lớp).
 const structure = plain
   ? `## Cấu trúc (phiên đầu tiên điền theo mã thật)
@@ -55,8 +58,9 @@ const structure = plain
 const created = [];
 const skipped = [];
 
-const write = (rel, text) => {
-  const p = path.join(dir, rel);
+const write = (logical, text) => {
+  const rel = P.unitRealRel(layout, logical);
+  const p = path.join(dir, ...rel.split('/'));
   if (fs.existsSync(p)) return skipped.push(rel);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, text);
@@ -65,13 +69,13 @@ const write = (rel, text) => {
 
 write('CLAUDE.md', `# ${name}
 
-Quy tắc chung cho mọi dịch vụ và cách làm việc (một harness duy nhất ở \`${base}/.claude\`) nằm ở \`${up}/CLAUDE.md\` (tự nạp). **Mở phiên Claude Code ở \`${base}/\`** rồi giao việc cho dịch vụ này; hook, MCP \`bsn-docs\` và skill chỉ nạp ở gốc, mở thẳng trong thư mục dịch vụ thì không có hook nào. Tệp này là phần riêng của dịch vụ.
+Quy tắc chung cho mọi dịch vụ và cách làm việc (một harness duy nhất ở \`${base}/.claude\`) nằm ở \`${up}/CLAUDE.md\` (tự nạp). **Mở phiên Claude Code ở \`${base}/\`** rồi giao việc cho dịch vụ này; hook, MCP của harness và skill chỉ nạp ở gốc, mở thẳng trong thư mục dịch vụ thì không có hook nào. Tệp này là phần riêng của dịch vụ.
 
 ## Phạm vi
 - Làm trong \`${relDir}/\` (đường dẫn tương đối trong tệp này tính từ thư mục đó). Ngoài thư mục này chỉ đọc; việc cần dịch vụ khác thì ghi yêu cầu vào \`${up}/docs/handoff/\`.
 - Đầu phiên: đọc [docs/agent/STATUS.md](docs/agent/STATUS.md), [docs/agent/DECISIONS.md](docs/agent/DECISIONS.md), [docs/agent/CONVENTIONS.md](docs/agent/CONVENTIONS.md). Liệt kê các tệp \`${up}/docs/handoff/*-to-${name}-*.md\` còn \`open\` và báo người dùng.
-- Tài liệu ba tầng (design/spec/impl) chỉ ghi qua công cụ MCP \`bsn-docs\` với \`service="${name}"\` (\`design_record\` tạo \`docs/modules\` lần đầu); không sửa tay.
-- Trong \`docs/\` của dịch vụ chỉ có Markdown cho agent, không đặt HTML. Nguồn có cấu trúc của dịch vụ là \`docs/service.yaml\` (nghiệp vụ, kiến trúc, vấn đề và tiến độ), ghi bằng \`bsn-docs\`: \`service_doc_set\`, \`problem_record\`. Người đọc xem cổng cục bộ \`docs/portal/${name}/index.html\`, sinh tự động từ nguồn đó.
+- Tài liệu ba tầng (design/spec/impl) chỉ ghi qua công cụ MCP của harness với \`service="${name}"\` (\`design_record\` tạo \`docs/modules\` lần đầu); không sửa tay.
+- Trong \`${layout.docsRel}/\` của dịch vụ chỉ có Markdown cho agent, không đặt HTML. Nguồn có cấu trúc của dịch vụ là \`docs/service.yaml\` (nghiệp vụ, kiến trúc, vấn đề và tiến độ), ghi bằng công cụ MCP của harness: \`service_doc_set\`, \`problem_record\`. Người đọc xem cổng cục bộ \`docs/portal/${name}/index.html\`, sinh tự động từ nguồn đó.
 
 ## Đọc gì khi nào
 Tệp này là cửa vào duy nhất của dịch vụ. Thứ tự đọc chung cho mọi dịch vụ nằm ở skill \`services\`; bảng dưới chỉ tới tài liệu của riêng dịch vụ này (thêm dòng khi có tài liệu mới, ví dụ một bản nghiên cứu trong \`docs/agent/\`).
@@ -92,7 +96,9 @@ ${structure}
 ## Lệnh thường dùng
 -
 `);
-write('.gitignore', 'node_modules/\n.env\n*.log\n');
+// .gitignore là tệp của repo, không phải của harness: chỉ tạo cho dịch vụ MỚI (thư mục vừa được tạo ở lần chạy này). Đơn vị đã có sẵn
+// mã thì harness không đặt gì ngoài phần tại chỗ của nó.
+if (!existed || layout.layout === 'legacy') write('.gitignore', 'node_modules/\n.env\n*.log\n');
 write('docs/agent/STATUS.md', `# STATUS: ${name}
 
 Cập nhật lần cuối: ${new Date().toISOString().slice(0, 10)}
@@ -139,6 +145,19 @@ try {
 } catch (e) {
   gitNote += `, hook post-commit CHƯA cài (${e.message})`;
 }
+// Ghi chép tại chỗ: phần của harness trong đơn vị không vào git của đơn vị. Ghi vào .git/info/exclude (không sửa .gitignore của repo).
+if (layout.local) {
+  try {
+    const ex = path.join(dir, '.git', 'info', 'exclude');
+    const line = `/${layout.localRel}/`;
+    const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : '';
+    if (fs.existsSync(path.join(dir, '.git')) && !cur.split(/\r?\n/).includes(line)) {
+      fs.mkdirSync(path.dirname(ex), { recursive: true });
+      fs.writeFileSync(ex, `${cur}${cur && !cur.endsWith('\n') ? '\n' : ''}${line}\n`);
+      gitNote += `, ${layout.localRel}/ đã vào .git/info/exclude (ghi chép tại chỗ, không commit)`;
+    }
+  } catch (e) { gitNote += `, CHƯA ghi được .git/info/exclude (${e.message})`; }
+}
 console.log(`${existed ? 'Bổ sung cho' : 'Đã tạo'} ${dir}${gitNote}`);
 console.log(`Tạo mới: ${created.join(', ') || 'không có'}`);
 if (skipped.length) console.log(`Giữ nguyên (đã có): ${skipped.join(', ')}`);
@@ -147,4 +166,4 @@ console.log('Việc còn lại:');
 const table = fs.existsSync(path.join(root, 'docs', 'system', 'services.md')) ? 'docs/system/services.md' : 'bảng đơn vị trong CLAUDE.md ở gốc (nếu dự án có bảng đó)';
 console.log(`1. Thêm một dòng cho "${name}" vào ${table}.`);
 console.log(`2. Mở phiên Claude Code ở ${root} (KHÔNG mở trong ${relDir}/) và giao việc cho dịch vụ này; phiên đầu điền CLAUDE.md (mục "Việc của dịch vụ" và "Quy tắc riêng").`);
-console.log(`3. Dịch vụ không có .claude hay .mcp.json riêng: dùng MCP bsn-docs với service="${name}" khi cần ghi tài liệu ba tầng và docs/service.yaml (nguồn của trang ba tab trên cổng docs/portal).`);
+console.log(`3. Dịch vụ không có .claude hay .mcp.json riêng: dùng công cụ MCP của harness với service="${name}" khi cần ghi tài liệu ba tầng và docs/service.yaml (nguồn của trang ba tab trên cổng docs/portal).`);

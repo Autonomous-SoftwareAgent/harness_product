@@ -5,12 +5,12 @@
 const yaml = require('../../../../../core/core/lib/yaml-lite');
 const { ID } = require('../kit');
 
-function run(g, { files }) {
-  const rel = 'docs/service.yaml';
+function run(g, { files, U }) {
+  const rel = U('docs/service.yaml');
   const svcId = ID.svc(g.svc);
-  if (!files.has(rel)) { g.node(svcId, 'service', g.svc, 'docs/service.yaml', { text: 'Chưa có docs/service.yaml' }); return; }
+  if (!files.has(rel)) { g.node(svcId, 'service', g.svc, rel, { text: `Chưa có ${rel}` }); return; }
   let doc;
-  try { doc = yaml.parse(files.get(rel)); } catch (e) { g.dark(`docs/service.yaml không đọc được: ${e.message}`); g.node(svcId, 'service', g.svc, rel); return; }
+  try { doc = yaml.parse(files.get(rel)); } catch (e) { g.dark(`${rel} không đọc được: ${e.message}`); g.node(svcId, 'service', g.svc, rel); return; }
   const text = files.get(rel);
   const at = (needle) => { const i = text.indexOf(needle); return `${rel}:${i < 0 ? 1 : text.slice(0, i).split('\n').length}`; };
   g.node(svcId, 'service', doc.title || g.svc, `${rel}:1`, { text: doc.summary, body: `${doc.summary || ''} ${(doc.business && doc.business.goal) || ''}` });

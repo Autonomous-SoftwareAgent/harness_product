@@ -47,7 +47,7 @@ function autoCheck(portal) {
 // Service không giữ công cụ docs nào trong thư mục của nó.
 function generator(name) {
   const svc = core.serviceName();
-  const file = path.join(P.generatorsDir(ROOT), svc, `${name}.js`);
+  const file = P.unitGenerator(ROOT, svc, `${name}.js`);
   if (!fs.existsSync(file)) throw new Error(`Service ${svc} chưa có bộ sinh ${name} (${path.relative(ROOT, file)})`);
   return require(file);
 }
@@ -80,7 +80,7 @@ on('on-commit', () => {
     try { require('../adapters/storage/db-maintain').run(ROOT); } catch { /* bỏ qua */ }
     const p = portal();
     if (!p) return; // khối portal tắt: không có cổng để dựng
-    const gen = rel && core.listAllServices().includes(rel) ? path.join(P.generatorsDir(ROOT), rel, 'gen-overview-html.js') : null;
+    const gen = rel && core.listAllServices().includes(rel) ? P.unitGenerator(ROOT, rel, 'gen-overview-html.js') : null;
     const finish = () => { const built = p.build(); console.log(built.summary); try { const b = p.publishBundle({ built }); if (!b.scan.ok) console.log(`Gói publish BỊ GIỮ (xem: node ${CMD_REL} portal-publish).`); } catch (e) { console.error(`Gói publish không dựng được: ${e.message}`); } autoCheck(p); };
     if (gen && fs.existsSync(gen)) {
       core.setRoot(core.serviceRoot(rel));
@@ -114,6 +114,13 @@ on('install', () => {
     const r = require('./install').run(ROOT, path.resolve(arg), { apply: argv.includes('--apply'), undo: argv.includes('--undo') });
     console.log(r.text); if (!r.ok) process.exitCode = 1;
 });
+on('upgrade', () => {
+    // Nâng cấp có gộp: status (phần bạn đã sửa trong mã của gói), check (có bản mới không), preview (từng mục thay đổi và phần của bạn gộp
+    // tới đâu), prepare (dựng sẵn bản gộp, báo cáo và mã duyệt), review, decide, auto. Chỉ `apply` thay mã đang chạy, và trong phiên Claude
+    // nó chỉ chạy khi kế hoạch người dùng vừa duyệt ghi đúng mã duyệt của bản dựng sẵn.
+    const r = require('./upgrade').run(ROOT, argv.slice(1));
+    console.log(r.text); if (!r.ok) process.exitCode = 1;
+});
 on('extension', () => {
     // Khối mở rộng của dự án và của từng đơn vị: xem, tạo khung, chạy ca thử, xác nhận (chỉ người dùng, ngoài phiên Claude), chạy lệnh.
     return require('./extension').run(ROOT, argv.slice(1)).then((r) => { console.log(r.text); if (!r.ok) process.exitCode = 1; }, (e) => { console.error(e.message); process.exitCode = 2; });
@@ -135,7 +142,7 @@ const ctx = { argv, cmd, arg, si, core, autoCheck, generator, portal, cmdRel: CM
 for (const c of P.contributions(ROOT, 'commands')) require(c.file).register(on, ctx);
 
 const usage = () => {
-    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|extension <list|new|test|trust|untrust|run> ...|mcp <list|add|remove|trust|untrust|test> ...|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
+    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|upgrade <status|check|preview|prepare|review|decide|apply|auto> ...|extension <list|new|test|trust|untrust|run> ...|mcp <list|add|remove|trust|untrust|test> ...|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
     process.exit(cmd ? 2 : 0);
 };
 

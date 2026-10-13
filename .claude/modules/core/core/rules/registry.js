@@ -1,14 +1,14 @@
 'use strict';
 // spec: HOOK-S-007
 // spec: HOOK-S-010
-// Sổ đăng ký luật của harness (S-055). Mỗi luật là MỘT tệp trong core/rules/ xuất { id, on, run }:
+// Sổ đăng ký luật của harness. Mỗi luật là MỘT tệp trong core/rules/ xuất { id, on, run }:
 //   id   tên luật, duy nhất
 //   on   loại sự kiện luật nghe (một chuỗi hoặc một mảng; xem ports/events.js)
 //   run  hàm (sự kiện, các cổng, tham số) -> quyết định hoặc null; có thể trả lời hứa
 // Thêm luật là thêm tệp: sổ chỉ nhận thêm, trùng id là lỗi (không ghi đè). Tệp này thuần: việc tìm tệp luật trên đĩa là của cửa vào.
 const { KINDS } = require('../../ports/events');
 
-// GIAO DIỆN MỞ RỘNG (S-064): luật của dự án (<thư mục dự án>/rules/<id>.js) khai `api: "<lớn>.<nhỏ>"` là bản giao diện nó viết theo.
+// GIAO DIỆN MỞ RỘNG: luật của dự án (<thư mục dự án>/rules/<id>.js) khai `api: "<lớn>.<nhỏ>"` là bản giao diện nó viết theo.
 // Nhận khi cùng số lớn và số nhỏ không lớn hơn bản của harness. Bản 0.x: sự kiện và quyết định ở ports/events.js, bốn cổng ports/*.js.
 const API_VERSION = '0.1';
 function apiCompatible(want, have = API_VERSION) {

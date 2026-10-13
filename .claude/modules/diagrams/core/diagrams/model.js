@@ -1,14 +1,47 @@
 'use strict';
 // spec: PORT-S-002
-// Phép tính thuần trên bản khai báo sơ đồ (S-055): dấu của nội dung, tên các phần tử trên hình, dạng chuẩn để lưu, độ phủ năm loại.
+// Phép tính thuần trên bản khai báo sơ đồ: dấu của nội dung, tên các phần tử trên hình, dạng chuẩn để lưu, độ phủ năm loại.
 // Không đọc ghi đĩa: bên gọi (mcp/diagrams.js) lo việc lưu trong giao dịch có khóa.
 const crypto = require('node:crypto');
 const specs = require('./spec');
 
-// Dấu của NỘI DUNG sơ đồ (không tính phần giải thích): phần giải thích ghi lại dấu này lúc viết; hình đổi thì dấu lệch và trang báo "có thể đã cũ".
+// Dấu của HÌNH: chỉ tính thứ người đọc thấy trên hình. Không tính phần giải thích, cách sinh (`generated`) và danh sách tệp nguồn
+// (`sources`): dời hay đổi tên tệp mã không đổi nét nào của hình, nên không được làm phần giải thích bị báo "có thể đã cũ".
 function contentHash(spec) {
-  const { explain, generated, ...content } = spec; // `generated` là cách sinh, không phải nội dung của hình
+  const { explain, generated, sources, ...content } = spec;
   return crypto.createHash('sha256').update(JSON.stringify(content)).digest('hex').slice(0, 16);
+}
+// Dấu theo cách tính trước bản 1.5.0 (có tính `sources`): phần giải thích viết trước đó ghi dấu này, vẫn phải được nhận là khớp.
+function legacyHash(spec) {
+  const { explain, generated, ...content } = spec;
+  return crypto.createHash('sha256').update(JSON.stringify(content)).digest('hex').slice(0, 16);
+}
+const basisMatches = (spec, basis) => basis === contentHash(spec) || basis === legacyHash(spec);
+// Phần giải thích có CŨ so với hình không. `earlier`: các bản trước của chính sơ đồ này (ví dụ đọc từ lịch sử git), chỉ được hỏi khi dấu
+// không khớp thẳng. Giải thích còn khớp khi nó được viết cho một bản trước mà HÌNH của bản đó giống hệt hình hiện tại (bản đó chỉ khác
+// đường dẫn tệp nguồn). Không chứng minh được thì coi là cũ.
+function explainStale(spec, earlier) {
+  if (!spec || !spec.explain) return false;
+  const basis = spec.explain.basis;
+  if (basisMatches(spec, basis)) return false;
+  const list = typeof earlier === 'function' ? earlier() : (earlier || []);
+  return !list.some((old) => old && basisMatches(old, basis) && samePicture(old, spec));
+}
+// Hai bản có CÙNG HÌNH không. Cùng dấu thì cùng hình. Khác dấu vẫn tính là cùng hình khi mọi chỗ khác nhau chỉ là một đường dẫn tệp viết
+// trên hình được thêm hay bớt thư mục đứng trước (`cli/session.js` thành `core/cli/session.js`): đó là mã dời chỗ, không phải hình đổi ý.
+// Khác bất cứ thứ gì khác (thêm bớt nút, cạnh, đổi chữ, đổi tên tệp) thì là hình khác.
+const PATH_TOKEN = /[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+/g;
+function samePicture(a, b) {
+  if (contentHash(a) === contentHash(b)) return true;
+  const split = (spec) => {
+    const { explain, generated, sources, ...content } = spec;
+    const tokens = [];
+    const frame = JSON.stringify(content).replace(PATH_TOKEN, (t) => { tokens.push(t); return '\u0000'; });
+    return { frame, tokens };
+  };
+  const x = split(a); const y = split(b);
+  if (x.frame !== y.frame || x.tokens.length !== y.tokens.length) return false;
+  return x.tokens.every((t, i) => { const u = y.tokens[i]; return t === u || u.endsWith(`/${t}`) || t.endsWith(`/${u}`); });
 }
 
 // Tên các phần tử có trên hình, để kiểm mục "Chi tiết" của phần giải thích nói về thứ có thật trong sơ đồ.
@@ -46,4 +79,4 @@ function coverage(items, na = []) {
     return { type, label: TYPE_LABEL[type], count, na: count ? null : reason, missing: !count && !reason };
   });
 }
-module.exports = { contentHash, elementNames, termMatches, canonical, coverage, TYPE_LABEL };
+module.exports = { contentHash, legacyHash, basisMatches, explainStale, samePicture, elementNames, termMatches, canonical, coverage, TYPE_LABEL };

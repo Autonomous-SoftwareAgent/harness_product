@@ -10,7 +10,7 @@
 // Xóa kho đi thì dựng lại được hoàn toàn. Phần agent viết (từ vựng, quan hệ bổ sung, giải thích và kết quả soát của sơ đồ tự sinh)
 // nằm trong repo dịch vụ ở docs/context/ (annotations.js ghi), không nằm ở đây.
 // Không viết riêng cho dịch vụ nào; thêm dịch vụ không phải sửa gì.
-// CỔNG VÀ BỘ CHUYỂN (S-051): tệp này là LÕI. Nó giữ mô hình (nút, cạnh, vùng tối), cách đọc commit, và việc hoàn thiện kho; nó KHÔNG biết
+// CỔNG VÀ BỘ CHUYỂN: tệp này là LÕI. Nó giữ mô hình (nút, cạnh, vùng tối), cách đọc commit, và việc hoàn thiện kho; nó KHÔNG biết
 // loại tài liệu, ngôn ngữ hay loại cửa vào nào. Mọi việc nhận dạng nằm ở recognizers/ (mỗi loại một tệp, nạp qua sổ đăng ký recognizers/index.js).
 // Thêm một loại tài liệu mới = thêm một tệp ở recognizers/sources/; không sửa tệp này.
 // spec: CTX-S-003
@@ -43,7 +43,7 @@ function headOf(dir) {
   const top = git(dir, ['rev-parse', '--show-toplevel']);
   if (!top) return null;
   if (path.resolve(top.toString().trim()).toLowerCase() !== path.resolve(dir).toLowerCase()) {
-    // Thư mục con của một repo (đơn vị nằm trong repo gốc, S-033): lấy commit gần nhất CHẠM tới thư mục đó, để kho chỉ dựng lại khi đơn vị đổi.
+    // Thư mục con của một repo (đơn vị nằm trong repo gốc): lấy commit gần nhất CHẠM tới thư mục đó, để kho chỉ dựng lại khi đơn vị đổi.
     // Thư mục chưa có tệp nào được commit (ví dụ một dịch vụ chưa git init, bị gitignore ở repo gốc) thì không có commit: trả null như trước.
     const last = git(dir, ['log', '-1', '--format=%H', '--', '.']);
     return last && last.toString().trim() ? last.toString().trim() : null;
@@ -95,13 +95,15 @@ function recognise(g, scope, ctx) {
 // Lời nhắc trong tài liệu: tên tệp có thật và mã mục khác -> cạnh "nhắc tới" (máy đọc chữ, không hiểu nghĩa).
 function producer() {
   const h = crypto.createHash('sha256');
-  for (const f of ['context.js', 'context-scan.js', '../diagrams/diagrams.js', '../../core/diagrams/spec.js', '../../core/lib/yaml-lite.js']) h.update(fs.readFileSync(path.join(__dirname, f)));
+  // Các tệp của bộ dựng nằm ở ba khối; hỏi gate-paths chỗ thật của từng tệp theo đường dẫn logic (ghép chuỗi '..' sai ở bố cục khối).
+  const root = P.rootFrom(__dirname);
+  for (const f of ['mcp/context/context.js', 'mcp/context/context-scan.js', 'mcp/diagrams/diagrams.js', 'core/diagrams/spec.js', 'core/lib/yaml-lite.js']) h.update(fs.readFileSync(P.codePath(root, f)));
   // Mọi bộ nhận dạng cũng là một phần của bộ dựng: thêm hay sửa một tệp ở recognizers/ thì kho dựng lại.
   for (const f of registry.sourceFiles()) { h.update(path.basename(f)); h.update(fs.readFileSync(f)); }
   return h.digest('hex').slice(0, 16);
 }
 
-// Tờ khai báo của từng dịch vụ (S-023): mỗi dịch vụ một tệp infra/services/<tên>.json, tên tệp là tên dịch vụ.
+// Tờ khai báo của từng dịch vụ: mỗi dịch vụ một tệp infra/services/<tên>.json, tên tệp là tên dịch vụ.
 const infraFile = (name) => `infra/services/${name}.json`;
 function readInfra(rootFiles) {
   const out = {};
@@ -113,7 +115,7 @@ function readInfra(rootFiles) {
   return out;
 }
 
-// Tệp NGOÀI thư mục của đơn vị mà đơn vị khai để kho đọc thêm (units.json, trường `reads`; S-051). Đọc bản ĐÃ COMMIT ở repo gốc.
+// Tệp NGOÀI thư mục của đơn vị mà đơn vị khai để kho đọc thêm (units.json, trường `reads`). Đọc bản ĐÃ COMMIT ở repo gốc.
 // Trong kho, tệp mang đường dẫn tương đối tính từ thư mục của đơn vị, nên luôn bắt đầu bằng "../": nhìn là biết tệp nằm ngoài đơn vị.
 // Tệp chưa commit, quá lớn hay không phải văn bản thì bỏ qua. Trả Map<đường dẫn trong kho, văn bản>.
 function readExtra(name) {
@@ -159,13 +161,13 @@ function buildService(name, infra) {
 
 function buildRoot(rootFiles, infra) {
   const g = new Graph(ROOT_NAME);
-  g.node(ID.svc(ROOT_NAME), 'service', 'Cả hệ BSN', 'docs/system/services.md:1', { text: 'Phần chung: quyết định S-nnn, handoff, hạ tầng' });
+  g.node(ID.svc(ROOT_NAME), 'service', `Cả hệ ${P.projectConfig(core.BSN_DIR).name}`, 'docs/system/services.md:1', { text: 'Phần chung: quyết định, handoff, hạ tầng' });
   recognise(g, 'root', { files: rootFiles, infra: null, allInfra: infra, facts: null, entryKinds: [] });
   linkMentions(g, [ROOT_NAME]);
   return { ...finalize(g, new Set()), infra };
 }
 
-// infra/ có thể là MỘT REPO GIT RIÊNG nằm trong thư mục gốc (kho deploy, S-028) và bị gitignore ở repo gốc. Khi đó tờ khai báo và README
+// infra/ có thể là MỘT REPO GIT RIÊNG nằm trong thư mục gốc (kho deploy) và bị gitignore ở repo gốc. Khi đó tờ khai báo và README
 // của nó được đọc từ commit của chính repo đó (đường dẫn trong repo: services/<tên>.json), và hiện trong kho dưới tên infra/... như cũ.
 // Không có repo riêng thì đọc từ cây của repo gốc như trước. Trả mã commit của repo infra (hoặc '').
 function mergeInfraRepo(rootFiles) {

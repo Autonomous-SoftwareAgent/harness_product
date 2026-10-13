@@ -4,7 +4,7 @@
 // Bộ quét mã cho kho ngữ nghĩa (context.js). Nhận nội dung các tệp của MỘT commit (đường dẫn -> văn bản) và trả các sự thật máy đọc được:
 // tệp, lệnh nhập giữa các tệp, khai báo chính, cửa vào, và những chỗ nhập ĐỘNG mà cách đọc chữ này không lần ra (vùng tối).
 // Hàm thuần: không đọc đĩa (ngoài việc nạp các bộ nhận dạng), không gọi tiến trình; cùng đầu vào luôn ra cùng kết quả.
-// Tệp này KHÔNG biết ngôn ngữ nào và không biết loại cửa vào nào: nó chỉ chạy các bộ ở recognizers/langs/ và recognizers/entries/ (S-051).
+// Tệp này KHÔNG biết ngôn ngữ nào và không biết loại cửa vào nào: nó chỉ chạy các bộ ở recognizers/langs/ và recognizers/entries/.
 // Thêm ngôn ngữ hay thêm loại cửa vào = thêm một tệp ở đó; tệp này và phần còn lại của harness không đổi.
 const path = require('path').posix;
 const registry = require('./recognizers');

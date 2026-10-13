@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-007
-// BỘ CHUYỂN cho Claude Code, phần cấu hình (S-055): đọc .claude/settings.json của dự án để biết cửa vào nào đang được khai.
+// BỘ CHUYỂN cho Claude Code, phần cấu hình: đọc .claude/settings.json của dự án để biết cửa vào nào đang được khai.
 const fs = require('node:fs');
 const path = require('node:path');
 

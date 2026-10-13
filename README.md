@@ -12,8 +12,10 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 5. Tóm tắt đầu phiên báo "CHƯA CÀI ĐẶT DỰ ÁN". Bảo Claude: "onboard dự án này". Agent đọc dự án, trình kế hoạch tổ chức (đơn vị nằm ở đâu, trước khi sửa phải đọc gì, việc nào cần skill nào), bạn duyệt, agent ghi `.claude/project/project.json` và dựng phần tài liệu còn thiếu.
 6. Kiểm: `node .claude/modules/core/cli/cli.js doctor` không có dòng LỖI. Gõ `/mcp` nếu tóm tắt đầu phiên nhắc.
 
+Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và điều gì chưa kiểm: [RELEASES.md](RELEASES.md), mỗi bản một mục.
+
 ## Nâng cấp, và chuyển từ bản cũ
-- Tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong `.claude/modules/` được thay; `.claude/project/`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
+- Đọc phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong `.claude/modules/` được thay; `.claude/project/`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
 - Dự án đang dùng bản cũ (mọi thứ trong `.claude/plugin/`): cùng lệnh `install`. Lệnh chuyển cấu hình (`project.json`, bảng đơn vị, bảng skill, công tắc, bộ sinh riêng, luật mở rộng) sang `.claude/project/`, giữ sổ phiên, cất `.claude/plugin/` cũ để quay lại, và nêu các tệp cổng duyệt bạn từng sửa.
 
 ## Bố cục
@@ -25,6 +27,10 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 | `.claude/local/` và thư mục trạng thái trong `.claude/` | máy | từ cấm, sổ phiên, trạng thái cổng duyệt; không commit |
 
 Khối: `core` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên, máy chủ MCP, bộ cài), `servicedocs` (tài liệu ba tầng), `diagrams` (sơ đồ), `context` (kho ngữ nghĩa), `portal` (trang HTML cho người đọc), `guard-push` (từ cấm, chặn đẩy). Chỉ bật một số khối: khóa `modules` trong `project.json` (hoặc `"preset": "light"`), rồi `node .claude/modules/core/cli/cli.js setup`.
+
+## Máy chủ MCP khác, và chuyển việc sang phiên mới
+- Máy chủ `bsn-docs` của harness là một cổng: máy chủ MCP khác khai trong `.claude/project/mcp.json` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy `mcp trust`. Cách làm: skill `mcp-servers`.
+- Việc đang dở chuyển sang một phiên mới bằng `node .claude/modules/core/cli/session.js transfer`, kèm tờ bàn giao mà phiên mới phải đọc. Cách làm: skill `transfer-session`.
 
 ## Thêm luật của riêng dự án
 Đặt `.claude/project/rules/<id>.js` xuất `{ id, on, api: "0.1", run(event, ports) }` (sự kiện và quyết định: `.claude/modules/core/ports/events.js`), rồi chạy `setup` để khai hook. Mã trong `.claude/modules/` không phải sửa.

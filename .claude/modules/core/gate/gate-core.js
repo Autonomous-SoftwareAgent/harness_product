@@ -4,12 +4,12 @@
 // spec: GATE-S-001
 // spec: GATE-S-002
 // spec: GATE-S-004
-// Lõi của gate phê duyệt (AI-SDLC bước Confirm): hàm thuần, không đọc file, không gọi mạng, để test được.
+// Lõi của gate phê duyệt (bước xác nhận): hàm thuần, không đọc file, không gọi mạng, để test được.
 //
 // Luồng: người dùng nêu yêu cầu -> cổng ĐÓNG -> model tổng hợp và trình kế hoạch -> lượt sau người dùng đồng ý
 // hoàn toàn -> cổng MỞ -> sửa code được. Người dùng góp ý, hỏi, hoặc đổi việc thì cổng đóng lại (xem onPrompt).
 //
-// Trạng thái: { open, lastAssistant, approved, pending, pendingAge }. `pending` là kế hoạch ĐÚNG KHUÔN gần nhất còn chờ duyệt (S-058): nó
+// Trạng thái: { open, lastAssistant, approved, pending, pendingAge }. `pending` là kế hoạch ĐÚNG KHUÔN gần nhất còn chờ duyệt: nó
 // sống qua các câu trả lời chen giữa (người dùng hỏi thêm một câu rồi mới duyệt), tới khi được duyệt, bị sửa hoặc từ chối, hoặc quá cũ.
 // Trạng thái cũ: { open, lastAssistant, approved }. `approved` lưu CÁI ĐÃ ĐƯỢC DUYỆT (bản kế hoạch và băm của nó), nên cờ
 // open:true bị giả mạo mà không khớp một kế hoạch có thật sẽ bị phát hiện (verifyOpen). Chỉ hook ghi trạng thái.
@@ -24,6 +24,7 @@ const deny = (reason, code) => ({ decision: 'deny', reason, code });
 const ask = (reason, code) => ({ decision: 'ask', reason, code });
 
 const MAX_ASSISTANT_CHARS = 4000;
+const MAX_PLAN_CHARS = 20000; // trần cho riêng khối kế hoạch theo khuôn
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 
 const initialState = () => ({ open: false, lastAssistant: '', approved: null, pending: '', pendingAge: 0 });
@@ -34,10 +35,12 @@ const MAX_PENDING_AGE = 4;
 function onStop(state, lastAssistantMessage) {
   const text = String(lastAssistantMessage || '').trim();
   if (!text) return state;
-  // Tin dài hơn giới hạn mà có khối kế hoạch theo khuôn (S-050): đưa khối lên đầu để phần được lưu (và được băm khi duyệt) luôn chứa nó.
+  // Tin dài hơn giới hạn mà có khối kế hoạch theo khuôn: đưa khối lên đầu để phần được lưu (và được băm khi duyệt) luôn chứa nó.
   if (text.length > MAX_ASSISTANT_CHARS) {
     const { block } = parsePlan(text);
-    if (block) { const kept = `${block}\n\n[tin dài, phần còn lại bị cắt]\n${text}`.slice(0, MAX_ASSISTANT_CHARS); return { ...state, lastAssistant: kept, pending: parsePlan(kept).ok ? kept : (state.pending || ''), pendingAge: parsePlan(kept).ok ? 0 : (state.pendingAge || 0) }; }
+    // Khối kế hoạch tự nó dài hơn giới hạn thì giữ TRỌN khối (tới MAX_PLAN_CHARS): trước đây khối bị cắt ngang, mất các mục cuối, và lời
+    // "duyệt" của người dùng bị báo "thiếu mục: Rủi ro" dù kế hoạch có đủ (gặp ba lần ngày 2026-10-13).
+    if (block) { const kept = block.length > MAX_ASSISTANT_CHARS - 40 ? block.slice(0, MAX_PLAN_CHARS) : `${block}\n\n[tin dài, phần còn lại bị cắt]\n${text}`.slice(0, MAX_ASSISTANT_CHARS); return { ...state, lastAssistant: kept, pending: parsePlan(kept).ok ? kept : (state.pending || ''), pendingAge: parsePlan(kept).ok ? 0 : (state.pendingAge || 0) }; }
   }
   const kept = text.slice(0, MAX_ASSISTANT_CHARS);
   // Tin này là một kế hoạch đúng khuôn: nó thành kế hoạch đang chờ (thay kế hoạch chờ cũ). Tin khác (trả lời một câu hỏi, báo cáo) không xóa kế hoạch đang chờ.
@@ -63,7 +66,7 @@ function planInQuestion(state) {
 //   error     không phán xét được                     -> giữ nguyên, không bao giờ mở cổng
 // opts.requireFormat (luật phạm vi đang ở chế độ enforce): kế hoạch không đọc được theo khuôn chuẩn thì lời đồng ý KHÔNG mở cổng.
 function onPrompt(state, verdict, now = Date.now(), opts = {}) {
-  // Kế hoạch đang xét: mặc định là tin cuối; khi tin cuối không phải kế hoạch đúng khuôn mà còn một kế hoạch đang chờ thì xét kế hoạch đó (S-058).
+  // Kế hoạch đang xét: mặc định là tin cuối; khi tin cuối không phải kế hoạch đúng khuôn mà còn một kế hoạch đang chờ thì xét kế hoạch đó.
   const q = opts.requireFormat ? planInQuestion(state) : { plan: state.lastAssistant, held: false };
   const target = q.plan;
   const age = state.pending ? (state.pendingAge || 0) + 1 : 0;
@@ -73,7 +76,7 @@ function onPrompt(state, verdict, now = Date.now(), opts = {}) {
       // Chưa có kế hoạch nào (model chưa nói gì) thì "ok" không có gì để duyệt. Đã mở rồi thì giữ phê duyệt gốc.
       if (!state.lastAssistant) return state;
       if (state.open && state.approved) {
-        // Cổng đang mở mà người dùng đồng ý một kế hoạch MỚI đúng khuôn (khác kế hoạch đang giữ): kế hoạch mới thay kế hoạch cũ (S-050).
+        // Cổng đang mở mà người dùng đồng ý một kế hoạch MỚI đúng khuôn (khác kế hoạch đang giữ): kế hoạch mới thay kế hoạch cũ.
         // Không có bước này thì phiên không đăng ký được dịch vụ theo kế hoạch vừa duyệt (gặp 2026-10-09, ngay sau khi bật luật).
         // Tin cuối không phải một kế hoạch đúng khuôn (báo cáo, câu hỏi) thì giữ phê duyệt gốc như trước.
         if (opts.requireFormat && target && sha(target) !== state.approved.sha && parsePlan(target).ok) {
@@ -139,7 +142,7 @@ function isMutatingCommand(cmd) {
   return a.changing || a.targets.length > 0 || a.inline.some((i) => i.writes) || COARSE.test(a.skeleton);
 }
 
-// Quyết định cho một VIỆC phiên sắp làm, theo dạng chung (S-056): action = { type: 'run-command', command } hoặc { type khác, file }
+// Quyết định cho một VIỆC phiên sắp làm, theo dạng chung: action = { type: 'run-command', command } hoặc { type khác, file }
 // với file là đường dẫn tuyệt đối ('' nếu việc đó không đụng tệp nào). Không biết tên công cụ của công cụ chủ.
 // ctx: { cwd, exemptDirs: string[] }  (exemptDirs: thư mục tạm, ~/.claude, docs/handoff, scratchpad...)
 function decideAction(state, action, ctx) {

@@ -110,7 +110,7 @@ function autoSpec(id) {
   const all = ctx.loadAll();
   const g = all && all.services[serviceName()];
   if (!g) return null;
-  const d = auto.forService(g).find((x) => x.spec.id === id);
+  const d = auto.forService(g, { project: require('../../../core/gate/gate-paths').projectConfig(require('../../../core/gate/gate-paths').rootFrom(__dirname)).name }).find((x) => x.spec.id === id);
   return d ? d.spec : null;
 }
 const isAuto = (id) => typeof id === 'string' && id.startsWith(auto.AUTO_PREFIX);
@@ -150,11 +150,17 @@ function review({ id, verdict, note = '' }) {
     : `Đã ghi: sơ đồ tự sinh '${id}' của ${serviceName()} bị báo SAI: ${note}. Bộ quét thuộc harness: việc sửa do phiên harness làm (mục này hiện trong portal-status).`;
 }
 
-// Tình trạng phần agent viết của MỘT sơ đồ tự sinh so với hình hiện tại: { explain, explainStale, review, reviewStale }.
+// Tình trạng phần giải thích và lần soát của MỘT sơ đồ tự sinh so với hình hiện tại: { explain, explainBy, explainStale, review, reviewStale }.
+// Giải thích do agent viết còn khớp hình thì dùng nó; chưa có hoặc đã cũ thì dùng bản MÁY VIẾT từ dữ liệu của hình, nên sơ đồ tự
+// sinh không còn phải chờ ai viết. Loại hình máy chưa viết được thì giữ cách cũ (bản của agent kèm cờ cũ, hoặc chưa có).
 function autoState(entries, spec) {
   const e = (entries || []).find((x) => x.id === spec.id) || {};
-  const basis = require('../../../diagrams/mcp/diagrams/diagrams').contentHash(spec);
-  return { explain: e.explain || null, explainStale: !!e.explain && e.explain.basis !== basis, review: e.review || null, reviewStale: !!e.review && e.review.basis !== basis };
+  const dg = require('../../../diagrams/mcp/diagrams/diagrams');
+  const fresh = (x) => !!x && dg.basisMatches(spec, x.basis);
+  const own = fresh(e.explain) ? e.explain : null;
+  const made = own ? null : require('../../core/context/auto-explain').machineExplain(spec);
+  const explain = own || made || e.explain || null;
+  return { explain, explainBy: !explain ? null : explain.machine ? 'máy' : 'agent', explainStale: !!explain && !explain.machine && !fresh(explain), review: e.review || null, reviewStale: !!e.review && !fresh(e.review) };
 }
 
 // docs check: ba tệp phải đọc được và đúng dạng công cụ ghi.

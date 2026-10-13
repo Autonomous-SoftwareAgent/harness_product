@@ -1,6 +1,6 @@
 'use strict';
 // spec: LEDG-S-001
-// CỬA VÀO của sổ phiên (S-032). Luật ghi sổ nằm ở core/rules/ledger.js; tệp này chỉ nối bộ chuyển Claude Code với luật đó (S-055).
+// CỬA VÀO của sổ phiên. Luật ghi sổ nằm ở core/rules/ledger.js; tệp này chỉ nối bộ chuyển Claude Code với luật đó.
 //   node ledger.js record   (PostToolUse, mọi công cụ)
 //   node ledger.js prompt   (UserPromptSubmit)
 //   node ledger.js start    (SessionStart)

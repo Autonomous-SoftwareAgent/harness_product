@@ -1,9 +1,9 @@
 'use strict';
 // spec: HOOK-S-010
-// BỘ CÀI (S-064): sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật.
+// BỘ CÀI: sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật.
 //   - Hook: mỗi mục `hooks` của một khối thành một nhóm { matcher?, hooks: [{ type, command, timeout, statusMessage? }] }, xếp theo `order`
-//     trong từng sự kiện; lệnh neo vào gốc dự án bằng "$CLAUDE_PROJECT_DIR/..." (S-027) và trỏ tới đường dẫn THẬT theo bố cục đang dùng.
-//   - Luật mở rộng của dự án (<thư mục dự án>/rules/) và luật của khối mở rộng đã xác nhận (S-065): một nhóm hooks/project-rules.js <loại>
+//     trong từng sự kiện; lệnh neo vào gốc dự án bằng "$CLAUDE_PROJECT_DIR/..." và trỏ tới đường dẫn THẬT theo bố cục đang dùng.
+//   - Luật mở rộng của dự án (<thư mục dự án>/rules/) và luật của khối mở rộng đã xác nhận: một nhóm hooks/project-rules.js <loại>
 //     cho mỗi loại sự kiện có luật nghe.
 //   - Máy chủ MCP của lõi: mục trong .mcp.json, tên trong enabledMcpjsonServers, quyền "mcp__<tên>" trong permissions.allow.
 // Phần người dùng tự thêm được giữ nguyên: nhóm hook có lệnh không trỏ vào mã harness, máy chủ MCP khác, quyền khác, mọi khóa khác.
@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../gate/gate-paths');
 
-const DEFAULT_MATCHER = 'Write|Edit|NotebookEdit|Bash';
+const { DEFAULT_MATCHER } = require('../core/extensions/contract');
 const EVENTS = ['PreToolUse', 'PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart'];
 const KIND_EVENT = { 'before-action': 'PreToolUse', 'after-action': 'PostToolUse', 'turn-end': 'Stop', 'user-prompt': 'UserPromptSubmit', 'session-start': 'SessionStart' };
 // Lệnh hook là của harness khi nó chạy một tệp trong thư mục mã của harness (bố cục cũ hoặc bố cục khối).
@@ -36,8 +36,11 @@ function harnessHooks(root) {
     }
   }
   // Luật mở rộng của dự án: một nhóm cho mỗi loại sự kiện có ít nhất một luật nghe (đọc khai `on` của luật; luật hỏng thì bỏ qua và báo ở doctor).
-  const kinds = new Set();
-  let matchers = [];
+  // Nhóm before-action với các công cụ ghi mặc định thì LUÔN khai, kể cả khi chưa có luật nào: khối mở rộng được xác nhận ở máy
+  // (.claude/local/), nên nếu nhóm này chỉ có khi đã xác nhận thì settings.json đã commit khác nhau theo máy, và xác nhận một khối mới
+  // phải sửa settings. Hook không có luật nào để chạy thì thoát ngay. Từng luật tự lọc công cụ theo matcher của nó (hooks/wire.js).
+  const kinds = new Set(['before-action']);
+  let matchers = [DEFAULT_MATCHER];
   try {
     const wire = require('../hooks/wire');
     for (const f of wire.ruleFiles(root).filter((x) => x.ext)) {
@@ -47,7 +50,7 @@ function harnessHooks(root) {
         if (typeof r.matcher === 'string') matchers.push(r.matcher);
       } catch { /* luật hỏng: doctor báo */ }
     }
-    // Khối mở rộng (S-065): chỉ đọc bản ĐÃ XÁC NHẬN (mã chưa xác nhận không được nạp, kể cả để đọc khai báo).
+    // Khối mở rộng: chỉ đọc bản ĐÃ XÁC NHẬN (mã chưa xác nhận không được nạp, kể cả để đọc khai báo).
     for (const ext of wire.extensions(root).filter((x) => x.manifest)) {
       for (const r of wire.extensionParts(ext, 'rules').items) {
         for (const k of r.on) kinds.add(k);
@@ -60,7 +63,7 @@ function harnessHooks(root) {
     const event = KIND_EVENT[k];
     if (!event) continue;
     const hook = { type: 'command', command: command(root, 'hooks/project-rules.js', k), timeout: 10 };
-    add(event, 900, event === 'PreToolUse' ? { matcher: matchers.length ? matchers.join('|') : DEFAULT_MATCHER, hooks: [hook] } : { hooks: [hook] });
+    add(event, 900, event === 'PreToolUse' ? { matcher: matchers.join('|'), hooks: [hook] } : { hooks: [hook] });
   }
   const out = {};
   for (const [e, list] of Object.entries(byEvent)) out[e] = list.map((x, i) => ({ ...x, i })).sort((a, b) => a.order - b.order || a.i - b.i).map((x) => x.group);
@@ -130,7 +133,7 @@ function run(root, { check = false, dryRun = false } = {}) {
   if (check) { lines.push(`LỆCH: ${changed.map((o) => o.rel).join(', ')} chưa đúng với các khối đang bật. Chạy: node ${P.codeRel(root, 'cli/cli.js')} setup`); return { ok: false, changed: changed.map((o) => o.rel), text: lines.join('\n') }; }
   if (dryRun) { lines.push(`Sẽ ghi: ${changed.map((o) => o.rel).join(', ')}.`); return { ok: true, changed: changed.map((o) => o.rel), text: lines.join('\n') }; }
   for (const o of changed) { fs.mkdirSync(path.dirname(o.file), { recursive: true }); fs.writeFileSync(o.file, o.next); }
-  lines.push(`Đã ghi: ${changed.map((o) => o.rel).join(', ')}. Claude Code nạp hook mới ở phiên kế tiếp; máy chủ MCP mới thì gõ /mcp để nối lại.`);
+  lines.push(`Đã ghi: ${changed.map((o) => o.rel).join(', ')}. Hook mới có hiệu lực ngay ở cả phiên đang mở (Claude Code đọc lại settings.json; đã đo 2026-10-13); máy chủ MCP mới thì gõ /mcp để nối lại.`);
   return { ok: true, changed: changed.map((o) => o.rel), text: lines.join('\n') };
 }
 

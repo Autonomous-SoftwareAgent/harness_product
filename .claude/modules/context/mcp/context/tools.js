@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Công cụ MCP của khối context (S-064): kho ngữ nghĩa, từ vựng, quan hệ, soát sơ đồ tự sinh. mcp-tools.js gom qua bảng đăng ký
+// Công cụ MCP của khối context: kho ngữ nghĩa, từ vựng, quan hệ, soát sơ đồ tự sinh. mcp-tools.js gom qua bảng đăng ký
 // (khóa `tools` trong modules/context.json).
 const core = require('../../../servicedocs/mcp/docs/core');
 
@@ -20,7 +20,7 @@ const TOOLS = [
     description:
       'HỎI KHO NGỮ NGHĨA của cả hệ TRƯỚC KHI dùng Grep/Glob để tìm hiểu một việc. Một câu hỏi, một câu trả lời gom mã, vòng đời và tài liệu: LÀ GÌ (từ vựng, luồng, thành phần), Ở ĐÂU (tệp, khai báo, kèm dòng), CHẠY THẾ NÀO (đường dẫn API, topic, bảng), TEST, ' +
       'VÌ SAO (quyết định, thiết kế, đặc tả), SƠ ĐỒ, LƯU Ý (vấn đề đang mở, điều chưa kiểm, chỗ dễ nhầm). Mỗi dòng là tóm tắt kèm địa chỉ tệp:dòng; đọc nguyên văn thì mở tệp ở đó. Ba cách gọi: ' +
-      '(1) q: một từ, một mã (P-003, S-017, PHUB-D-020), một tên tệp, tên bảng, "POST /refunds", hoặc một câu; tiếng Việt không dấu cũng được. (2) q và to: đường nối giữa hai vật. ' +
+      '(1) q: một từ, một mã (P-003, BOOK-D-020), một tên tệp, tên bảng, "POST /refunds", hoặc một câu; tiếng Việt không dấu cũng được. (2) q và to: đường nối giữa hai vật. ' +
       '(3) impact: danh sách tệp vừa sửa hoặc sắp sửa, trả về ai nhập chúng, test, đường dẫn API, sơ đồ và tài liệu bị chạm. Kho dựng từ bản ĐÃ COMMIT của mọi dịch vụ, biết tới mức tệp và khai báo chính: ' +
       'chuỗi trong thân hàm và mã chưa commit thì vẫn phải Grep. "Không thấy" trong kho không có nghĩa là "không có".',
     inputSchema: {
@@ -45,7 +45,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         term: str('Từ hoặc cụm từ người dùng nói'), means: str('Nghĩa của nó, một dòng, nói bằng lời thường'), also: strs('Cách gọi khác (tối đa 12)'),
-        refs: strs('Mã nút của kho mà từ này chỉ tới, ví dụ file:payment-hub:src/hub.js'),
+        refs: strs('Mã nút của kho mà từ này chỉ tới, ví dụ file:billing:src/app.js'),
         evidence: { type: 'array', items: { type: 'object', properties: { file: { type: 'string' }, line: { type: 'integer' } }, required: ['file', 'line'] }, description: 'Ít nhất một bằng chứng {file, line} trong dịch vụ' },
         remove: { type: 'boolean', description: 'true: xóa mục từ vựng này' },
       },

@@ -1,6 +1,6 @@
 'use strict';
 // spec: LEDG-S-004
-// BỘ CHUYỂN lưu trữ: bảo trì hằng ngày của hai sổ (S-060). Chạy sau mỗi commit (lệnh on-commit) và chạy tay bằng `cli.js db-maintain`;
+// BỘ CHUYỂN lưu trữ: bảo trì hằng ngày của hai sổ. Chạy sau mỗi commit (lệnh on-commit) và chạy tay bằng `cli.js db-maintain`;
 // KHÔNG chạy trong hook, để hook không phải chờ. Ba việc, theo đúng thứ tự:
 //   1. gom các ngày đã hết từ nhóm act_ của sổ phiên vào usage_daily của sổ đo lường (mỗi ngày đúng một lần);
 //   2. xóa nhật ký act_ cũ hơn 60 ngày, CHỈ khi bước 1 chạy được (không gom được thì giữ, sổ phiên tự xóa ở hạn cứng 180 ngày);

@@ -62,7 +62,7 @@ async function wrapUp(event, service, { workspace: ws, store, jobs }) {
       'Update docs/agent/STATUS.md (status table, goals, blocked items, add a log row). Also, if applicable:',
       '- DECISIONS.md for project-wide decisions; module decisions go through the bsn-docs tool design_record.',
       '- spec/impl via bsn-docs (spec_fill, impl_link) so the module docs match the code.',
-      `- docs/service.yaml via bsn-docs (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (BSN_/docs/portal) is rebuilt from it automatically.`,
+      `- docs/service.yaml via bsn-docs (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (docs/portal) is rebuilt from it automatically.`,
     ].join('\n'));
   }
 

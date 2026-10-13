@@ -3,10 +3,10 @@
 // spec: LEDG-S-002
 // spec: LEDG-S-003
 // spec: LEDG-S-004
-// BỘ CHUYỂN lưu trữ, schema `session` (S-055, S-060). Tệp này chỉ lo SQLite: mở sổ, nâng phiên bản, ghi, đọc. Phần "nghĩ" (việc nào cần gì,
+// BỘ CHUYỂN lưu trữ, schema `session`. Tệp này chỉ lo SQLite: mở sổ, nâng phiên bản, ghi, đọc. Phần "nghĩ" (việc nào cần gì,
 // còn thiếu gì, lời từ chối) nằm ở core/rules/lib/knowledge.js; hàm đọc ghi của phần kế hoạch ở scope-db.js.
 //
-// Schema `session` (S-060) kể chuyện của từng phiên, chia hai nhóm theo câu hỏi "có cần nhớ sau khi phiên kết thúc không":
+// Schema `session` kể chuyện của từng phiên, chia hai nhóm theo câu hỏi "có cần nhớ sau khi phiên kết thúc không":
 //   sessions             gốc: một dòng cho mỗi phiên, kèm dự án và bản harness lúc phiên bắt đầu
 //   act_*  AGENT ĐÃ LÀM GÌ (giữ có hạn; dùng để hàng rào đối chiếu ngay và làm nguyên liệu đánh giá)
 //     act_skill_loads      phiên (hoặc agent con) đã mở skill nào, trong đợt nào
@@ -52,7 +52,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS tool_calls_at ON tool_calls(at);
   PRAGMA user_version = 1;
 `;
-// Phiên bản 2 (S-050): phạm vi theo chuỗi phiên -> kế hoạch đã duyệt -> dịch vụ. Hàm đọc ghi ở scope-db.js.
+// Phiên bản 2: phạm vi theo chuỗi phiên -> kế hoạch đã duyệt -> dịch vụ. Hàm đọc ghi ở scope-db.js.
 // Mọi lệnh đều "IF NOT EXISTS": hai hook cùng nâng sổ một lúc thì lần sau không làm gì.
 const SCHEMA_V2 = `
   CREATE TABLE IF NOT EXISTS plans(id INTEGER PRIMARY KEY AUTOINCREMENT, sid TEXT NOT NULL, sha TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', scope TEXT NOT NULL DEFAULT '', services TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL, at INTEGER NOT NULL, superseded_at INTEGER);
@@ -63,12 +63,12 @@ const SCHEMA_V2 = `
   CREATE TABLE IF NOT EXISTS plan_commits(plan_id INTEGER NOT NULL, service TEXT NOT NULL, commit_sha TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(plan_id, service, commit_sha));
   PRAGMA user_version = 2;
 `;
-// Phiên bản 3 (S-050 đợt 2): ghi chú theo phiên, thay phần "đã nhắc gì" từng nằm trong tệp scope-<phiên>.json.
+// Phiên bản 3: ghi chú theo phiên, thay phần "đã nhắc gì" từng nằm trong tệp scope-<phiên>.json.
 const SCHEMA_V3 = `
   CREATE TABLE IF NOT EXISTS session_notes(sid TEXT NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(sid, key));
   PRAGMA user_version = 3;
 `;
-// Phiên bản 4 (S-060): đổi tên theo hai nhóm act_, rec_; thêm uid, dự án, bản harness, kế hoạch của lời gọi công cụ, quyết định của
+// Phiên bản 4: đổi tên theo hai nhóm act_, rec_; thêm uid, dự án, bản harness, kế hoạch của lời gọi công cụ, quyết định của
 // mọi luật, chuỗi băm. Chỉ đổi tên và thêm cột; dữ liệu cũ giữ nguyên. Hai việc duy nhất có chuyển dữ liệu: dòng "bị chặn hay được nhắc"
 // mà luật đủ kiến thức từng ghi vào tool_calls (cột blocked, missing) chuyển sang act_rule_decisions, vì đó là QUYẾT ĐỊNH của luật chứ không
 // phải lời gọi công cụ (lời gọi thật được luật ghi sổ ghi riêng, sau khi công cụ chạy); và hai bảng rec_ có chuỗi băm được tính từ đầu.

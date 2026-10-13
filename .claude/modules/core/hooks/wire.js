@@ -3,7 +3,7 @@
 // spec: HOOK-S-010
 // spec: HOOK-S-011
 // spec: LEDG-S-004
-// CỬA VÀO, phần lắp ráp dùng chung của các tệp hook (S-055). Đây là nơi DUY NHẤT của các luật biết cả lõi lẫn bộ chuyển:
+// CỬA VÀO, phần lắp ráp dùng chung của các tệp hook. Đây là nơi DUY NHẤT của các luật biết cả lõi lẫn bộ chuyển:
 // chọn bộ chuyển cho từng cổng, tìm luật, rồi giao cho bộ chuyển Claude Code chạy. Mỗi tệp hook chỉ còn vài dòng gọi `hook(...)`.
 // Lõi (core/) không nhập bộ chuyển; bộ chuyển (adapters/) không nhập lõi; cổng (ports/) không nhập gì. Test kiến trúc giữ ba điều đó.
 const fs = require('node:fs');
@@ -17,7 +17,7 @@ const RULES_DIR = path.join(PLUGIN, 'core', 'rules');
 
 // Các phần khác của harness mà bộ chuyển "việc của harness" nhờ. Đưa vào dưới dạng hàm trả module để chỉ nạp lúc cần;
 // thiếu tệp hoặc khối chứa nó đang tắt thì hàm ném lỗi và bên gọi xử lý như trước (bỏ qua, hoặc ghi nhật ký).
-// Mỗi phần do một khối khai ở khóa `provides` trong tệp tự khai của nó (S-064); cửa vào này không nhập thẳng khối nào khác lõi.
+// Mỗi phần do một khối khai ở khóa `provides` trong tệp tự khai của nó; cửa vào này không nhập thẳng khối nào khác lõi.
 const part = (name) => () => {
   const f = P.provided(ROOT, name);
   if (!f) throw new Error(`không có khối nào đang bật cung cấp "${name}"`);
@@ -45,7 +45,7 @@ function ports(root = ROOT) {
 }
 
 // Tệp luật: mỗi tệp .js ngay trong core/rules/ (trừ sổ đăng ký) của các khối đang bật, rồi luật MỞ RỘNG của dự án ở <thư mục dự án>/rules/
-// (S-064: dự án thêm luật mà không sửa mã của harness). [{ id, file, ext }], luật của harness trước.
+// (dự án thêm luật mà không sửa mã của harness). [{ id, file, ext }], luật của harness trước.
 function ruleFiles(root = ROOT) {
   const out = [];
   const on = new Set(P.enabledModules(root).enabled.map((m) => m.name));
@@ -92,7 +92,7 @@ function hook({ name, id, kind, cwdFallback = 'process', shell = false, badInput
   });
 }
 
-// KHỐI MỞ RỘNG (S-065): mọi khối của dự án và của các đơn vị, kèm tình trạng xác nhận và khai báo của bản ĐANG CHẠY (bản đã xác nhận).
+// KHỐI MỞ RỘNG: mọi khối của dự án và của các đơn vị, kèm tình trạng xác nhận và khai báo của bản ĐANG CHẠY (bản đã xác nhận).
 // [{ key, scope, name, unit, base, state, run, manifest | null, problems: [chữ] }]. Chỉ khối có `manifest` mới chạy.
 function extensions(root = ROOT) {
   const A = require('../adapters/project/extensions');
@@ -161,8 +161,8 @@ function touchesUnit(root, unit, event, writesAbs) {
   return Boolean(a.args && a.args.service === unit);
 }
 
-// Chạy luật MỞ RỘNG nghe sự kiện `kind`: luật kiểu cũ ở <thư mục dự án>/rules/ (api 0.1, S-064) và luật của các khối mở rộng đã xác nhận
-// (S-065). Mọi quyết định được gộp, chặn mạnh nhất thắng: khối chỉ chặn thêm được, không nới được gì (luật của harness là hook riêng,
+// Chạy luật MỞ RỘNG nghe sự kiện `kind`: luật kiểu cũ ở <thư mục dự án>/rules/ (api 0.1) và luật của các khối mở rộng đã xác nhận
+//. Mọi quyết định được gộp, chặn mạnh nhất thắng: khối chỉ chặn thêm được, không nới được gì (luật của harness là hook riêng,
 // Claude Code gộp theo cùng cách). Luật hỏng hay quá giờ thì cho qua, ghi ra stderr và sổ lỗi để doctor, tóm tắt đầu phiên báo.
 function extensionHook({ kind, root = ROOT, shell = false }) {
   const host = require('../adapters/claude-code/hook');
@@ -170,6 +170,18 @@ function extensionHook({ kind, root = ROOT, shell = false }) {
     name: 'project-rules', kind, root, badInput: 'skip', cwdFallback: process.cwd(),
     shell: shell ? require('../gate/bash-targets').analyzeBash : null,
   }, async (event) => runExtensions(root, kind, event));
+}
+
+// Luật có nhận công cụ của việc này không. Nhóm hook trong settings.json gộp matcher của MỌI luật (và luôn có các công cụ ghi mặc định),
+// nên từng luật phải tự lọc: luật khai matcher thì chỉ nhận đúng công cụ đó, không khai thì nhận các công cụ ghi mặc định.
+// Chỉ lọc ở before-action: các loại sự kiện khác được khai không kèm matcher. Matcher đọc như Claude Code đọc: một biểu thức khớp trọn tên.
+const { DEFAULT_MATCHER } = require('../core/extensions/contract');
+function wantsTool(kind, matcher, event) {
+  if (kind !== 'before-action') return true;
+  const tool = String((event.action && event.action.tool) || '');
+  if (!tool) return true;
+  const m = typeof matcher === 'string' && matcher ? matcher : DEFAULT_MATCHER;
+  try { return new RegExp(`^(?:${m})$`).test(tool); } catch { return m.split('|').includes(tool); }
 }
 
 async function runExtensions(root, kind, event) {
@@ -183,10 +195,12 @@ async function runExtensions(root, kind, event) {
   };
   // Luật kiểu cũ (api 0.1).
   const reg = require('../core/rules/registry').create();
+  const legacyMatcher = new Map();
   for (const f of ruleFiles(root).filter((x) => x.ext)) {
-    try { reg.add(require(f.file), `rules/${f.id}.js (mở rộng của dự án)`, { extension: true }); } catch (e) { fail('rules', f.id, e); }
+    try { const mod = require(f.file); reg.add(mod, `rules/${f.id}.js (mở rộng của dự án)`, { extension: true }); legacyMatcher.set(mod.id, mod.matcher); } catch (e) { fail('rules', f.id, e); }
   }
   for (const r of reg.forKind(kind)) {
+    if (!wantsTool(kind, legacyMatcher.get(r.id), event)) continue;
     let d = null;
     try { d = await r.run(event, ps, {}); } catch (e) { fail('rules', r.id, e); continue; }
     if (d) { await recordDecision(ps, r.id, event, d); decisions.push(d); }
@@ -200,7 +214,7 @@ async function runExtensions(root, kind, event) {
     if (ext.scope === 'unit' && (!C.UNIT_KINDS.includes(kind) || !touchesUnit(root, ext.unit, event, writesAbs))) continue;
     const { items, problems } = extensionParts(ext, 'rules');
     for (const p of problems) fail(ext.key, '-', new Error(p));
-    for (const r of items.filter((x) => x.on.includes(kind))) {
+    for (const r of items.filter((x) => x.on.includes(kind) && wantsTool(kind, x.matcher, event))) {
       runs.push((async () => {
         try {
           const d = await withTimeout(Promise.resolve().then(() => r.run(extensionCtx(root, ext, event, writesAbs))), ext.manifest.timeoutMs, `luật ${r.id}`);
@@ -214,7 +228,7 @@ async function runExtensions(root, kind, event) {
   return C.merge(decisions);
 }
 
-// Ghi mọi quyết định khác "cho qua" của một luật vào sổ quyết định (act_rule_decisions, S-060), để đo được luật nào chặn bao nhiêu,
+// Ghi mọi quyết định khác "cho qua" của một luật vào sổ quyết định (act_rule_decisions), để đo được luật nào chặn bao nhiêu,
 // ở dịch vụ nào, dưới kế hoạch nào. Ghi ở MỘT chỗ này cho mọi luật, nên luật không phải tự ghi. Lỗi thì bỏ qua: quyết định giữ nguyên.
 async function recordDecision(ps, ruleId, event, decision) {
   if (!decision || !event.session) return;
@@ -237,10 +251,28 @@ function briefFacts(root, sid, now = Date.now()) {
     skillHealth: (r) => require('./ledger-lib').health(r),
     importScopeFiles: (r) => require('./scope-lib').importScopeFiles(r),
     extensions: (r) => extensionsBrief(r, now),
+    mcp: (r) => mcpBrief(r, now),
   });
 }
 
-// Các điều về khối mở rộng mà phiên và người dùng cần biết (S-065): khối chưa xác nhận, đã sửa, đã xóa, khai báo hỏng, lỗi lúc chạy
+// Các điều về máy chủ MCP sau cổng mà phiên cần biết: chưa xác nhận, đã sửa sau lần xác nhận, đang hỏng, khai báo hỏng.
+// Trả { lines: [chữ], cli }; rỗng khi mọi máy chủ chạy đúng hoặc dự án không khai máy chủ nào.
+function mcpBrief(root, now = Date.now()) {
+  const lines = [];
+  const M = require('../adapters/project/mcp-servers');
+  const st = M.status(root);
+  const live = require('../cli/mcp').live(root, now);
+  for (const p of st.problems) lines.push(`khai báo hỏng, bị bỏ qua (${p})`);
+  for (const s of st.list) {
+    const l = live[s.name];
+    if (s.state === 'untrusted') lines.push(`${s.name} chưa được xác nhận nên KHÔNG chạy (mã ${s.token})`);
+    else if (s.state === 'changed') lines.push(`${s.name} đã sửa sau lần xác nhận, đang chạy bản đã xác nhận (mã của bản mới: ${s.token})`);
+    else if (l && (l.status === 'broken' || l.status === 'paused')) lines.push(`${s.name} đang ${l.status === 'paused' ? 'bị tạm ngắt' : 'hỏng'}: ${l.error || 'chưa rõ'} (cổng tự thử lại; máy chủ khác vẫn chạy)`);
+  }
+  return { lines, cli: P.codeRel(root, 'cli/cli.js') };
+}
+
+// Các điều về khối mở rộng mà phiên và người dùng cần biết: khối chưa xác nhận, đã sửa, đã xóa, khai báo hỏng, lỗi lúc chạy
 // trong 24 giờ qua. Trả { lines: [chữ], cli } ; rỗng khi mọi khối chạy đúng.
 function extensionsBrief(root, now = Date.now()) {
   const lines = [];
@@ -257,4 +289,4 @@ function extensionsBrief(root, now = Date.now()) {
   return { lines, cli: P.codeRel(root, 'cli/cli.js') };
 }
 
-module.exports = { ROOT, PLUGIN, PARTS, ports, rule, allRules, ruleFiles, hook, extensionHook, runExtensions, extensions, extensionParts, extensionCtx, writesOf, briefFacts };
+module.exports = { ROOT, PLUGIN, PARTS, ports, rule, allRules, ruleFiles, hook, extensionHook, runExtensions, wantsTool, DEFAULT_MATCHER, mcpBrief, extensions, extensionParts, extensionCtx, writesOf, briefFacts };

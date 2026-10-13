@@ -1,10 +1,10 @@
 'use strict';
 // spec: GATE-S-004
-// Khuôn kế hoạch chuẩn (S-050): hàm thuần, không đọc tệp. Cổng duyệt chỉ mở khi kế hoạch người dùng vừa đồng ý đọc được theo khuôn này;
+// Khuôn kế hoạch chuẩn: hàm thuần, không đọc tệp. Cổng duyệt chỉ mở khi kế hoạch người dùng vừa đồng ý đọc được theo khuôn này;
 // sổ phạm vi (hooks/scope-lib.js) lấy danh sách dịch vụ, lý do và phạm vi từ đây để đối soát đăng ký và lần sửa.
 //
 //   ## Kế hoạch
-//   - Dịch vụ: provider-service, infra      (hoặc: không)
+//   - Dịch vụ: <đơn-vị-a>, <đơn-vị-b>      (hoặc: không)
 //   - Lý do: ...
 //   - Làm gì: ...
 //   - Sửa tệp: ...

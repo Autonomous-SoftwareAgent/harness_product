@@ -8,7 +8,7 @@
 //   node .claude/modules/core/gate/gate-hook.js stop     (Stop): lưu tin nhắn cuối của model làm ngữ cảnh cho lượt sau
 //   node .claude/modules/core/gate/gate-hook.js tool     (PreToolUse Write|Edit|NotebookEdit|Bash): chặn/hỏi khi cổng đóng
 //   node .claude/modules/core/gate/gate-hook.js health   (SessionStart): kiểm sức khỏe harness, chỉ nhắc khi có vấn đề
-// Tệp này chỉ LẮP RÁP (S-056): bộ chuyển Claude Code (gate-host.js) dịch dữ liệu hook thành sự kiện chung; luật (gate-rule.js) quyết định;
+// Tệp này chỉ LẮP RÁP: bộ chuyển Claude Code (gate-host.js) dịch dữ liệu hook thành sự kiện chung; luật (gate-rule.js) quyết định;
 // các cổng ra của luật được nối với trạng thái (gate-state.js), model phán xét (gate-classify.js), nhật ký (gate-diag.js),
 // đường dẫn (gate-paths.js), phép kiểm sức khỏe (gate-health.js) và sổ phạm vi của harness nếu có.
 // Hook lỗi: prompt, stop, health im lặng (không đổi trạng thái); tool thì từ chối (đóng khi lỗi), kèm cách tắt.
@@ -38,7 +38,7 @@ function loadConfig() {
   }
 }
 
-// Ghi lần phán xét vào sổ phạm vi (S-050). Sổ là bản ghi và lịch sử; cổng không phụ thuộc vào nó, nên lỗi thì bỏ qua.
+// Ghi lần phán xét vào sổ phạm vi. Sổ là bản ghi và lịch sử; cổng không phụ thuộc vào nó, nên lỗi thì bỏ qua.
 function recordPlan(sid, text, parsed, status) {
   try {
     const db = require('../hooks/ledger-lib').open(ROOT);

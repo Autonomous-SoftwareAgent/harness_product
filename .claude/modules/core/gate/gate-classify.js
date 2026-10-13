@@ -32,7 +32,7 @@ function findClaude(cfg) {
   return null;
 }
 
-// held: { reply } khi kế hoạch đang xét KHÔNG phải tin cuối của trợ lý (S-058): sau kế hoạch, trợ lý đã trả lời chen một câu khác (reply).
+// held: { reply } khi kế hoạch đang xét KHÔNG phải tin cuối của trợ lý: sau kế hoạch, trợ lý đã trả lời chen một câu khác (reply).
 // Khi đó người phán xét được hỏi về đúng KẾ HOẠCH ĐANG CHỜ, và lời chỉ ghi nhận câu trả lời chen giữa không được tính là duyệt.
 function buildPrompt(userMessage, plan, maxPlanChars = 3000, held = null) {
   if (held) {

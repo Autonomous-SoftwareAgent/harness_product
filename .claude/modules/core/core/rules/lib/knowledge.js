@@ -1,14 +1,14 @@
 'use strict';
 // spec: LEDG-S-002
 // spec: HOOK-S-009
-// Phần "nghĩ" của luật đủ kiến thức (S-032): việc nào cần skill và tài liệu nào, phiên còn thiếu gì, lời từ chối viết ra sao.
+// Phần "nghĩ" của luật đủ kiến thức: việc nào cần skill và tài liệu nào, phiên còn thiếu gì, lời từ chối viết ra sao.
 // Thuần: hỏi dự án qua cổng workspace (đồng bộ), không tự đọc đĩa. Sổ "phiên đã nạp gì" do luật lấy qua cổng store rồi đưa vào.
 const path = require('node:path');
 
 const posix = (p) => String(p).split(path.sep).join('/');
 const same = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 
-// Bảng nối đã đọc thành vật (ws.skillsMapRaw()) -> dạng dùng được, hoặc null. Khai báo (S-032, mở rộng ở S-063):
+// Bảng nối đã đọc thành vật (ws.skillsMapRaw()) -> dạng dùng được, hoặc null. Khai báo:
 //   mode         "enforce" | "remind" | "off"
 //   overview     skill tổng quát, cần cho mọi việc có yêu cầu
 //   serviceDocs  tài liệu phải đọc trước khi sửa một đơn vị (đường dẫn trong đơn vị); "beforeEdit" là tên khác của trường này
@@ -137,7 +137,7 @@ function denyText(miss, { agent, mapRel = '.claude/project/skills-map.json' } = 
   const how = [];
   if (miss.skills.length) how.push(`mở từng skill bằng công cụ Skill (hoặc đọc trọn .claude/skills/<tên>/SKILL.md bằng công cụ Read)`);
   if (miss.docs.length) how.push('đọc từng tệp tài liệu bằng công cụ Read (tệp dài thì đọc từng phần; cat hay Grep không được tính)');
-  return `Lời gọi này bị chặn vì phiên chưa nạp đủ kiến thức cho việc đang làm (S-032, bảng nối ${mapRel}). Còn thiếu: ${parts.join('; ')}. ` +
+  return `Lời gọi này bị chặn vì phiên chưa nạp đủ kiến thức cho việc đang làm (bảng nối ${mapRel}). Còn thiếu: ${parts.join('; ')}. ` +
     `Cách làm: ${how.join('; ')}; rồi gọi lại đúng lời gọi này. Sau mỗi lần nén ngữ cảnh phải nạp lại.` +
     (agent ? ' Bạn là agent con: ngữ cảnh của bạn riêng, nên phải tự nạp, không dùng chung với phiên chính.' : '');
 }
@@ -147,7 +147,7 @@ function denyText(miss, { agent, mapRel = '.claude/project/skills-map.json' } = 
 // bảng nối đọc được, để phép kiểm không tạo sổ ở nơi chưa dùng sổ).
 // Trả danh sách vấn đề (rỗng = sạch).
 // `skillMatchers` (tùy chọn): mẫu tên công cụ của các nhóm hook đang gọi guard-skill.js; công cụ khai trong bảng mà không mẫu nào
-// khớp thì hook không bao giờ được gọi cho nó, tức là khai mà KHÔNG chặn (S-063).
+// khớp thì hook không bao giờ được gọi cho nó, tức là khai mà KHÔNG chặn.
 function health(ws, { hookCommands, ledgerOpens, skillMatchers }) {
   const problems = [];
   const map = loadMap(ws);

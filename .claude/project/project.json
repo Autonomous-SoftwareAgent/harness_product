@@ -28,7 +28,8 @@
       "diagram_review": "diagrams",
       "context_term": "context",
       "context_relate": "context",
-      "portal_build": "service-page"
+      "portal_build": "service-page",
+      "session_transfer": "transfer-session"
     },
     "readonly": [
       "docs_status",

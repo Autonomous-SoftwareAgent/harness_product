@@ -1,5 +1,5 @@
 {
-  "_": "Bộ khuôn nhẹ (S-064): chỉ lõi (cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên) và khối chặn đẩy. Mỗi đơn vị chỉ cần CLAUDE.md và docs/agent/STATUS.md; không tài liệu ba tầng, không sơ đồ, không cổng HTML. Khóa nào dự án khai trong project.json thì thắng khóa ở đây.",
+  "_": "Bộ khuôn nhẹ: chỉ lõi (cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên) và khối chặn đẩy. Mỗi đơn vị chỉ cần CLAUDE.md và docs/agent/STATUS.md; không tài liệu ba tầng, không sơ đồ, không cổng HTML. Khóa nào dự án khai trong project.json thì thắng khóa ở đây.",
   "lang": "vi",
   "modules": ["core", "guard-push"],
   "skills": {

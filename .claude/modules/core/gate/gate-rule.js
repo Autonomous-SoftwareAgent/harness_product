@@ -3,7 +3,7 @@
 // spec: GATE-S-005
 // spec: GATE-S-001
 // spec: GATE-S-004
-// LUẬT của cổng duyệt (S-056): phần quyết định cho bốn sự kiện, viết thành hàm nhận SỰ KIỆN CHUNG và các cổng ra. Không đọc stdin,
+// LUẬT của cổng duyệt: phần quyết định cho bốn sự kiện, viết thành hàm nhận SỰ KIỆN CHUNG và các cổng ra. Không đọc stdin,
 // không đọc ghi đĩa, không chạy tiến trình, không biết dạng dữ liệu của Claude Code: việc đó là của gate-host.js (dịch), gate-state.js
 // (trạng thái), gate-classify.js (model phán xét), gate-diag.js (nhật ký), do gate-hook.js lắp vào.
 // Cổng duyệt là một khối cài riêng được (install.js chép nguyên thư mục này sang dự án khác), nên nó giữ cổng và bộ chuyển của riêng mình
@@ -13,7 +13,7 @@
 // Cổng ra `p`:
 //   state.load(sid) / state.save(sid, state) / state.mtime(sid)   trạng thái cổng theo phiên
 //   judge(lời người dùng, kế hoạch, held?) -> { verdict, via, ms } model phán xét; held = { reply } khi kế hoạch đang xét là kế hoạch
-//                                                                  ĐANG CHỜ chứ không phải tin cuối (S-058)
+//                                                                  ĐANG CHỜ chứ không phải tin cuối
 //   log(dòng)                                                      nhật ký chẩn đoán (nhân chứng thứ hai)
 //   lastTransition(sid)                                            lần mở/đóng cổng gần nhất trong nhật ký
 //   recordPlan(sid, kế hoạch, bản đã đọc theo khuôn, trạng thái)   sổ phạm vi; lỗi thì bỏ qua
@@ -70,7 +70,7 @@ function userPrompt(event, cfg, p) {
   }
   const scopeMode = p.scopeMode();
   const requireFormat = scopeMode === 'enforce';
-  // Kế hoạch đang xét (S-058): tin cuối, hoặc kế hoạch đúng khuôn còn chờ khi tin cuối chỉ là một câu trả lời chen giữa. Chỉ áp khi luật phạm vi đòi khuôn.
+  // Kế hoạch đang xét: tin cuối, hoặc kế hoạch đúng khuôn còn chờ khi tin cuối chỉ là một câu trả lời chen giữa. Chỉ áp khi luật phạm vi đòi khuôn.
   const q = requireFormat ? core.planInQuestion(state) : { plan: state.lastAssistant, held: false };
   const plan = q.plan;
   const r = !state.lastAssistant || msg.length > cfg.maxPromptChars

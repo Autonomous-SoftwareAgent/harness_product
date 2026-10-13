@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Công cụ MCP của khối diagrams (S-064): sơ đồ khai bằng dữ liệu. mcp-tools.js gom qua bảng đăng ký (khóa `tools` trong modules/diagrams.json).
+// Công cụ MCP của khối diagrams: sơ đồ khai bằng dữ liệu. mcp-tools.js gom qua bảng đăng ký (khóa `tools` trong modules/diagrams.json).
 const { spawnSync } = require('node:child_process');
 const core = require('../../../servicedocs/mcp/docs/core');
 const diagrams = require('./diagrams');

@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-007
-// CỔNG RA "sổ" (S-055): những gì lõi cần nhớ giữa các lần chạy. Tệp này chỉ là hợp đồng.
+// CỔNG RA "sổ": những gì lõi cần nhớ giữa các lần chạy. Tệp này chỉ là hợp đồng.
 // Cổng này CÓ CHỜ: mọi hàm có thể trả lời hứa (Promise), lõi luôn chờ kết quả. Nhờ vậy đổi nơi lưu sang thứ trả lời qua mạng không phải sửa lõi.
 // Không mở được sổ thì KHÔNG ném lỗi: hàm trả giá trị rỗng ghi ở từng dòng, để luật không chặn ai khi sổ hỏng (phép kiểm sức khỏe báo).
 //

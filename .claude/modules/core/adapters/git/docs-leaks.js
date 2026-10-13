@@ -1,7 +1,7 @@
 'use strict';
 // spec: HOOK-S-008
-// BỘ CHUYỂN git + đĩa: dò nội dung của `<gốc>/docs/` trong các commit sắp đẩy hay trong một cây thư mục (S-062). Chỉ ĐỌC.
-// Nội dung docs/ không bao giờ lên remote; repo gốc đã không đẩy (S-035), nên đường lọt còn lại là BẢN CHÉP của tệp trong docs/
+// BỘ CHUYỂN git + đĩa: dò nội dung của `<gốc>/docs/` trong các commit sắp đẩy hay trong một cây thư mục. Chỉ ĐỌC.
+// Nội dung docs/ không bao giờ lên remote; repo gốc đã không đẩy, nên đường lọt còn lại là BẢN CHÉP của tệp trong docs/
 // nằm trong repo khác (deploy, svc-*, gói sản phẩm) rồi repo đó được đẩy. Hai phép bắt:
 //   1. Trùng nội dung: mỗi tệp trong docs/ (bản đã commit của repo gốc VÀ tệp đang có trên đĩa, kể cả docs/portal/) có dấu vân tay là
 //      mã băm kiểu git (blob); bản chép nguyên, đổi tên hay dời chỗ vẫn bắt được. Bỏ qua tệp ngắn hơn MIN_BYTES (dễ trùng ngẫu nhiên) và
@@ -55,8 +55,8 @@ function fingerprints(root) {
 
 // Lý do một tệp (đường dẫn, mã băm) là nội dung của docs/, hoặc '' khi không phải.
 function why(file, sha, fp) {
-  if (sha && fp.has(sha)) return `trùng nội dung với BSN_/${fp.get(sha)}`;
-  if (DOC_PATH.test(file)) return 'đường dẫn thuộc bố cục của BSN_/docs/';
+  if (sha && fp.has(sha)) return `trùng nội dung với ${fp.get(sha)} của dự án`;
+  if (DOC_PATH.test(file)) return 'đường dẫn thuộc bố cục của docs/';
   return '';
 }
 
@@ -75,10 +75,10 @@ function changedIn(cwd, range) {
 }
 
 // Kiểm các commit sắp đẩy từ repo `cwd`. `refs`: [{ local, remoteSha }] (từ stdin của pre-push; kiểm tay thì HEAD, remoteSha rỗng).
-// Trả { leaks: [{ commit, file, why }], error }. Repo gốc thì không dò: nó không bao giờ đẩy (S-035).
+// Trả { leaks: [{ commit, file, why }], error }. Repo gốc thì không dò: nó không bao giờ đẩy.
 function checkPush(root, cwd, remote, refs, { fp } = {}) {
   if (same(cwd, root)) return { leaks: [], error: '' };
-  if (!require('../../gate/gate-paths').policy(root, 'docsNeverPush')) return { leaks: [], error: '' }; // dự án không bật luật này (S-063)
+  if (!require('../../gate/gate-paths').policy(root, 'docsNeverPush')) return { leaks: [], error: '' }; // dự án không bật luật này
   let map = fp;
   try { map = map || fingerprints(root); } catch (e) { return { leaks: [], error: e.message }; }
   const leaks = [];

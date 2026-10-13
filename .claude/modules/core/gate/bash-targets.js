@@ -115,6 +115,23 @@ const INTERPRETERS = {
 // Trong mã nội tuyến: gọi API ghi/xóa/dời/chuyển hướng.
 const WRITE_API = /writeFile|appendFile|createWriteStream|\.write\(|copyFile|cpSync|renameSync|\brename\(|unlink|\brm\b|rmSync|rmdir|mkdir|truncate|chmod|open\([^)]*['"][wa+]|fs\.\w*write|Set-Content|Add-Content|Out-File|Remove-Item|Move-Item|Copy-Item|New-Item|\btee\b|sed\s+-i|\bmv\b|\bcp\b|(^|[^=<>!-])>{1,2}\s*[^&\s=]/i;
 
+// Mã nội tuyến ghi ĐI ĐÂU (P-007). Trước đây chỉ biết "có gọi API ghi hay không", nên mã chỉ ĐỌC một tệp được bảo vệ rồi in ra màn hình
+// (process.stdout.write) hoặc ghi kết quả ra một tệp khác cũng bị coi là ghi vào tệp được bảo vệ. Nay tách ba loại:
+//   - in ra màn hình: không phải ghi tệp;
+//   - lời gọi ghi MỘT tệp mà đích là chuỗi viết thẳng trong mã (writeFileSync('a.txt', ...)): đích đó vào `literalTargets`, bên gọi tự xét;
+//   - mọi lời gọi ghi còn lại (đích là biến, ghép chuỗi, sao chép, đổi tên...): `openWrites` = true, tức KHÔNG biết ghi đi đâu.
+// Không chắc thì vẫn là openWrites: mã có chdir/cd thì đích tương đối không còn nghĩa, nên không tách.
+const STDOUT_WRITE = /\b(?:process\.(?:stdout|stderr)|sys\.(?:stdout|stderr)|console)\s*\.\s*\w+\s*\(/g;
+const LITERAL_WRITE = /\b(writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|unlinkSync|rmSync|rmdirSync|mkdirSync|truncateSync)\s*\(\s*(['"])([^'"`$\\\n]+)\2\s*(?=[,)])/g;
+function inlineWrites(code) {
+  const text = String(code || '');
+  if (!WRITE_API.test(text)) return { openWrites: false, literalTargets: [] };
+  if (/\bchdir\s*\(|(^|[;&|\s])cd\s/.test(text)) return { openWrites: true, literalTargets: [] };
+  const literalTargets = [];
+  const rest = text.replace(STDOUT_WRITE, ' IN( ').replace(LITERAL_WRITE, (all, fn, q, target) => { literalTargets.push(target); return ' DICH_RO( '; });
+  return { openWrites: WRITE_API.test(rest), literalTargets };
+}
+
 const baseName = (t) => t.replace(/\\/g, '/').split('/').pop().toLowerCase().replace(/\.(exe|cmd|bat|ps1)$/, '');
 const isFlag = (t) => t.startsWith('-') && t.length > 1;
 
@@ -208,7 +225,7 @@ function analyzeSegment(seg, out) {
       if (flags.includes(texts[k].toLowerCase()) && texts[k + 1] !== undefined) { code = texts[k + 1]; break; }
     }
     if (code === null && seg.heredoc !== undefined) code = seg.heredoc; // node - <<EOF ... EOF
-    if (code !== null) out.inline.push({ code, writes: WRITE_API.test(code), interpreter: name });
+    if (code !== null) out.inline.push({ code, writes: WRITE_API.test(code), interpreter: name, ...inlineWrites(code) });
     return;
   }
   if (['npm', 'npx', 'pnpm', 'yarn', 'pip', 'pip3', 'docker', 'make'].includes(name)) {
@@ -234,4 +251,4 @@ function analyzeBash(cmd) {
   return out;
 }
 
-module.exports = { analyzeBash, scan, WRITE_API };
+module.exports = { analyzeBash, scan, WRITE_API, inlineWrites };

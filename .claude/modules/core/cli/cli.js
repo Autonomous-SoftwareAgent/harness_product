@@ -6,8 +6,8 @@
 // CLI dùng chung cho mọi service, cùng lõi với MCP server. Hook và script triển khai gọi vào đây.
 //   node <harness>/cli/cli.js [--service <tên>] <lệnh> ...   (đường dẫn thật: lệnh `usage` in ra; bố cục cũ là .claude/modules/core/cli/cli.js)
 // Bỏ --service thì dùng mặc định (BSN_SERVICE, BSN_ROOT, thư mục hiện tại nếu nằm trong service, rồi đơn vị mặc định của cấu hình dự án).
-// BẢNG LỆNH (S-056): mỗi lệnh con một dòng khai `on(tên, hàm)`. Lệnh của lõi khai ở đây; lệnh của các khối khác nằm trong khối đó
-// (cli/commands/<việc>.js) và được gom qua bảng đăng ký (S-064, khóa `commands` trong tệp tự khai): khối tắt thì lệnh của nó không có.
+// BẢNG LỆNH: mỗi lệnh con một dòng khai `on(tên, hàm)`. Lệnh của lõi khai ở đây; lệnh của các khối khác nằm trong khối đó
+// (cli/commands/<việc>.js) và được gom qua bảng đăng ký (khóa `commands` trong tệp tự khai): khối tắt thì lệnh của nó không có.
 const fs = require('fs');
 const path = require('path');
 const P = require('../gate/gate-paths');
@@ -68,7 +68,7 @@ on('on-commit', () => {
     // (đã gặp 2026-10-10). Bỏ các biến đó: từ đây mỗi lệnh git tự tìm repo theo thư mục nó được trỏ tới.
     for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'GIT_PREFIX', 'GIT_OBJECT_DIRECTORY']) delete process.env[k];
     const rel = P.serviceOf(ROOT, process.cwd());
-    // Ghi commit vừa xong vào sổ phạm vi (S-050): repo của dịch vụ nào, mã commit, và kế hoạch đang hiệu lực của phiên đã chạy lệnh commit
+    // Ghi commit vừa xong vào sổ phạm vi: repo của dịch vụ nào, mã commit, và kế hoạch đang hiệu lực của phiên đã chạy lệnh commit
     // (mã phiên có trong môi trường khi lệnh do một phiên Claude chạy; người dùng tự commit thì không gắn với kế hoạch nào). Lỗi thì bỏ qua.
     try {
       const head = require('child_process').spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', timeout: 10000, windowsHide: true });
@@ -88,25 +88,25 @@ on('on-commit', () => {
     } else finish();
 });
 on('db-maintain', () => {
-    // Bảo trì hai sổ của harness (S-060): gom số liệu theo ngày vào eval.db, xóa nhật ký act_ cũ hơn 60 ngày, chụp bản sao sổ phiên.
+    // Bảo trì hai sổ của harness: gom số liệu theo ngày vào eval.db, xóa nhật ký act_ cũ hơn 60 ngày, chụp bản sao sổ phiên.
     // Thường tự chạy sau mỗi commit; chạy tay khi cần.
     const M = require('../adapters/storage/db-maintain');
     const r = M.run(ROOT);
     console.log(M.text(r)); if (r.errors.length) process.exitCode = 1;
 });
 on('doctor', () => {
-    // Kiểm sức khỏe của harness trên dự án này (S-063): cấu hình, đơn vị, bảng việc -> skill, cổng duyệt, máy chủ MCP, git hook, khối. Chỉ đọc.
+    // Kiểm sức khỏe của harness trên dự án này: cấu hình, đơn vị, bảng việc -> skill, cổng duyệt, máy chủ MCP, git hook, khối. Chỉ đọc.
     const r = require('./doctor').run(ROOT);
     console.log(r.text); if (r.errors) process.exitCode = 1;
 });
 on('setup', () => {
-    // Bộ cài (S-064): sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật; giữ phần người dùng
+    // Bộ cài: sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật; giữ phần người dùng
     // tự thêm. --check: chỉ so, thoát 1 nếu lệch. --dry-run: in việc sẽ làm.
     const r = require('./setup').run(ROOT, { check: argv.includes('--check'), dryRun: argv.includes('--dry-run') });
     console.log(r.text); if (!r.ok) process.exitCode = 1;
 });
 on('install', () => {
-    // Cài, nâng cấp, hoặc chuyển bố cục (S-064), chạy TỪ BẢN MỚI (gói harness_product) vào dự án <đích>: dự án chưa có harness thì cài mới;
+    // Cài, nâng cấp, hoặc chuyển bố cục, chạy TỪ BẢN MỚI (gói harness_product) vào dự án <đích>: dự án chưa có harness thì cài mới;
     // đang ở bố cục cũ (.claude/modules/) thì chuyển sang bố cục khối và giữ cấu hình, sổ phiên; đang ở bố cục khối thì thay mã của sản phẩm.
     // Phần của dự án (.claude/project/, skill riêng, settings của người dùng) không bị đụng. Mặc định chỉ in việc sẽ làm; --apply làm thật
     // (cất bản cũ để quay lại); --undo quay lại lần cài gần nhất.
@@ -115,11 +115,15 @@ on('install', () => {
     console.log(r.text); if (!r.ok) process.exitCode = 1;
 });
 on('extension', () => {
-    // Khối mở rộng của dự án và của từng đơn vị (S-065): xem, tạo khung, chạy ca thử, xác nhận (chỉ người dùng, ngoài phiên Claude), chạy lệnh.
+    // Khối mở rộng của dự án và của từng đơn vị: xem, tạo khung, chạy ca thử, xác nhận (chỉ người dùng, ngoài phiên Claude), chạy lệnh.
     return require('./extension').run(ROOT, argv.slice(1)).then((r) => { console.log(r.text); if (!r.ok) process.exitCode = 1; }, (e) => { console.error(e.message); process.exitCode = 2; });
 });
+on('mcp', () => {
+    // Cổng MCP: máy chủ MCP phía sau máy chủ của harness: xem, khai, gỡ, xác nhận (theo lời duyệt của người dùng), nối thử.
+    return require('./mcp').run(ROOT, argv.slice(1)).then((r) => { console.log(r.text); if (!r.ok) process.exitCode = 1; }, (e) => { console.error(e.message); process.exitCode = 2; });
+});
 on('public-export', () => {
-    // Đóng gói harness thành sản phẩm cài được cho dự án khác (S-063) vào <thư mục> (phải trống hoặc chưa có): chỉ bản ĐÃ COMMIT, bỏ phần
+    // Đóng gói harness thành sản phẩm cài được cho dự án khác vào <thư mục> (phải trống hoặc chưa có): chỉ bản ĐÃ COMMIT, bỏ phần
     // nội bộ, thay skill bằng bộ skill của sản phẩm, rồi dò gói. Không commit, không đẩy gì.
     if (!arg) throw new Error('Dùng: cli.js public-export <thư mục đích>');
     const r = require('./public-export').run(ROOT, path.resolve(arg));
@@ -131,7 +135,7 @@ const ctx = { argv, cmd, arg, si, core, autoCheck, generator, portal, cmdRel: CM
 for (const c of P.contributions(ROOT, 'commands')) require(c.file).register(on, ctx);
 
 const usage = () => {
-    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|extension <list|new|test|trust|untrust|run> ...|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
+    console.log(`Usage: node ${CMD_REL} [--service <tên>] <check|status [module]|sync|code|overview [--run-tests]|service-doc|diagrams|diagrams-check [--record]|diagram-save <tệp.json>|diagram-explain <id> <tệp.json>|diagram-get <id> [--json]|diagram-review <tệp.json>|context "<câu hỏi>" [--to ..] [--section ..]|context --impact <tệp...>|context-build [--force]|context-term <tệp.json>|context-relate <tệp.json>|diagram-generate <id|tệp.json>|diagram-remove <id>|portal-status|db-maintain|doctor|setup [--check]|install <thư mục dự án> [--apply|--undo]|extension <list|new|test|trust|untrust|run> ...|mcp <list|add|remove|trust|untrust|test> ...|public-export <thư mục>|status-archive [--keep N]|portal [--if-stale]|portal-publish|portal-verify <thư mục>|portal-published [ghi chú] [--undo]|on-commit|services>`);
     process.exit(cmd ? 2 : 0);
 };
 

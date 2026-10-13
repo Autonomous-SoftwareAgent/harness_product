@@ -1,7 +1,7 @@
 'use strict';
 // spec: CTX-S-001
 // spec: CTX-S-003
-// LÕI của kho ngữ nghĩa (S-022, S-051, S-055): mô hình nút và cạnh có kiểu, có nguồn, có mức tin cậy; nối các chỗ nhắc tới nhau; chốt kho.
+// LÕI của kho ngữ nghĩa: mô hình nút và cạnh có kiểu, có nguồn, có mức tin cậy; nối các chỗ nhắc tới nhau; chốt kho.
 // Thuần: việc đọc bản đã commit, chạy bộ nhận dạng và lưu kho là của mcp/context.js.
 
 // Mức tin cậy của một nút hay cạnh, luôn đi kèm khi trả cho agent.
@@ -13,13 +13,13 @@ const TYPES = {
   decision: 'quyết định', problem: 'vấn đề', unverified: 'chưa kiểm với hệ thống thật', diagram: 'sơ đồ', explain: 'giải thích sơ đồ', pitfall: 'dễ hiểu nhầm',
   handoff: 'handoff', section: 'mục tài liệu',
 };
-const ROOT_NAME = '_he'; // phần chung của cả hệ (repo gốc): quyết định S-nnn, handoff, infra
+const ROOT_NAME = '_he'; // phần chung của cả hệ (repo gốc): quyết định, handoff, hạ tầng
 
 // Mô hình cần hai thứ của hợp đồng với bộ nhận dạng: cách cắt chữ (`cut`) và cách đặt mã nút (`ID`). Hợp đồng đó nằm cùng bộ nhận dạng
 // (mcp/recognizers/kit.js), nên cửa vào đưa vào đây khi lắp ráp; lõi không nhập ngược ra ngoài.
 function create({ cut, ID }) {
 // ---------- mô hình: nút và cạnh có kiểu, có nguồn, có mức tin cậy ----------
-// CHỈ THÊM, KHÔNG GHI ĐÈ (S-051): một nút đã có thì giữ nguyên; bộ nhận dạng đến sau khai cùng mã nút mà KHÁC loại hoặc khác tên
+// CHỈ THÊM, KHÔNG GHI ĐÈ: một nút đã có thì giữ nguyên; bộ nhận dạng đến sau khai cùng mã nút mà KHÁC loại hoặc khác tên
 // thì kho giữ bản đầu và ghi va chạm vào vùng tối (trước đây việc này im lặng). Cùng mã, cùng loại, cùng tên là đồng thuận, không phải va chạm.
 class Graph {
   constructor(svc) { this.svc = svc; this.nodes = new Map(); this.edges = []; this.keys = new Set(); this.dark = []; this.bodies = new Map(); this.meta = {}; this.by = 'lõi'; this.owner = new Map(); }

@@ -3,8 +3,8 @@
 // spec: PORT-S-003
 // spec: HOOK-S-004
 // spec: HOOK-S-005
-// CỬA VÀO: SessionStart. Tóm tắt ngắn nạp vào ngữ cảnh của model khi mở phiên ở gốc BSN_, để phiên biết ngay hiện trạng mà không phải dò.
-// Tệp này chỉ GHÉP (S-055): wire.js lắp bộ chuyển gom dữ kiện (adapters/jobs/brief-facts.js); core/sessions/brief.js viết dữ kiện thành
+// CỬA VÀO: SessionStart. Tóm tắt ngắn nạp vào ngữ cảnh của model khi mở phiên ở gốc dự án, để phiên biết ngay hiện trạng mà không phải dò.
+// Tệp này chỉ GHÉP: wire.js lắp bộ chuyển gom dữ kiện (adapters/jobs/brief-facts.js); core/sessions/brief.js viết dữ kiện thành
 // tóm tắt (thuần); adapters/claude-code/hook.js nói với Claude Code. Không khóa, không sửa mã hay docs. Lỗi gì cũng không làm hỏng việc mở phiên.
 const wire = require('./wire');
 const facts = require('../adapters/jobs/brief-facts');

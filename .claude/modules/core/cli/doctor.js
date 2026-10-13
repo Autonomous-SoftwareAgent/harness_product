@@ -1,7 +1,7 @@
 'use strict';
 // spec: HOOK-S-009
 // spec: HOOK-S-010
-// KIỂM SỨC KHỎE của harness trên MỘT dự án bất kỳ (S-063): cấu hình dự án, đơn vị, bảng việc -> skill, cổng duyệt, máy chủ MCP, git hook.
+// KIỂM SỨC KHỎE của harness trên MỘT dự án bất kỳ: cấu hình dự án, đơn vị, bảng việc -> skill, cổng duyệt, máy chủ MCP, git hook.
 // Chỉ ĐỌC; không sửa gì. Mỗi dòng bắt đầu bằng LỖI (harness đang không chặn hay không chạy được), CẢNH BÁO (thiếu phần nên có) hoặc OK.
 //   node .claude/modules/core/cli/cli.js doctor      thoát mã 1 khi có LỖI
 const fs = require('node:fs');
@@ -17,15 +17,15 @@ function run(root) {
 
   // 1. Cấu hình dự án
   if (cfg.broken) err('.claude/project/project.json không đọc được (JSON hỏng): harness coi như dự án không có đơn vị nào.');
-  else if (!cfg.exists) warn('chưa có .claude/project/project.json: harness dùng bố cục cũ (đơn vị trong system_service/). Dự án mới: mở skill onboard.');
+  else if (!cfg.exists) warn('chưa có .claude/project/project.json: harness dùng bố cục cũ (chế độ tương thích). Dự án mới: mở skill onboard.');
   else ok(`cấu hình dự án "${cfg.name}": thư mục cha ${cfg.units.parents.length ? cfg.units.parents.map((p) => `${p}/`).join(', ') : '(không có)'}; luật riêng: ${Object.entries(cfg.policies).filter(([, v]) => v === true || (Array.isArray(v) && v.length)).map(([k]) => k).join(', ') || 'không'}`);
   for (const p of cfg.units.parents) if (!fs.existsSync(path.join(root, ...p.split('/')))) warn(`thư mục cha ${p}/ khai trong cấu hình nhưng chưa có trên đĩa.`);
   for (const s of cfg.policies.unitSheets) { try { new RegExp(s); } catch { err(`policies.unitSheets có mẫu hỏng: ${s}`); } }
 
-  // 1b. Bố cục, khối, bộ khuôn, settings.json so với tệp tự khai, luật mở rộng của dự án (S-064)
+  // 1b. Bố cục, khối, bộ khuôn, settings.json so với tệp tự khai, luật mở rộng của dự án
   if (cfg.presetMissing) err(`bộ khuôn "${cfg.preset}" không có (presets/${cfg.preset}.json): cấu hình dùng như không có bộ khuôn.`);
   const mans = P.moduleManifests(root);
-  if (!mans.length) warn('bản harness này chưa có tệp tự khai của khối (bản cũ hơn S-064): không bật tắt được khối, không có lệnh setup. Nâng cấp bằng lệnh install của gói mới.');
+  if (!mans.length) warn('bản harness này chưa có tệp tự khai của khối (bản cũ hơn 1.0.0): không bật tắt được khối, không có lệnh setup. Nâng cấp bằng lệnh install của gói mới.');
   else {
     const em = P.enabledModules(root);
     for (const p of em.problems) err(p);
@@ -41,7 +41,7 @@ function run(root) {
     const reg = require('../core/rules/registry').create();
     for (const f of ext) { try { reg.add(require(f.file), path.relative(root, f.file), { extension: true }); } catch (e) { err(`luật mở rộng ${path.relative(root, f.file).split(path.sep).join('/')} không nạp được: ${e.message}`); } }
     if (ext.length) ok(`luật mở rộng của dự án: ${reg.ids().join(', ') || '(không luật nào nạp được)'}${reg.ids().length ? ' (kiểu cũ api 0.1, không cần xác nhận; nên chuyển sang khối mở rộng)' : ''}`);
-    // Khối mở rộng (S-065): khối chưa xác nhận thì không chạy; khối đã sửa hay đã xóa thì bản đã xác nhận vẫn chạy.
+    // Khối mở rộng: khối chưa xác nhận thì không chạy; khối đã sửa hay đã xóa thì bản đã xác nhận vẫn chạy.
     const C = require('../core/extensions/contract');
     const cli = P.codeRel(root, 'cli/cli.js');
     let seen = new Set();
@@ -100,6 +100,17 @@ function run(root) {
     if (mcp && mcp.mcpServers && mcp.mcpServers['bsn-docs']) ok('.mcp.json khai máy chủ bsn-docs');
     else err('.mcp.json thiếu mục bsn-docs: phiên không có công cụ của harness (mở một phiên mới ở gốc để harness tự thêm, rồi gõ /mcp).');
   } catch { err('chưa có .mcp.json ở gốc dự án, hoặc tệp hỏng: phiên không có công cụ của harness (mở một phiên mới ở gốc để harness tự tạo, rồi gõ /mcp).'); }
+
+  // 5b. Cổng MCP: máy chủ đã khai, đã xác nhận chưa, đang chạy hay hỏng.
+  try {
+    const b = require('../hooks/wire').mcpBrief(root);
+    const st = require('../adapters/project/mcp-servers').status(root);
+    if (st.list.length || st.problems.length) {
+      for (const l of b.lines) warn(`máy chủ MCP: ${l}. Xem: node ${b.cli} mcp list`);
+      const good = st.list.filter((s) => s.state === 'trusted' && !b.lines.some((l) => l.startsWith(`${s.name} `)));
+      if (good.length) ok(`máy chủ MCP sau cổng của harness: ${good.map((s) => `${s.name} (${s.decl.type})`).join(', ')}`);
+    }
+  } catch { /* cổng MCP không đọc được: không làm hỏng phép kiểm khác */ }
 
   // 6. Git hook (cổng dựng lại sau commit, quét từ cấm)
   try {

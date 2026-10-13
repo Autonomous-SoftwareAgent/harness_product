@@ -2,7 +2,7 @@
 // spec: GATE-S-005
 // spec: GATE-S-007
 // spec: GATE-S-001
-// BỘ CHUYỂN Claude Code của cổng duyệt (S-056). Nơi DUY NHẤT trong gate/ biết dạng dữ liệu hook của Claude Code:
+// BỘ CHUYỂN Claude Code của cổng duyệt. Nơi DUY NHẤT trong gate/ biết dạng dữ liệu hook của Claude Code:
 //   vào: JSON trên stdin -> sự kiện chung (cùng dạng với ports/events.js của phần còn lại của harness);
 //   ra : quyết định chung -> JSON mà Claude Code hiểu.
 // Cổng duyệt là một khối cài riêng được (install.js chép nguyên thư mục gate/ sang dự án khác), nên nó giữ bộ chuyển của riêng mình ở đây
@@ -40,7 +40,7 @@ function toEvent(input, { kind, root }) {
 }
 
 // Quyết định chung -> chuỗi JSON cho Claude Code ('' nếu không có gì để nói).
-// `lang`: ngôn ngữ của dự án (S-064); 'en' thì lời được dịch qua messages-en.js ngay trước khi in.
+// `lang`: ngôn ngữ của dự án; 'en' thì lời được dịch qua messages-en.js ngay trước khi in.
 function fromDecision(kind, d, lang = 'vi') {
   if (!d) return '';
   const hookEventName = HOOK_EVENT[kind];

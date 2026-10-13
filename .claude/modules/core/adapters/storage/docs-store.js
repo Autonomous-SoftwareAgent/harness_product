@@ -54,17 +54,18 @@ function pidAlive(pid) {
   }
 }
 
-function lockIsStale(file, staleMs) {
-  let info;
-  try {
-    info = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return true; // không đọc được (đang ghi dở, hoặc hỏng): coi là cũ sau một nhịp, xem lockHeld
-  }
-  if (!info || !Number.isFinite(info.ts)) return true;
+function parsesAsLock(text) {
+  try { const info = JSON.parse(text); return Boolean(info && Number.isFinite(info.ts)); } catch { return false; }
+}
+
+// Khóa có nội dung `text` đã cũ chưa. Không đọc được (đang ghi dở, hoặc hỏng) thì coi là cũ; bên gọi chờ một nhịp rồi đọc lại trước khi gỡ.
+function lockIsStaleText(text, staleMs) {
+  if (!parsesAsLock(text)) return true;
+  const info = JSON.parse(text);
   if (Date.now() - info.ts > staleMs) return true;
   return !pidAlive(info.pid);
 }
+
 
 // ---------- khóa ----------
 const held = new Map(); // `${root}|${name}` -> { depth, token } (tái nhập trong cùng tiến trình)
@@ -88,17 +89,20 @@ function acquire(root, name, opts) {
     }
     // đã có khóa: cũ thì gỡ rồi thử lại ngay; không thì chờ
     let stale = false;
+    let judged = null; // nội dung tệp khóa lúc bị coi là cũ
     try {
-      stale = lockIsStale(file, opts.staleMs);
-      if (stale) {
-        // một tệp khóa rỗng/đang ghi dở có thể chỉ là khóa mới của người khác: chờ một nhịp rồi kiểm lại trước khi gỡ
-        let empty = false;
-        try { empty = fs.readFileSync(file, 'utf8').trim() === ''; } catch { /* mất giữa chừng */ }
-        if (empty) { sleep(opts.pollMs); stale = lockIsStale(file, opts.staleMs); }
-      }
+      const read = () => { try { return fs.readFileSync(file, 'utf8'); } catch { return null; } };
+      judged = read();
+      if (judged === null) continue; // khóa vừa được nhả: thử lấy ngay
+      stale = lockIsStaleText(judged, opts.staleMs);
+      // Tệp khóa rỗng hoặc đang ghi dở có thể chỉ là khóa MỚI của người khác (họ vừa tạo tệp, chưa kịp ghi): chờ một nhịp rồi đọc lại.
+      // Phán "cũ" luôn dựa trên MỘT lần đọc; trước đây đọc hai lần và người kia ghi xong giữa hai lần thì khóa đang sống bị gỡ
+      // (hai tiến trình cùng vào vùng khóa, lỗi gặp 2026-10-13 khi chạy cả bộ test).
+      if (stale && !parsesAsLock(judged)) { sleep(opts.pollMs); judged = read(); stale = judged !== null && lockIsStaleText(judged, opts.staleMs); }
     } catch { stale = false; }
     if (stale) {
-      try { fs.unlinkSync(file); } catch { /* người khác vừa gỡ */ }
+      // Chỉ gỡ đúng tệp khóa đã phán là cũ: người khác vừa gỡ nó và lấy khóa mới thì nội dung đã khác, không gỡ khóa của họ.
+      try { if (fs.readFileSync(file, 'utf8') === judged) fs.unlinkSync(file); } catch { /* người khác vừa gỡ */ }
       continue;
     }
     if (Date.now() - started >= opts.timeoutMs) throw new LockedError(name, Date.now() - started);

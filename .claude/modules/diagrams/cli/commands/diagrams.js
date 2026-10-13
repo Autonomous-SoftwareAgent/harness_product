@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Lệnh dòng lệnh của khối diagrams (S-064), góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/diagrams.json.
+// Lệnh dòng lệnh của khối diagrams, góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/diagrams.json.
 const fs = require('fs');
 
 function register(on, { argv, cmd, arg, si, core, portal }) {
@@ -37,6 +37,14 @@ function register(on, { argv, cmd, arg, si, core, portal }) {
     if (!arg) throw new Error('Dùng: cli.js --service <tên> diagram-generate <id | tệp.json>');
     const input = fs.existsSync(arg) ? JSON.parse(fs.readFileSync(arg, 'utf8')) : { id: arg };
     console.log(require('../../mcp/diagrams/diagrams').generate(input));
+  });
+  on('diagrams-restamp', () => {
+    // Ghi lại dấu của các phần giải thích CÒN KHỚP với hình (dấu kiểu cũ tính cả đường dẫn tệp nguồn). Không đổi hình hay lời giải thích.
+    console.log(require('../../mcp/diagrams/diagrams').restamp());
+  });
+  on('diagrams-drift', () => {
+    // Sơ đồ do người khai mà mã nó vẽ theo đã đổi từ khi hình có dạng hiện tại (đếm dòng đổi trong các tệp `sources`). Chỉ đọc.
+    console.log(require('../../mcp/diagrams/diagrams').driftReport());
   });
   on('diagram-remove', () => {
     // Xóa MỘT sơ đồ đã khai báo (tệp do công cụ sở hữu nên không xóa tay được).

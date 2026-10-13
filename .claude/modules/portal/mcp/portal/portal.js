@@ -2,8 +2,8 @@
 // spec: PORT-S-004
 // spec: PORT-S-001
 // spec: PORT-S-003
-// Cổng HTML cho NGƯỜI đọc: BSN_/docs/portal/. Trang tổng (index.html) chỉ làm MỘT việc: quét các thư mục dịch vụ trong
-// BSN_/system_service/ và liệt kê liên kết tới các trang HTML của từng dịch vụ. Trang tổng không vẽ, không tổng hợp nội dung.
+// Cổng HTML cho NGƯỜI đọc: docs/portal/. Trang tổng (index.html) chỉ làm MỘT việc: quét các thư mục đơn vị của dự án
+// và liệt kê liên kết tới các trang HTML của từng dịch vụ. Trang tổng không vẽ, không tổng hợp nội dung.
 //
 //   index.html               trang tổng: mỗi dịch vụ một khối (commit gần nhất + liên kết tới các trang của nó) và mục Lịch sử
 //   <dịch-vụ>/index.html     trang ba tab CỦA DỊCH VỤ: bộ sinh riêng generators/<dịch-vụ>/gen-service-page.js nếu có,
@@ -26,13 +26,14 @@ const OUT = sp.OUT;
 const posix = (p) => p.split(path.sep).join('/');
 const SERVICE_RE = /^[a-z][a-z0-9-]{1,40}$/;
 const P = require('../../../core/gate/gate-paths');
-// Thư mục mcp/: mã công cụ nằm trong các thư mục con theo việc (S-057); ở bố cục khối (S-064) chúng trải trên nhiều khối.
+// Thư mục mcp/: mã công cụ nằm trong các thư mục con theo việc; ở bố cục khối chúng trải trên nhiều khối.
 const MCP_DIR = P.codePath(core.BSN_DIR, 'mcp');
-const VENDOR_MERMAID = P.codePath(core.BSN_DIR, 'mcp/vendor/mermaid.min.js');
+// Hỏi mỗi lần dùng: thư viện vẽ là tệp người dùng tự tải, có thể xuất hiện sau khi tiến trình này đã nạp (máy chủ MCP chạy lâu).
+const vendorMermaid = () => P.codePath(core.BSN_DIR, 'mcp/vendor/mermaid.min.js');
 const GENERATORS = P.generatorsDir(core.BSN_DIR); // bộ sinh riêng của từng dịch vụ (phần của dự án)
 const { RENDERER_VERSION } = require('../../../diagrams/adapters/mermaid/render');
 
-// Mọi thư mục con của system_service/ có tên hợp lệ là một dịch vụ, kể cả dịch vụ chưa có docs.
+// Mọi thư mục con của thư mục chứa đơn vị có tên hợp lệ là một dịch vụ, kể cả dịch vụ chưa có docs.
 function scanServices() {
   return P.serviceEntries(core.BSN_DIR).filter((d) => SERVICE_RE.test(d.name)).map((d) => d.name);
 }
@@ -52,7 +53,7 @@ function scanPages(name) {
       const buf = Buffer.alloc(4096);
       const n = fs.readSync(fd, buf, 0, buf.length, 0);
       fs.closeSync(fd);
-      title = ((/<title>([^<]*)<\/title>/i.exec(buf.toString('utf8', 0, n)) || [])[1] || '').replace(/\s*·\s*Cổng BSN\s*$/, '').trim();
+      title = ((/<title>([^<]*)<\/title>/i.exec(buf.toString('utf8', 0, n)) || [])[1] || '').replace(/\s*·\s*Cổng [^·]*$/, '').trim();
     } catch { /* không đọc được thì dùng tên tệp */ }
     return { file, title: title || file };
   });
@@ -66,23 +67,24 @@ function scanHistory() {
 // Trang "Bản đồ cả hệ" (ban-do-he.html): sơ đồ do harness tự sinh từ kho ngữ nghĩa (dịch vụ, topic, hạ tầng dùng chung).
 // Là một trang riêng để trang tổng vẫn chỉ làm một việc: dẫn liên kết.
 function systemPage(system, hasMermaid) {
+  const brand = `Cổng ${esc(require('../../../core/gate/gate-paths').projectConfig(core.BSN_DIR).name)}`;
   return `<!doctype html>
 <html lang="vi">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bản đồ cả hệ · Cổng BSN</title>
+<title>Bản đồ cả hệ · ${brand}</title>
 <link rel="stylesheet" href="assets/portal.css">
 </head>
 <body data-prefix="">
 <header class="top">
-  <a class="brand" href="index.html">← Cổng BSN</a>
+  <a class="brand" href="index.html">← ${brand}</a>
   <span class="main"></span>
   <button id="theme" type="button" class="ghost" aria-label="Đổi giao diện sáng/tối">◐</button>
 </header>
 <main>
 <h1>Bản đồ cả hệ</h1>
-<p class="lead">Các dịch vụ, topic và hạ tầng dùng chung, cùng quan hệ phụ thuộc giữa chúng. Harness tự vẽ từ <code>docs/service.yaml</code> của từng dịch vụ và <code>infra/services/</code> sau mỗi commit; không ai khai sơ đồ này.</p>
+<p class="lead">Các dịch vụ, topic và hạ tầng dùng chung, cùng quan hệ phụ thuộc giữa chúng. Harness tự vẽ từ <code>docs/service.yaml</code> của từng dịch vụ và tờ khai báo triển khai của dự án (nếu có) sau mỗi commit; không ai khai sơ đồ này.</p>
 ${require('../../../diagrams/adapters/mermaid/view').figure(system, { caption: false, noExplainHint: true })}
 </main>
 <footer class="foot">Sinh tự động từ kho ngữ nghĩa của harness. Không sửa tay.</footer>
@@ -93,7 +95,7 @@ ${hasMermaid ? '<script src="assets/mermaid.min.js"></script>\n' : ''}<script sr
 }
 
 function indexPage(services, history, hasMermaid, system) {
-  // Tên dự án và nơi chứa đơn vị theo cấu hình dự án (S-063); BSN_ khai "BSN" và system_service/.
+  // Tên dự án và nơi chứa đơn vị theo cấu hình dự án.
   const P = require('../../../core/gate/gate-paths');
   const cfg = P.projectConfig(core.BSN_DIR);
   const proj = { name: cfg.name, where: cfg.units.parents.length ? cfg.units.parents.map((p) => `${p}/`).join(', ') : '.claude/project/project.json' };
@@ -168,9 +170,9 @@ function toolFiles() {
   for (const d of mcpDirs) walk(d);
   // Bộ sinh riêng nằm ngoài mcp/ ở bố cục khối (phần của dự án).
   if (fs.existsSync(GENERATORS) && !mcpDirs.some((d) => P.inside(GENERATORS, d))) walk(GENERATORS);
-  // Bộ vẽ và hợp đồng sơ đồ nằm ngoài mcp/ từ S-055: sửa chúng cũng là đổi cách vẽ.
+  // Bộ vẽ và hợp đồng sơ đồ nằm ngoài mcp/: sửa chúng cũng là đổi cách vẽ.
   for (const d of ['adapters/mermaid', 'core/diagrams']) for (const dir of P.codeDirs(core.BSN_DIR, d)) walk(dir);
-  files.push(VENDOR_MERMAID);
+  files.push(vendorMermaid());
   return files;
 }
 // Dấu của riêng BỘ VẼ (nội dung tệp, không phải thời điểm sửa). Dấu này đổi nghĩa là cách vẽ có thể đã đổi: mọi sơ đồ phải được kiểm lại.
@@ -222,7 +224,7 @@ function build() {
   return core.store.withLock(core.BSN_DIR, 'portal', () => {
     const out = OUT();
     const names = scanServices();
-    const hasMermaid = fs.existsSync(VENDOR_MERMAID);
+    const hasMermaid = fs.existsSync(vendorMermaid());
     const pages = new Map([['assets/portal.css', sp.CSS], ['assets/portal.js', sp.JS]]);
     const notes = [];
     const own = [];
@@ -232,7 +234,7 @@ function build() {
     const kho = require('../../../context/mcp/context/context-portal').prepare(notes);
     const collected = names.map((name) => ({ ...sp.collectService(name), auto: kho.figures(name) }));
     const withPage = collected.filter((s) => fs.existsSync(ownGenerator(s.name)) || s.hasSource);
-    const ctx = { services: withPage.map((s) => ({ name: s.name, title: s.title })), mermaid: hasMermaid };
+    const ctx = { services: withPage.map((s) => ({ name: s.name, title: s.title })), mermaid: hasMermaid, project: require('../../../core/gate/gate-paths').projectConfig(core.BSN_DIR).name };
     for (const s of withPage) {
       if (fs.existsSync(ownGenerator(s.name))) {
         try {
@@ -247,7 +249,7 @@ function build() {
     for (const [rel, content] of pages) if (writeIfChanged(path.join(out, rel), content)) changed++;
     if (hasMermaid) {
       const dest = path.join(out, 'assets', 'mermaid.min.js');
-      if (!fs.existsSync(dest) || fs.statSync(dest).size !== fs.statSync(VENDOR_MERMAID).size) { fs.copyFileSync(VENDOR_MERMAID, dest); changed++; }
+      if (!fs.existsSync(dest) || fs.statSync(dest).size !== fs.statSync(vendorMermaid()).size) { fs.copyFileSync(vendorMermaid(), dest); changed++; }
       pages.set('assets/mermaid.min.js', null);
     }
     for (const rel of own) pages.set(rel, null);
@@ -309,7 +311,7 @@ function status() {
     lines.push(`${name}: ${ds.length} sơ đồ; giải thích: ${ds.length - missing.length - stale.length} còn khớp${missing.length ? `, THIẾU ${missing.length} (${missing.join(', ')})` : ''}${stale.length ? `, ĐÃ CŨ ${stale.length} (${stale.join(', ')})` : ''}.`);
   }
   // Phiên Claude Code đang mở và dịch vụ chúng đang làm (ghép sổ phiên của Claude Code với sổ phạm vi của harness).
-  try { lines.push(require('../../../core/hooks/sessions-lib').tableText(core.BSN || core.BSN_DIR, { background: true })); } catch (e) { lines.push(`Bảng phiên: không đọc được (${e.message}).`); }
+  try { lines.push(require('../../../core/hooks/sessions-lib').tableText(core.BSN_DIR, { background: true })); } catch (e) { lines.push(`Bảng phiên: không đọc được (${e.message}).`); }
   // Kho ngữ nghĩa và sơ đồ tự sinh: kho của từng dịch vụ, sơ đồ nào còn chờ agent viết giải thích hoặc soát, sơ đồ nào bị báo sai.
   try {
     const kho = require('../../../context/mcp/context/context');
@@ -327,7 +329,7 @@ function status() {
     }
   } catch (e) { lines.push(`Kho ngữ nghĩa: không đọc được (${e.message}).`); }
   lines.push(publishLine() || `Bản trên claude.ai: khớp cổng trên máy${(() => { const p = publishState().published; return p ? ` (đẩy lần cuối ${String(p.at).slice(0, 16).replace('T', ' ')} UTC)` : ''; })()}.`);
-  // Hồ sơ kế hoạch và commit trong sổ phiên (S-060): chỉ in khi chuỗi băm bị đứt (có dòng bị sửa hay xóa sau khi ghi).
+  // Hồ sơ kế hoạch và commit trong sổ phiên: chỉ in khi chuỗi băm bị đứt (có dòng bị sửa hay xóa sau khi ghi).
   try {
     const P = require('../../../core/gate/gate-paths');
     if (fs.existsSync(P.ledgerPath(core.BSN_DIR))) {
@@ -353,7 +355,7 @@ function buildIfStale() {
 }
 
 
-// Dấu NỘI DUNG của gói publish (S-058): băm mọi tệp sẽ gửi, sau khi bỏ những chỗ đổi theo từng commit mà không đổi điều người đọc thấy về hệ:
+// Dấu NỘI DUNG của gói publish: băm mọi tệp sẽ gửi, sau khi bỏ những chỗ đổi theo từng commit mà không đổi điều người đọc thấy về hệ:
 // dòng "theo commit <mã> (ngày): lời nhắn", nhãn "N tệp chưa commit", ngày ghi ở chân trang publish. Nhờ đó một commit không làm đổi nội dung trang
 // thì bản trên claude.ai KHÔNG bị coi là cũ. Thay đổi chỉ nằm ở các chỗ đó bị bỏ qua có chủ ý.
 const VOLATILE = [
@@ -382,15 +384,16 @@ function publishBundle({ built } = {}) {
   const local = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
   const main = local.slice(local.indexOf('<main>') + 6, local.indexOf('<h2 id="history">'));
   const stamp = new Date().toISOString().slice(0, 10);
-  const html = `<title>Cổng BSN</title>
+  const brand = `Cổng ${esc(require('../../../core/gate/gate-paths').projectConfig(core.BSN_DIR).name)}`;
+  const html = `<title>${brand}</title>
 <style>${sp.CSS}</style>
 <header class="top">
-  <a class="brand" href="index.html">Cổng BSN</a>
+  <a class="brand" href="index.html">${brand}</a>
   <span class="main"></span>
   <button id="theme" type="button" class="ghost" aria-label="Đổi giao diện sáng/tối">◐</button>
 </header>
 <main>${main}</main>
-<footer class="foot">Bản publish ngày ${stamp}, là bản sao của cổng cục bộ <code>BSN_/docs/portal/</code>. Một phiên Claude đẩy bản mới sau mỗi commit khi gói đã dò sạch.</footer>
+<footer class="foot">Bản publish ngày ${stamp}, là bản sao của cổng cục bộ <code>docs/portal/</code>. Một phiên Claude đẩy bản mới sau mỗi commit khi gói đã dò sạch.</footer>
 <script>${sp.JS}</script>
 `;
   const page = path.join(out, '_publish', 'index.html');
@@ -417,14 +420,14 @@ function publishState() {
   // so lại dấu nội dung của các tệp đang nằm trên đĩa với dấu ghi lúc dò (gặp ở lần tự publish thật đầu tiên, 2026-10-11).
   if (!fresh && bundle && bundle.content) { try { const f = publishBundleFiles(); fresh = contentHash({ 'index.html': f.page, ...f.files }) === bundle.content; } catch { /* không đọc được: coi là không còn khớp */ } }
   const clean = Boolean(bundle && bundle.scan && bundle.scan.ok);
-  // Cũ hay chưa (S-058): so dấu NỘI DUNG của gói đang có với dấu của bản đã đẩy. Chưa có đủ hai dấu (gói chưa chuẩn bị lại sau khi cổng đổi,
-  // hoặc bản ghi cũ từ trước S-058) thì so theo dấu vân tay của cổng như trước: sai về phía "cũ".
+  // Cũ hay chưa: so dấu NỘI DUNG của gói đang có với dấu của bản đã đẩy. Chưa có đủ hai dấu (gói chưa chuẩn bị lại sau khi cổng đổi,
+  // hoặc bản ghi kiểu cũ) thì so theo dấu vân tay của cổng như trước: sai về phía "cũ".
   const content = fresh && bundle.content ? bundle.content : '';
   const stale = !published ? true : (content && published.content ? published.content !== content : !(current && published.fingerprint === current));
   return { bundle, published, current, content, fresh, clean, ready: fresh && clean, stale };
 }
 
-// Giao việc đẩy cho MỘT phiên (S-058): gọi ở cuối lượt của mọi phiên. Trả { due: true } đúng một lần cho mỗi nội dung của cổng, cho phiên đầu tiên
+// Giao việc đẩy cho MỘT phiên: gọi ở cuối lượt của mọi phiên. Trả { due: true } đúng một lần cho mỗi nội dung của cổng, cho phiên đầu tiên
 // hỏi; phiên khác hỏi trong lúc đó nhận { due: false }. Phiên nhận việc mà không đẩy được (không có công cụ, bị từ chối quyền) thì sau CLAIM_MS
 // phiên khác được nhận lại. Chỉ giao khi bản trên claude.ai cũ hơn cổng VÀ gói đã dò ba lượt sạch, còn khớp cổng.
 const CLAIM_MS = 10 * 60 * 1000;
@@ -489,7 +492,7 @@ function publishLine() {
   const since = s.published ? `đẩy lần cuối ${String(s.published.at).slice(0, 10)}` : 'chưa ghi lần đẩy nào';
   const hits = s.bundle && s.bundle.scan ? s.bundle.scan.passes.reduce((n, p) => n + p.hits.length, 0) + s.bundle.scan.problems.length : 0;
   const gate = !s.bundle ? 'chưa có gói chuẩn bị' : !s.fresh ? 'gói chuẩn bị đã cũ so với cổng' : s.clean ? 'gói đã dò ba lượt SẠCH, sẵn sàng' : `gói BỊ GIỮ: ${hits} chỗ bị báo hoặc chưa quét đủ`;
-  return `Bản trên claude.ai CŨ hơn cổng trên máy (${since}); ${gate}. Commit là publish theo (S-058): phiên được hook cuối lượt giao thì đẩy ngay; đẩy tay: node .claude/modules/core/cli/cli.js portal-publish`;
+  return `Bản trên claude.ai CŨ hơn cổng trên máy (${since}); ${gate}. Commit là publish theo: phiên được hook cuối lượt giao thì đẩy ngay; đẩy tay: node .claude/modules/core/cli/cli.js portal-publish`;
 }
 
 // Gỡ bản ghi "đã đẩy" khi nó được ghi nhầm (ví dụ chạy portal-published mà chưa đẩy). Sau khi gỡ, harness lại coi bản trên claude.ai là cũ:
@@ -504,7 +507,7 @@ function unmarkPublished() {
 function publishBrief() {
   const s = publishState();
   if (!s.stale || !s.bundle) return '';
-  return `CLAUDE.AI: bản publish cũ hơn cổng trên máy; gói ${s.ready ? 'đã dò ba lượt SẠCH: hook cuối lượt sẽ giao một phiên đẩy (S-058)' : 'BỊ GIỮ hoặc đã cũ (cli.js portal-publish), báo người dùng'}.`;
+  return `CLAUDE.AI: bản publish cũ hơn cổng trên máy; gói ${s.ready ? 'đã dò ba lượt SẠCH: hook cuối lượt sẽ giao một phiên đẩy' : 'BỊ GIỮ hoặc đã cũ (cli.js portal-publish), báo người dùng'}.`;
 }
 
 module.exports = { claimPublish, verifyPublished, contentHash, CLAIM_MS, publishBundle, publishState, markPublished, publishLine, publishBrief, unmarkPublished, build, buildIfStale, isStale, fingerprint, toolFingerprint, needsCheck, recordCheck, writeHealth, readHealth, status, scanServices, scanPages, indexPage, OUT };

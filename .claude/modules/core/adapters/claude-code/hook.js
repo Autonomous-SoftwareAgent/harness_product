@@ -1,11 +1,11 @@
 'use strict';
 // spec: HOOK-S-007
 // spec: GATE-S-007
-// BỘ CHUYỂN cho Claude Code, phần hook (S-055). Đây là nơi DUY NHẤT của các luật biết dạng dữ liệu hook của Claude Code:
+// BỘ CHUYỂN cho Claude Code, phần hook. Đây là nơi DUY NHẤT của các luật biết dạng dữ liệu hook của Claude Code:
 //   vào: JSON trên stdin ({ session_id, agent_id, cwd, tool_name, tool_input, prompt, source, stop_hook_active, last_assistant_message, scratchpad_dir })
 //        -> sự kiện chung của harness (ports/events.js);
 //   ra : quyết định chung -> JSON mà Claude Code hiểu ({ hookSpecificOutput: {...} } hoặc { decision: 'block', reason }).
-// Căn cứ đo trên Claude Code thật: ghi ở các quyết định của harness (S-027, S-032, S-050). Claude Code cho qua khi hook hỏng,
+// Căn cứ đo trên Claude Code thật: ghi ở các quyết định của harness. Claude Code cho qua khi hook hỏng,
 // nên mọi lỗi ở đây được viết ra stderr kèm tên cửa vào rồi thoát mã 0: không chặn nhầm, nhưng không im lặng.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -61,7 +61,7 @@ function toEvent(input, { kind, root, cwdFallback, shell }) {
 }
 
 // Quyết định chung -> chuỗi JSON cho Claude Code ('' nếu không có gì để nói).
-// `lang`: ngôn ngữ của dự án (S-064); 'en' thì lời được dịch qua gate/messages-en.js ngay trước khi in.
+// `lang`: ngôn ngữ của dự án; 'en' thì lời được dịch qua gate/messages-en.js ngay trước khi in.
 function fromDecision(kind, decision, lang = 'vi') {
   const d0 = E.checkDecision(kind, decision);
   if (!d0) return '';

@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-006
-// BỘ CHUYỂN cho Claude Code, phần phiên (S-024, S-054, S-055): gom dữ liệu thô về các phiên Claude Code trên MÁY NÀY thành một ảnh chụp
+// BỘ CHUYỂN cho Claude Code, phần phiên: gom dữ liệu thô về các phiên Claude Code trên MÁY NÀY thành một ảnh chụp
 // trung lập cho lõi (core/sessions/table.js) ghép bảng. Đây là nơi DUY NHẤT của bảng phiên biết tệp nội bộ và lệnh của Claude Code:
 //   1. Sổ phiên của Claude Code (<thư mục cấu hình>/sessions/<pid>.json): tên nhắn tin, rảnh hay bận, pid, tên máy, giờ khởi động.
 //   2. Nhật ký của phiên (<thư mục cấu hình>/projects/*/<mã phiên>.jsonl): tiêu đề người dùng đặt (custom-title), không có thì tiêu đề máy đặt (ai-title).
@@ -50,7 +50,7 @@ function titleOf(dir, sid) {
   return null;
 }
 
-// ---------- Phiên nằm Ở ĐÂU (S-054) ----------
+// ---------- Phiên nằm Ở ĐÂU ----------
 // Bảng chỉ gồm phiên chạy trên MÁY NÀY, và mỗi dòng mang bằng chứng: tên máy ghi trong sổ của Claude Code (pidDomain), mở từ đâu
 // (entrypoint, kind), có Remote Control không (bridgeSessionId), và tiến trình có đúng là tiến trình của phiên đó không (procStart).
 // Thiếu trường nào thì ghi "không rõ" hoặc "chưa xác nhận", không đoán.

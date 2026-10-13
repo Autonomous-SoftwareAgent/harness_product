@@ -1,6 +1,6 @@
 'use strict';
 // spec: PORT-S-003
-// LÕI của việc dò gói publish (S-053, S-055): ba lượt dò khác cách trên MỘT đoạn văn bản, và lời báo kết quả.
+// LÕI của việc dò gói publish: ba lượt dò khác cách trên MỘT đoạn văn bản, và lời báo kết quả.
 // Thuần: không đọc tệp, không biết danh sách từ cấm hay danh sách "đã xem, vô hại" nằm ở đâu; bên gọi (mcp/publish-scan.js) đưa vào.
 // Kết quả chỉ nêu dòng, loại và mã băm ngắn của chuỗi bị báo; không bao giờ in lại chuỗi đó.
 const crypto = require('node:crypto');

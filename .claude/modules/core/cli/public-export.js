@@ -1,53 +1,73 @@
 'use strict';
 // spec: HOOK-S-009
 // spec: HOOK-S-010
-// ĐÓNG GÓI harness thành sản phẩm cài được cho dự án khác (S-063), từ bản ĐÃ COMMIT của repo này (không lẫn tệp đang sửa dở).
+// spec: HOOK-S-014
+// spec: HOOK-S-015
+// ĐÓNG GÓI harness thành sản phẩm cài được cho dự án khác, từ bản ĐÃ COMMIT của repo này (không lẫn tệp đang sửa dở).
 //   node <harness>/cli/cli.js public-export <thư mục đích>
-// Gói theo BỐ CỤC KHỐI (S-064): bản nguồn ở đây là cây theo vai (.claude/plugin/, có test); gói là thứ người dùng cài:
-//   .claude/modules/<khối>/<đường dẫn logic>   mã của sản phẩm, chia theo khối (layout.json quyết tệp nào thuộc khối nào)
+// Bản nguồn đã ở BỐ CỤC KHỐI: gói là chính cây .claude/modules/<khối>/ của các khối đi vào gói, chép nguyên từng byte, bỏ phần
+// chỉ dùng để phát triển harness. Gói có:
+//   .claude/modules/<khối>/<đường dẫn logic>   mã của sản phẩm (đường dẫn logic: đường dẫn của tệp bên trong khối)
 //   .claude/modules/<khối>/module.json         tệp tự khai của khối; .claude/modules/<khối>/skills/<tên>.md bản gốc của skill
 //   .claude/modules/index.json, FILES.json, MANIFEST.json, VERSION   chỉ mục logic -> khối, dấu từng tệp, dấu vân tay cổng duyệt, phiên bản
 //   .claude/project/                            khuôn phần của dự án (project.json trống, công tắc)
 //   .claude/skills/<tên>/SKILL.md, .claude/settings.json, .mcp.json   chỗ Claude Code đọc; settings và .mcp.json sinh bằng bộ cài (cli/setup.js)
-// KHÔNG mang: tài liệu và cách phát triển harness, test và lưới test, cấu hình và skill riêng của dự án nguồn, khối `bsn`, sổ phiên, từ cấm.
-// Mã chuyển chỗ nên lệnh nhập tương đối giữa hai khối được viết lại theo chỗ mới; đường dẫn `.claude/plugin/<x>` trong chữ (lời nhắc, lệnh,
-// tài liệu) được viết lại thành chỗ thật trong gói. Sau khi dựng: dò gói (từ cấm, nội dung docs/ của dự án nguồn, bí mật, đường dẫn máy,
-// tên nội bộ trong tài liệu và skill). Dò không sạch thì `ok: false` và nêu từng chỗ; không tự che. Lệnh không commit, không đẩy.
+//   README.md, RELEASES.md                      cách cài; SỔ PHÁT HÀNH: bản gốc ở core/RELEASES.md, số bản đang đóng gói phải có
+//                                               mục ở đầu sổ và đủ phần, nếu không lệnh báo LỖI (không bản nào ra ngoài mà thiếu báo cáo)
+// KHÔNG mang: test và tài liệu phát triển harness (.claude/modules/test/, docs/, CLAUDE.md), cấu hình và skill riêng của dự án nguồn,
+// khối riêng của dự án nguồn, sổ phiên, từ cấm. Sau khi dựng: dò MỌI tệp chữ của gói, kể cả mã (từ cấm, nội dung docs/ của dự án nguồn,
+// bí mật, đường dẫn máy, dấu vết của dự án nguồn, mã quyết định nội bộ). Dò không sạch thì `ok: false` và nêu từng chỗ; không tự che.
+// Điều RIÊNG của dự án nguồn (chữ phải thay trong skill, mẫu nhận ra tên nội bộ) không nằm ở tệp này mà ở
+// .claude/project/export.json của dự án nguồn: { rewrite: [[mẫu, chữ thay]], internal: [{ re, flags }], dropPermissions: mẫu }.
+// Lệnh không commit, không đẩy.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-// Tệp của .claude/plugin KHÔNG vào gói dù bản đồ gán chủ "sản phẩm" (đường dẫn logic, kiểu posix).
+// Tệp của một khối KHÔNG vào gói (đường dẫn tính từ .claude/modules/, kiểu posix).
 const EXCLUDE = [
-  /^docs(\/|$)/, /^CLAUDE\.md$/, /(^|\/)test(\/|$)/, /^acceptance(\/|$)/, /^features\.json$/, /^layout\.json$/,
-  /^project\.json$/, /^skills-map\.json$/, /^units\.json$/,
-  /^mcp\/portal\/generators(\/|$)/, /^mcp\/generators(\/|$)/,
-  /^gate\/MANIFEST\.json$/, /^gate\/MIGRATED_AT$/, /^gate\/gate\.config\.json$/, /^gate\/VERSION$/,
-  /^gate\/README\.md$/, // tài liệu phát triển cổng duyệt của dự án nguồn; người dùng gói đọc FORMAT.md và README của gói
+  /^core\/gate\/README\.md$/, // tài liệu phát triển cổng duyệt của dự án nguồn; người dùng gói đọc FORMAT.md và README của gói
+  /^portal\/mcp\/generators(\/|$)/, /(^|\/)test(\/|$)/,
 ];
-// Khối đi vào gói. `bsn` là phần riêng của dự án nguồn.
+// Khối đi vào gói; khối không có tên ở đây là phần riêng của dự án nguồn.
 const SHIP = ['core', 'servicedocs', 'diagrams', 'context', 'portal', 'guard-push'];
 // Tệp đánh dấu dòng này thì KHÔNG viết lại đường dẫn `.claude/plugin/...` trong chữ (bộ cài cần nói về bố cục cũ).
 const KEEP_PATHS = 'harness-export: giữ đường dẫn bố cục cũ';
-// Skill dùng chung lấy từ .claude/skills của dự án nguồn, thay chữ riêng của nó bằng chữ chung.
-const REWRITE = [
-  [/ Cần hạ tầng local đang chạy \(`node infra\/bsn\.js up --apply` từ `BSN_\/`\)\./g, ' Cần một PostgreSQL đang chạy trên máy.'],
-  [/`BSN_\/docs\/portal\/`/g, '`docs/portal/`'],
-  [/Phiên mở ở `BSN_\/`/g, 'Phiên mở ở gốc dự án'],
-  [/\(chạy từ `BSN_\/`\)/g, '(chạy từ gốc dự án)'],
-  [/chạy từ `BSN_\/`/g, 'chạy từ gốc dự án'],
-  [/\(từ `BSN_\/`\)/g, '(từ gốc dự án)'],
-  [/`BSN_\/`/g, 'gốc dự án'],
-  [/Dịch vụ nằm ở `system_service\/<tên>\/`\./g, 'Đơn vị nằm ở thư mục khai trong `.claude/plugin/project.json`.'],
-  [/`system_service\/<tên>\//g, '`<thư mục đơn vị>/'],
-  [/ hay `infra\/services\/<dịch-vụ>\.json`/g, ''],
-  [/ \(ví dụ đơn, lần thử của Payment Hub nằm trong cột `doc` của bảng `docs`\)/g, ''],
-];
-// Dò gói. strict: mọi tệp chữ của gói; internal: tên nội bộ chỉ cấm trong tài liệu và skill (mã còn nhắc bố cục cũ như một chế độ tương thích).
+// Dò gói: mọi tệp chữ của gói. Bí mật và đường dẫn máy là mẫu chung; dấu vết của dự án nguồn lấy từ export.json của dự án nguồn.
 const SECRET = /ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|dckr_pat_[A-Za-z0-9_-]{10,}|\bsk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY/;
-const MACHINE = /[A-Za-z]:[\\/]+(Users|Training)[\\/]|\/home\/[a-z]+\/|[A-Za-z0-9._%+-]+@(gmail|yahoo|outlook|hotmail)\.com/i;
-const INTERNAL = /payment-hub|provider-service|\bingest\b|system_service|BSN_|\bBSN\b(?!-docs)|infra\/services|nguyen1410|ai-sdlc|Payment Hub|VNPay|MoMo|OnePay/i;
+const MACHINE = /[A-Za-z]:[\\/]+Users[\\/]|\/home\/[a-z]+\/|[A-Za-z0-9._%+-]+@(gmail|yahoo|outlook|hotmail)\.com/i;
+// Mã quyết định nội bộ của dự án nguồn (S-nnn): người cài không tra được. Mã spec kiểu HOOK-S-014 không tính.
+const DECISION = /(?<![A-Z]-)\bS-\d{3}\b/;
+// Dòng mang dấu này được phép nhắc tên của bố cục cũ (chế độ tương thích: cây chưa có project.json).
+const KEEP_NAMES = 'harness-export: bố cục cũ';
+// NỢ ĐÃ BIẾT: tệp của gói còn mang dấu vết mà lượt này không sửa được bằng cách đổi chữ. Lệnh in ra số chỗ ở từng tệp mỗi lần đóng gói.
+const KNOWN = [
+  { file: /^\.claude\/modules\/core\/mcp\/mcp-server\.js$/, why: 'tệp mồi của máy chủ MCP bị khóa nội dung (sửa là mọi phiên đang mở phải nối lại)' },
+  { file: /^\.claude\/modules\/context\/mcp\/context\/(context\.js|recognizers\/sources\/(code|infra-services|markdown)\.js)$/, why: 'kho ngữ nghĩa còn đọc tờ khai báo triển khai ở một đường dẫn cố định; dự án không có thì bỏ qua' },
+];
+
+// Phần riêng của dự án nguồn cho việc đóng gói, đọc từ bản đã commit. Không có tệp thì không thay chữ nào và không có mẫu tên nội bộ.
+function exportConfig(root, tracked) {
+  const rel = '.claude/project/export.json';
+  if (!tracked.includes(rel)) return { rewrite: [], internal: [], dropPermissions: null, missing: true };
+  const raw = JSON.parse(committed(root, rel).toString('utf8'));
+  return {
+    rewrite: (raw.rewrite || []).map(([re, to]) => [new RegExp(re, 'g'), to]),
+    internal: (raw.internal || []).map((x) => new RegExp(x.re, x.flags || '')),
+    dropPermissions: raw.dropPermissions ? new RegExp(raw.dropPermissions) : null,
+  };
+}
+
+// Bỏ mã quyết định nội bộ khỏi chữ của skill lấy từ dự án nguồn (mã trong mã nguồn của các khối đã được bỏ ở bản nguồn).
+function stripDecisions(text) {
+  const C = '(?<![A-Z]-)\\bS-\\d{3}\\b';
+  const SEP = '\\s*(?:,|;|và|hoặc|đến)\\s*';
+  return text
+    .replace(new RegExp(`[ \\t]*\\(${C}(?:${SEP}${C})*\\)`, 'g'), '')
+    .replace(new RegExp(`\\(${C}(?:${SEP}${C})*\\s*[:;,]\\s*`, 'g'), '(')
+    .replace(new RegExp(`(?:\\s*[,;]\\s*${C})+(?=\\s*[),;])`, 'g'), '');
+}
 
 const git = (root, args, opts = {}) => spawnSync('git', ['-C', root, '-c', 'core.quotepath=false', ...args], { maxBuffer: 1 << 30, ...opts });
 const posix = (p) => p.split(path.sep).join('/');
@@ -69,8 +89,9 @@ function placer(layout) {
   };
 }
 
-// Bảng việc -> skill mặc định của sản phẩm: công cụ ghi và công cụ chỉ đọc của bsn-docs lấy từ bảng của dự án nguồn; bỏ mẫu tệp riêng của nó.
-function productProject(sourceSkills) {
+// Bảng việc -> skill mặc định của sản phẩm: công cụ ghi và công cụ chỉ đọc của bsn-docs lấy từ bảng của dự án nguồn; bỏ mẫu tệp riêng của nó
+// và mọi dòng trỏ tới skill không đi kèm gói (`shipped`: tên các skill của gói).
+function productProject(sourceSkills, shipped) {
   return {
     _: 'Cấu hình dự án của harness. Chưa khai đơn vị nào: mở phiên Claude Code ở gốc dự án, harness nhắc chạy skill onboard để khai. Nghĩa từng trường: .claude/modules/core/FORMAT.md.',
     name: '',
@@ -81,7 +102,7 @@ function productProject(sourceSkills) {
       mode: 'enforce',
       overview: 'services',
       serviceDocs: ['CLAUDE.md', 'docs/agent/STATUS.md'],
-      tools: Object.fromEntries(Object.entries(sourceSkills.tools || {}).filter(([, s]) => s !== 'cicd')),
+      tools: Object.fromEntries(Object.entries(sourceSkills.tools || {}).filter(([, sk]) => [].concat(sk).every((x) => shipped.has(x)))),
       readonly: sourceSkills.readonly || [],
       files: [],
     },
@@ -90,9 +111,9 @@ function productProject(sourceSkills) {
 }
 
 // settings.json nền của gói: bỏ luật quyền nhắc đường dẫn riêng của dự án nguồn và mọi hook (bộ cài sinh lại hook từ tệp tự khai).
-function productSettings(raw) {
+function productSettings(raw, drop) {
   const s = JSON.parse(raw);
-  if (s.permissions && Array.isArray(s.permissions.deny)) s.permissions.deny = s.permissions.deny.filter((d) => !/system_service|infra\//.test(d));
+  if (s.permissions && Array.isArray(s.permissions.deny)) s.permissions.deny = s.permissions.deny.filter((d) => !(drop && drop.test(d)));
   delete s.hooks;
   return s;
 }
@@ -145,8 +166,10 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 5. Tóm tắt đầu phiên báo "CHƯA CÀI ĐẶT DỰ ÁN". Bảo Claude: "onboard dự án này". Agent đọc dự án, trình kế hoạch tổ chức (đơn vị nằm ở đâu, trước khi sửa phải đọc gì, việc nào cần skill nào), bạn duyệt, agent ghi \`.claude/project/project.json\` và dựng phần tài liệu còn thiếu.
 6. Kiểm: \`node .claude/modules/core/cli/cli.js doctor\` không có dòng LỖI. Gõ \`/mcp\` nếu tóm tắt đầu phiên nhắc.
 
+Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và điều gì chưa kiểm: [RELEASES.md](RELEASES.md), mỗi bản một mục.
+
 ## Nâng cấp, và chuyển từ bản cũ
-- Tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong \`.claude/modules/\` được thay; \`.claude/project/\`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
+- Đọc phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong \`.claude/modules/\` được thay; \`.claude/project/\`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
 - Dự án đang dùng bản cũ (mọi thứ trong \`.claude/plugin/\`): cùng lệnh \`install\`. Lệnh chuyển cấu hình (\`project.json\`, bảng đơn vị, bảng skill, công tắc, bộ sinh riêng, luật mở rộng) sang \`.claude/project/\`, giữ sổ phiên, cất \`.claude/plugin/\` cũ để quay lại, và nêu các tệp cổng duyệt bạn từng sửa.
 
 ## Bố cục
@@ -158,6 +181,10 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 | \`.claude/local/\` và thư mục trạng thái trong \`.claude/\` | máy | từ cấm, sổ phiên, trạng thái cổng duyệt; không commit |
 
 Khối: \`core\` (bắt buộc: cổng duyệt kế hoạch, phạm vi theo kế hoạch, chặn theo skill, sổ phiên, máy chủ MCP, bộ cài), \`servicedocs\` (tài liệu ba tầng), \`diagrams\` (sơ đồ), \`context\` (kho ngữ nghĩa), \`portal\` (trang HTML cho người đọc), \`guard-push\` (từ cấm, chặn đẩy). Chỉ bật một số khối: khóa \`modules\` trong \`project.json\` (hoặc \`"preset": "light"\`), rồi \`node .claude/modules/core/cli/cli.js setup\`.
+
+## Máy chủ MCP khác, và chuyển việc sang phiên mới
+- Máy chủ \`bsn-docs\` của harness là một cổng: máy chủ MCP khác khai trong \`.claude/project/mcp.json\` và chạy phía sau nó, có hiệu lực ở phiên đang mở mà không phải nối lại. Máy chủ mới chỉ chạy sau khi bạn duyệt một kế hoạch và phiên chạy \`mcp trust\`. Cách làm: skill \`mcp-servers\`.
+- Việc đang dở chuyển sang một phiên mới bằng \`node .claude/modules/core/cli/session.js transfer\`, kèm tờ bàn giao mà phiên mới phải đọc. Cách làm: skill \`transfer-session\`.
 
 ## Thêm luật của riêng dự án
 Đặt \`.claude/project/rules/<id>.js\` xuất \`{ id, on, api: "0.1", run(event, ports) }\` (sự kiện và quyết định: \`.claude/modules/core/ports/events.js\`), rồi chạy \`setup\` để khai hook. Mã trong \`.claude/modules/\` không phải sửa.
@@ -178,89 +205,75 @@ function run(root, dest) {
   const ls = git(root, ['ls-tree', '-r', '--name-only', '-z', 'HEAD', '--', '.claude'], { encoding: 'utf8' });
   if (ls.status !== 0) return { ok: false, text: `không đọc được HEAD: ${ls.stderr}` };
   const tracked = ls.stdout.split('\0').filter(Boolean);
-  let layout;
-  try { layout = JSON.parse(committed(root, '.claude/plugin/layout.json').toString('utf8')); } catch (e) { return { ok: false, text: `chưa có bản đồ layout.json đã commit: ${e.message}` }; }
-  const place = placer(layout);
+  const HOME = '.claude/modules/';
+  if (!tracked.includes(`${HOME}core/module.json`)) return { ok: false, text: 'bản đã commit chưa ở bố cục khối (thiếu .claude/modules/core/module.json): lệnh đóng gói chạy từ bản nguồn bố cục khối.' };
+  const xc = exportConfig(root, tracked);
+  const shippedSkills = new Set();
   const files = [];
   const put = (rel, data) => { const p = path.join(dest, ...rel.split('/')); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); files.push(rel); };
 
-  // 1. Chọn tệp mã của sản phẩm và chỗ mới của chúng.
-  const product = []; // { logical, to }
-  for (const rel of tracked.filter((r) => r.startsWith('.claude/plugin/'))) {
-    const logical = rel.slice('.claude/plugin/'.length);
-    if (EXCLUDE.some((re) => re.test(logical))) continue;
-    const pl = place(rel);
-    if (!pl || pl.owner !== 'product' || !SHIP.includes(pl.module)) continue;
-    product.push({ logical, to: pl.to, module: pl.module, moved: pl.moved });
-  }
-  const logicalSet = new Set(product.map((p) => p.logical));
-  const byLogical = new Map(product.map((p) => [p.logical, p]));
-  // Phần của dự án có chỗ cố định trong gói (lời nhắc nói về chúng).
-  const projectTo = {};
-  for (const rel of tracked.filter((r) => r.startsWith('.claude/plugin/'))) { const pl = place(rel); if (pl && pl.owner === 'project' && pl.moved) projectTo[rel.slice('.claude/plugin/'.length)] = pl.to; }
-  const where = (logical) => (byLogical.has(logical) ? byLogical.get(logical).to : projectTo[logical] || null);
-  // Thư mục logic -> khối: khối giữ nhiều tệp nhất trong thư mục đó (lõi khi bằng nhau).
-  const dirModule = (dir) => {
-    const count = {};
-    for (const p of product) if (p.logical.startsWith(`${dir}/`) && !p.moved) count[p.module] = (count[p.module] || 0) + 1;
-    const best = Object.entries(count).sort((a, b) => b[1] - a[1] || (a[0] === 'core' ? -1 : 1))[0];
-    return best ? best[0] : null;
-  };
-  const index = {};
-  for (const p of product) if (!p.moved) index[p.logical] = p.module;
-
-  // 2. Chép, viết lại lệnh nhập và đường dẫn trong chữ.
-  const broken = [];
+  // 1. Tệp của các khối đi vào gói: chép nguyên từng byte, cùng chỗ. Chỉ mục: tệp mã theo đường dẫn logic (tệp tự khai và bản gốc
+  // skill không phải đường dẫn logic).
+  const product = tracked.filter((rel) => {
+    if (!rel.startsWith(HOME)) return false;
+    const inner = rel.slice(HOME.length);
+    return SHIP.includes(inner.split('/')[0]) && inner.includes('/') && !EXCLUDE.some((re) => re.test(inner));
+  });
+  const broken = []; // tệp của gói còn nhắc bố cục cũ trong chữ (bản nguồn đã ở bố cục khối thì không được còn)
   const unknownPaths = new Set();
-  const textual = (n) => /\.(js|md|json|txt)$/.test(n) && !n.startsWith('mcp/vendor/mermaid');
-  for (const p of product) {
-    let data = committed(root, `.claude/plugin/${p.logical}`);
-    if (textual(p.logical)) {
-      let text = data.toString('utf8');
-      if (p.logical.endsWith('.js')) { const r = rewriteRequires(text, p.logical, p.to, (l) => (byLogical.has(l) ? byLogical.get(l).to : null), logicalSet); text = r.text; broken.push(...r.broken); }
-      if (!text.includes(KEEP_PATHS)) { const r = rewritePaths(text, where, dirModule); text = r.text; r.unknown.forEach((u) => unknownPaths.add(`${p.logical}: .claude/plugin/${u}`)); }
-      data = Buffer.from(text, 'utf8');
+  const index = {};
+  for (const rel of product) {
+    const data = committed(root, rel);
+    const [mod, ...rest] = rel.slice(HOME.length).split('/');
+    if (rest.join('/') !== 'module.json' && rest[0] !== 'skills') index[rest.join('/')] = mod;
+    if (/\.(js|md|json|txt)$/.test(rel) && !/\/mcp\/vendor\//.test(rel)) {
+      const text = data.toString('utf8');
+      if (!text.includes(KEEP_PATHS) && text.includes(['.claude', 'plugin', ''].join('/'))) broken.push(`${rel}: còn nhắc bố cục cũ`);
     }
-    put(p.to, data);
+    put(rel, data);
   }
-  put('.claude/modules/index.json', `${JSON.stringify(index, null, 2)}\n`);
-  const coreManifest = JSON.parse(committed(root, '.claude/plugin/modules/core.json').toString('utf8'));
-  put('.claude/modules/VERSION', `${coreManifest.version}\n`);
+  put(`${HOME}index.json`, `${JSON.stringify(Object.fromEntries(Object.keys(index).sort().map((k) => [k, index[k]])), null, 2)}\n`);
+  const coreManifest = JSON.parse(committed(root, `${HOME}core/module.json`).toString('utf8'));
+  put(`${HOME}VERSION`, `${coreManifest.version}\n`);
 
-  // 3. Skill: bản gốc của từng khối ở modules/<khối>/skills/<tên>.md, bản cài ở .claude/skills/<tên>/SKILL.md.
+  // 2. Skill: bản gốc của từng khối ở modules/<khối>/skills/<tên>.md, bản cài ở .claude/skills/<tên>/SKILL.md. Skill mà khối không giữ
+  // bản gốc thì lấy từ .claude/skills của dự án nguồn, thay chữ riêng của nó bằng chữ chung.
   const P = require('../gate/gate-paths');
   for (const m of SHIP) {
-    const man = JSON.parse(committed(root, `.claude/plugin/modules/${m}.json`).toString('utf8'));
+    const man = JSON.parse(committed(root, `${HOME}${m}/module.json`).toString('utf8'));
     for (const name of man.skills || []) {
-      const own = `.claude/modules/${m}/skills/${name}.md`;
+      shippedSkills.add(name);
+      const own = `${HOME}${m}/skills/${name}.md`;
       let text;
       if (files.includes(own)) text = fs.readFileSync(path.join(dest, ...own.split('/')), 'utf8');
       else {
         text = committed(root, `.claude/skills/${name}/SKILL.md`).toString('utf8');
-        for (const [re, to] of REWRITE) text = text.replace(re, to);
-        const r = rewritePaths(text, where, dirModule); text = r.text; r.unknown.forEach((u) => unknownPaths.add(`skill ${name}: .claude/plugin/${u}`));
+        for (const [re, to] of xc.rewrite) text = text.replace(re, to);
+        text = stripDecisions(text);
         put(own, text);
       }
       put(`.claude/skills/${name}/SKILL.md`, text);
     }
   }
 
-  // 4. Khuôn phần của dự án.
+  // 3. Khuôn phần của dự án: project.json trống và các công tắc mặc định (không mang cấu hình riêng của dự án nguồn).
   let srcSkills = {};
   try { srcSkills = P.projectConfig(root).skillsRaw || {}; } catch { /* không có: bảng rỗng */ }
-  put('.claude/project/project.json', `${JSON.stringify(productProject(srcSkills), null, 2)}\n`);
-  for (const [logical, to] of Object.entries(projectTo)) {
-    if (/^(project|skills-map|units)\.json$/.test(logical) || /generators\//.test(logical) || /gate\.config\.json$|MIGRATED_AT$/.test(logical)) continue;
-    if (tracked.includes(`.claude/plugin/${logical}`)) put(to, committed(root, `.claude/plugin/${logical}`));
-  }
+  put('.claude/project/project.json', `${JSON.stringify(productProject(srcSkills, shippedSkills), null, 2)}\n`);
+  for (const f of ['context.config.json', 'scope.config.json']) if (tracked.includes(`.claude/project/${f}`)) put(`.claude/project/${f}`, committed(root, `.claude/project/${f}`));
 
   // 5. settings.json và .mcp.json sinh bằng bộ cài từ tệp tự khai trong gói; .gitignore, README.
   const setup = require('./setup');
-  put('.claude/settings.json', `${JSON.stringify(setup.buildSettings(dest, productSettings(committed(root, '.claude/settings.json').toString('utf8'))), null, 2)}\n`);
+  put('.claude/settings.json', `${JSON.stringify(setup.buildSettings(dest, productSettings(committed(root, '.claude/settings.json').toString('utf8'), xc.dropPermissions)), null, 2)}\n`);
   put('.mcp.json', `${JSON.stringify(setup.buildMcp(dest, {}), null, 2)}\n`);
   const inClaude = (abs) => posix(path.relative(path.join(root, '.claude'), abs));
   put('.claude/.gitignore', `${inClaude(P.stateDir(root))}/\nsettings.local.json\n${inClaude(P.localDir(root))}/\nworktrees/\n`);
   put('README.md', README);
+  const notesRel = `${HOME}core/RELEASES.md`;
+  const notes = tracked.includes(notesRel) ? committed(root, notesRel).toString('utf8') : '';
+  if (notes) put('RELEASES.md', notes);
+  const noteErrs = notes ? require('../core/release/notes').check(notes, coreManifest.version) : ['bản đã commit không có tệp sổ phát hành'];
+  if (noteErrs.length) out.push(`LỖI: sổ phát hành (${notesRel}) chưa đạt (${noteErrs.length}):`, ...noteErrs.map((e) => `  ${e}`));
   put('.gitattributes', '* -text\n'); // giữ nguyên từng byte: dấu vân tay tính trên nội dung tệp
 
   // 6. Dấu vân tay cổng duyệt và dấu từng tệp của sản phẩm (bộ cài dùng để biết tệp nào người dùng đã sửa).
@@ -274,6 +287,7 @@ function run(root, dest) {
 
   // 7. DÒ gói.
   const hits = [];
+  const debt = {}; // tệp thuộc KNOWN -> số dòng còn dấu vết
   const words = (() => { try { return require('../adapters/project/workspace').loadWords(root); } catch { return null; } })();
   const banned = words ? require('../core/rules/lib/banned-words').matcher(words) : null;
   for (const rel of files) {
@@ -283,13 +297,16 @@ function run(root, dest) {
     if (buf.includes(0)) continue;
     const text = buf.toString('utf8');
     const vendor = /\/mcp\/vendor\//.test(rel);
-    const docText = /\.(md|json)$/.test(rel) && !vendor;
+    const known = KNOWN.find((k) => k.file.test(rel));
     text.split('\n').forEach((line, i) => {
       const at = `${rel}:${i + 1}`;
       if (banned && banned.test(line)) hits.push(`${at}: từ cấm`);
       if (SECRET.test(line)) hits.push(`${at}: giống bí mật`);
-      if (MACHINE.test(line) && !vendor) hits.push(`${at}: đường dẫn máy hay địa chỉ thư thật`);
-      if (docText && INTERNAL.test(line)) hits.push(`${at}: tên nội bộ của dự án nguồn`);
+      if (vendor) return; // thư viện bên ngoài đi kèm: chỉ dò từ cấm và bí mật
+      if (MACHINE.test(line)) hits.push(`${at}: đường dẫn máy hay địa chỉ thư thật`);
+      const trace = (!line.includes(KEEP_NAMES) && xc.internal.some((re) => re.test(line))) ? 'dấu vết của dự án nguồn' : (DECISION.test(line) ? 'mã quyết định nội bộ' : '');
+      if (!trace) return;
+      if (known) debt[rel] = (debt[rel] || 0) + 1; else hits.push(`${at}: ${trace}`);
     });
   }
   try {
@@ -297,10 +314,12 @@ function run(root, dest) {
   } catch (e) { hits.push(`không dò được nội dung docs/: ${e.message}`); }
   out.unshift(`Gói: ${dest} (${files.length} tệp, bố cục khối, từ commit ${String(git(root, ['rev-parse', '--short=12', 'HEAD'], { encoding: 'utf8' }).stdout).trim()}).`);
   if (unknownPaths.size) out.push(`Ghi chú: ${unknownPaths.size} chỗ nhắc .claude/plugin/<x> mà <x> không có trong gói (để nguyên): ${[...unknownPaths].slice(0, 12).join('; ')}${unknownPaths.size > 12 ? '; ...' : ''}`);
+  if (xc.missing) out.push('Ghi chú: dự án nguồn không có .claude/project/export.json: không thay chữ nào trong skill và KHÔNG dò dấu vết của dự án nguồn.');
+  for (const k of KNOWN) { const n = Object.entries(debt).filter(([f]) => k.file.test(f)); if (n.length) out.push(`Nợ đã biết (${n.reduce((a, [, c]) => a + c, 0)} dòng ở ${n.map(([f]) => f.split('/').pop()).join(', ')}): ${k.why}.`); }
   if (hits.length) out.push(`DÒ KHÔNG SẠCH (${hits.length} chỗ):`, ...hits.slice(0, 80).map((h) => `  ${h}`), ...(hits.length > 80 ? [`  ... còn ${hits.length - 80}`] : []));
-  else out.push(`Dò sạch: từ cấm${banned ? '' : ' (máy không có danh sách: KHÔNG dò)'}, nội dung docs/, bí mật, đường dẫn máy, tên nội bộ trong tài liệu và skill.`);
+  else out.push(`Dò sạch: từ cấm${banned ? '' : ' (máy không có danh sách: KHÔNG dò)'}, nội dung docs/, bí mật, đường dẫn máy, dấu vết của dự án nguồn và mã quyết định nội bộ trong mọi tệp chữ.`);
   out.push('Danh sách tệp cho phép (đối chiếu sau khi đẩy):', ...files.sort().map((f) => `  ${f}`));
-  return { ok: !hits.length && !out.some((l) => l.startsWith('LỖI')), text: out.join('\n'), files: files.sort(), hits, broken, unknown: [...unknownPaths] };
+  return { ok: !hits.length && !out.some((l) => l.startsWith('LỖI')), text: out.join('\n'), files: files.sort(), hits, broken, unknown: [...unknownPaths], debt };
 }
 
-module.exports = { run, EXCLUDE, REWRITE, SHIP, productProject, productSettings, rewriteRequires, rewritePaths, placer };
+module.exports = { run, EXCLUDE, SHIP, KNOWN, stripDecisions, exportConfig, productProject, productSettings, rewriteRequires, rewritePaths, placer };

@@ -1,9 +1,9 @@
 'use strict';
 // spec: LEDG-S-003
-// BỘ CHUYỂN lưu trữ, phần sổ phạm vi (S-055). Lời từ chối của luật phạm vi nằm ở core/rules/scope.js.
-// Sổ phạm vi (S-050): một phiên chỉ được sửa dịch vụ mà KẾ HOẠCH ĐÃ DUYỆT của nó nêu ra và phiên đã ĐĂNG KÝ.
+// BỘ CHUYỂN lưu trữ, phần sổ phạm vi. Lời từ chối của luật phạm vi nằm ở core/rules/scope.js.
+// Sổ phạm vi: một phiên chỉ được sửa dịch vụ mà KẾ HOẠCH ĐÃ DUYỆT của nó nêu ra và phiên đã ĐĂNG KÝ.
 //   phiên -> kế hoạch đã duyệt (bảng rec_plans) -> dịch vụ đã đăng ký (bảng rec_plan_services) -> lần sửa (guard-scope.js đối soát).
-// Các bảng thuộc schema `session` (S-060): hồ sơ kế hoạch ở nhóm rec_, ghi chú một lần ở nhóm act_; tạo và nâng phiên bản ở ledger-db.js.
+// Các bảng thuộc schema `session`: hồ sơ kế hoạch ở nhóm rec_, ghi chú một lần ở nhóm act_; tạo và nâng phiên bản ở ledger-db.js.
 // Nguồn sự thật "kế hoạch nào đang hiệu lực" là trạng thái của cổng duyệt (kế hoạch người dùng vừa đồng ý, kèm băm); sổ chỉ ghi lại
 // và giữ lịch sử. Vì vậy dòng trong sổ được tạo lại được từ trạng thái cổng (activePlan), không phụ thuộc việc cổng ghi sổ thành công.
 // Sổ không lưu nguyên văn kế hoạch: chỉ băm, lý do, phạm vi và danh sách dịch vụ. Chỉ hook và công cụ của harness ghi sổ.
@@ -55,7 +55,7 @@ function recordVerdict(db, { sid, sha, parsed, status, now = Date.now() }) {
 
 // Kế hoạch đang hiệu lực của phiên, theo trạng thái cổng duyệt. Trả:
 //   { closed: true }                 cổng đang đóng (cổng duyệt tự chặn việc sửa)
-//   { invalid: true, errors: [...] } kế hoạch đã duyệt không đọc được theo khuôn (phiên duyệt trước S-050, hoặc khuôn sai)
+//   { invalid: true, errors: [...] } kế hoạch đã duyệt không đọc được theo khuôn (phiên duyệt trước khi có khuôn kế hoạch, hoặc khuôn sai)
 //   { plan: {...} }                  dòng trong sổ (tạo nếu chưa có)
 function activePlan(db, root, sid, { now = Date.now() } = {}) {
   let st = null;
@@ -178,6 +178,12 @@ function noteOnce(root, sid, prefix, key, now = Date.now()) {
   }, false);
 }
 
+// Mọi ghi chú của phiên có tiền tố thuộc `prefixes` (chỉ đọc): bảng phiên dùng để biết phiên đang giữ bản nào của thứ chỉ nạp một lần.
+function notesOf(root, sid, prefixes) {
+  if (!sid) return [];
+  return withDb(root, (db) => db.prepare('SELECT key FROM act_notes WHERE sid = ?').all(sid).map((r) => r.key).filter((k) => prefixes.some((p) => k.startsWith(p))), []);
+}
+
 // Một commit vừa xong ở repo của dịch vụ. Có mã phiên (commit do một phiên Claude chạy) thì gắn với kế hoạch đang hiệu lực của phiên;
 // không có (người dùng tự commit, hoặc phiên chưa có kế hoạch) thì ghi với plan_id = 0. Trả plan_id đã ghi, hoặc -1 nếu không ghi được.
 function recordCommit(root, { sid, service, sha, now = Date.now() }) {
@@ -231,5 +237,5 @@ function importScopeFiles(root) {
 
 module.exports = {
   mode, configPath, recordVerdict, activePlan, registered, register, statusText, headOf, EXAMPLE,
-  noteEdit, editsOf, currentService, recentOthers, noteOnce, recordCommit, codeRange, importScopeFiles, registeredOf, planIdOf,
+  noteEdit, editsOf, currentService, recentOthers, noteOnce, notesOf, recordCommit, codeRange, importScopeFiles, registeredOf, planIdOf,
 };

@@ -14,13 +14,17 @@ const reader = require('./data-reader');
 
 const P = require('../../../core/gate/gate-paths');
 const { AUTO_PREFIX } = specs;
-// Sơ đồ tự sinh do khối context góp qua bảng đăng ký (S-064); khối đó tắt thì không có sơ đồ tự sinh nào.
+// Sơ đồ tự sinh do khối context góp qua bảng đăng ký; khối đó tắt thì không có sơ đồ tự sinh nào.
 const autoProvider = () => { const f = P.provided(core.BSN_DIR, 'autoDiagrams'); return f ? require(f) : null; };
-const { contentHash, elementNames, termMatches, canonical, coverage, TYPE_LABEL } = require('../../core/diagrams/model');
+const model = require('../../core/diagrams/model');
+const { contentHash, elementNames, termMatches, canonical, coverage, TYPE_LABEL } = model;
 const GET_MAX = 6000; // trần ký tự của một lần đọc sơ đồ ở dạng gọn
 const dir = () => path.join(core.ROOT, 'docs', 'diagrams');
 const fileOf = (id) => path.join(dir(), `${id}.yaml`);
 const serviceName = () => core.serviceName();
+// Phần giải thích có cũ so với hình không. Dấu không khớp thẳng thì hỏi lịch sử git của tệp sơ đồ: giải thích viết cho một bản
+// trước mà hình giống hệt bây giờ (chỉ khác đường dẫn tệp nguồn) vẫn là khớp.
+const staleOf = (spec) => model.explainStale(spec, () => require('./history').earlier(fileOf(spec.id)));
 
 // Kiểm một bản khai báo, không ghi gì. Trả { ok, errors: [chuỗi], spec, mermaid }.
 function check(input) {
@@ -58,7 +62,7 @@ function save({ spec }) {
   let kept = '';
   if (fs.existsSync(fileOf(r.spec.id))) {
     const old = specs.parse(yaml.parse(core.readText(fileOf(r.spec.id)))).spec;
-    if (old && old.explain) { r.spec.explain = old.explain; kept = old.explain.basis === contentHash(r.spec) ? '' : ' Phần giải thích cũ được giữ nhưng hình đã đổi: viết lại bằng diagram_explain.'; }
+    if (old && old.explain) { r.spec.explain = old.explain; kept = staleOf(r.spec) ? ' Phần giải thích cũ được giữ nhưng hình đã đổi: viết lại bằng diagram_explain.' : ''; }
   }
   core.writeText(fileOf(r.spec.id), yaml.stringify(canonical(r.spec)));
   return `Đã ghi sơ đồ '${r.spec.id}' (${r.spec.type}, tab ${r.spec.tab}) của ${serviceName()} vào docs/diagrams/${r.spec.id}.yaml. ` +
@@ -107,7 +111,7 @@ function fromText(id, text) {
     if (!spec) return { id, error: specs.formatErrors(errors).slice(0, 3).join('; ') };
     if (spec.id !== id) return { id, error: `tệp ${id}.yaml chứa sơ đồ mã '${spec.id}'` };
     return { id, title: spec.title, tab: spec.tab, type: spec.type, sources: spec.sources, mermaid: mermaid.render(spec), generated: spec.generated ? spec.generated.reader : null,
-      explain: spec.explain || null, explainStale: !!spec.explain && spec.explain.basis !== contentHash(spec), layout: spec.type === 'flowchart' ? mermaid.layoutOf(spec).kind : spec.type };
+      explain: spec.explain || null, explainStale: staleOf(spec), layout: spec.type === 'flowchart' ? mermaid.layoutOf(spec).kind : spec.type };
   } catch (e) {
     return { id, error: e.message };
   }
@@ -142,9 +146,9 @@ function listDetail() {
   const na = cov.filter((c) => c.na).map((c) => `${c.label} (không áp dụng: ${c.na})`);
   // Sơ đồ harness tự sinh từ mã sau mỗi commit (kho ngữ nghĩa): agent không khai, chỉ viết giải thích và soát.
   const autos = autoDiagrams();
-  const autoLines = autos.map((a) => `  [${TYPE_LABEL[a.spec.type]}] ${a.spec.id} · tự sinh từ mã · giải thích: ${!a.state.explain ? 'CHƯA CÓ' : a.state.explainStale ? 'CÓ THỂ ĐÃ CŨ' : 'khớp'} · soát: ${!a.state.review ? 'chưa' : a.state.reviewStale ? 'hình đã đổi sau lần soát' : a.state.review.verdict} · ${a.spec.title}`);
+  const autoLines = autos.map((a) => `  [${TYPE_LABEL[a.spec.type]}] ${a.spec.id} · tự sinh từ mã · giải thích: ${!a.state.explain ? 'CHƯA CÓ' : a.state.explainStale ? 'CÓ THỂ ĐÃ CŨ' : a.state.explain.machine ? 'khớp (máy viết)' : 'khớp'} · soát: ${!a.state.review ? 'chưa' : a.state.reviewStale ? 'hình đã đổi sau lần soát' : a.state.review.verdict} · ${a.spec.title}`);
   return `Sơ đồ của ${serviceName()} (${rows.length}):\n${lines.join('\n') || '  (chưa có sơ đồ nào)'}\n` +
-    (autoLines.length ? `Sơ đồ tự sinh từ mã (${autoLines.length}; đọc bằng diagram_get, giải thích bằng diagram_explain, soát bằng diagram_review):\n${autoLines.join('\n')}\n` : '') +
+    (autoLines.length ? `Sơ đồ tự sinh từ mã (${autoLines.length}; đọc bằng diagram_get; máy tự viết giải thích, muốn viết bản riêng thì diagram_explain; soát với mã thì diagram_review):\n${autoLines.join('\n')}\n` : '') +
     `Đủ bộ ${specs.TYPES.length} loại (${specs.TYPES.map((t) => TYPE_LABEL[t]).join(', ')}): ${missing.length ? `CÒN THIẾU ${missing.join(', ')}` : 'đủ'}${na.length ? `; ${na.join('; ')}` : ''}.`;
 }
 
@@ -168,13 +172,13 @@ function get({ id, format = 'gon' }) {
     const st = a.state;
     // Thứ hình đã gộp (ví dụ lệnh nhập giữa hai tầng) được liệt kê đủ ở đây, để soát với mã mà không phải hỏi thêm.
     const detail = a.detail ? `\n${a.detail.title}:\n${a.detail.lines.map((l) => `  ${l}`).join('\n')}` : '';
-    return `${compact.capped(compact.compact(a.spec, { origin: a.origin }) + detail, GET_MAX)}\nGiải thích: ${!st.explain ? 'CHƯA CÓ (ghi bằng diagram_explain)' : st.explainStale ? 'CÓ THỂ ĐÃ CŨ (hình đổi sau khi viết; viết lại bằng diagram_explain)' : 'khớp với hình'}. Soát: ${!st.review ? 'chưa (đối chiếu với mã rồi ghi bằng diagram_review)' : st.reviewStale ? 'hình đã đổi sau lần soát' : `${st.review.verdict} (${st.review.at})`}.`;
+    return `${compact.capped(compact.compact(a.spec, { origin: a.origin }) + detail, GET_MAX)}\nGiải thích: ${!st.explain ? 'CHƯA CÓ (ghi bằng diagram_explain)' : st.explainStale ? 'CÓ THỂ ĐÃ CŨ (hình đổi sau khi viết; viết lại bằng diagram_explain)' : st.explain.machine ? 'do máy viết từ dữ liệu của hình (muốn viết bản riêng: diagram_explain)' : 'khớp với hình'}. Soát: ${!st.review ? 'chưa (không bắt buộc; đối chiếu với mã rồi ghi bằng diagram_review)' : st.reviewStale ? 'hình đã đổi sau lần soát' : `${st.review.verdict} (${st.review.at})`}.`;
   }
   if (!fs.existsSync(fileOf(id))) throw new Error(`Không có sơ đồ '${id}' trong ${serviceName()}. Đang có: ${[...list(), ...autoDiagrams().map((x) => x.spec.id)].join(', ') || '(chưa có)'}`);
   const spec = readSpec(id);
   if (!spec) throw new Error(`Sơ đồ '${id}' đang không hợp lệ: ${fromText(id, core.readText(fileOf(id))).error}`);
   const { explain: ex, generated, ...content } = spec;
-  const state = `Giải thích: ${!ex ? 'chưa có' : ex.basis === contentHash(spec) ? 'khớp với hình' : 'có thể đã cũ'} (ghi bằng diagram_explain).`;
+  const state = `Giải thích: ${!ex ? 'chưa có' : staleOf(spec) ? 'có thể đã cũ' : 'khớp với hình'} (ghi bằng diagram_explain).`;
   if (format === 'json') {
     if (generated) throw new Error(`Sơ đồ '${id}' do công cụ TỰ SINH (${generated.reader}); không sửa bằng diagram_save, sinh lại bằng diagram_generate id="${id}". Đọc nó ở dạng gọn (bỏ tham số format).`);
     return `Sửa bản dưới đây rồi lưu lại bằng diagram_save (cùng id). ${state}\n\n${JSON.stringify(content)}`;
@@ -218,7 +222,7 @@ function generate(input, opts = {}) {
   const r = check(spec);
   if (!r.ok) throw new Error(`Sơ đồ sinh ra không hợp lệ, KHÔNG ghi:\n  - ${r.errors.join('\n  - ')}`);
   let kept = ' Viết phần giải thích bằng diagram_explain.';
-  if (old && old.explain) { r.spec.explain = old.explain; kept = old.explain.basis === contentHash(r.spec) ? ' Cấu trúc không đổi, phần giải thích còn khớp.' : ' CẤU TRÚC ĐÃ ĐỔI: viết lại phần giải thích bằng diagram_explain.'; }
+  if (old && old.explain) { r.spec.explain = old.explain; kept = staleOf(r.spec) ? ' CẤU TRÚC ĐÃ ĐỔI: viết lại phần giải thích bằng diagram_explain.' : ' Cấu trúc không đổi, phần giải thích còn khớp.'; }
   core.makeDir(dir());
   core.writeText(fileOf(id), yaml.stringify(canonical(r.spec)));
   return `Đã sinh sơ đồ dữ liệu '${id}' của ${serviceName()} từ ${cfg.reader}: ${body.entities.length} bảng, ${body.relations.length} quan hệ (${body.entities.map((e) => e.label || e.id).join(', ')}).${kept} Lên trang sau khi repo dịch vụ commit.`;
@@ -240,14 +244,59 @@ function checkWarnings() {
   return out;
 }
 
+// Ghi lại DẤU của phần giải thích theo cách tính hiện tại cho mọi sơ đồ mà giải thích CÒN KHỚP với hình nhưng đang mang dấu kiểu cũ
+// (dấu trước bản 1.5.0 tính cả đường dẫn tệp nguồn). Không đổi hình, không đổi lời giải thích. Sơ đồ mà hình thật sự đã đổi thì để nguyên và
+// nêu tên. Chạy được nhiều lần; lần sau không còn gì để ghi. Lệnh đổi đường dẫn hàng loạt gọi phép này TRƯỚC khi đổi, trong cùng giao dịch.
+function restampRaw() {
+  const done = []; const stale = [];
+  for (const id of list()) {
+    let spec;
+    try { spec = readSpec(id); } catch { spec = null; }
+    if (!spec || !spec.explain) continue;
+    if (spec.explain.basis === contentHash(spec)) continue;
+    if (staleOf(spec)) { stale.push(id); continue; }
+    spec.explain = { ...spec.explain, basis: contentHash(spec) };
+    core.writeText(fileOf(id), yaml.stringify(canonical(spec)));
+    done.push(id);
+  }
+  return { done, stale };
+}
+// Sơ đồ do người khai mà MÃ NÓ VẼ THEO đã đổi nhiều kể từ khi hình có dạng như bây giờ. Máy không vẽ lại hình người đã duyệt:
+// chỉ nêu ra để người dùng hoặc phiên của đơn vị quyết có sửa hình không. [{ id, since, files, added, removed }], đổi nhiều trước.
+const DRIFT_LINES = 150;
+function drift() {
+  const h = require('./history');
+  const out = [];
+  for (const id of list()) {
+    let spec;
+    try { spec = readSpec(id); } catch { spec = null; }
+    if (!spec || spec.generated) continue;
+    const d = h.drift(fileOf(id), spec, core.ROOT, model.samePicture);
+    if (d && d.files) out.push({ id, ...d });
+  }
+  return out.sort((a, b) => (b.added + b.removed) - (a.added + a.removed));
+}
+function driftReport() {
+  const rows = drift();
+  if (!rows.length) return `Sơ đồ của ${serviceName()}: không sơ đồ nào có mã nguồn đổi sau khi hình có dạng hiện tại (hoặc không hỏi được lịch sử git).`;
+  return `Sơ đồ của ${serviceName()} mà mã nó vẽ theo đã đổi từ khi hình có dạng hiện tại (máy chỉ nêu, không tự vẽ lại):\n` +
+    rows.map((r) => `  ${r.added + r.removed >= DRIFT_LINES ? '[ĐỔI NHIỀU] ' : ''}${r.id}: +${r.added} -${r.removed} dòng trong ${r.files} tệp nguồn, từ commit ${r.since}`).join('\n');
+}
+function restamp() {
+  const r = restampRaw();
+  return `Sơ đồ của ${serviceName()}: đã ghi lại dấu cho ${r.done.length} phần giải thích còn khớp với hình${r.done.length ? ` (${r.done.join(', ')})` : ''}. ` +
+    (r.stale.length ? `Hình ĐÃ ĐỔI THẬT sau khi giải thích được viết (${r.stale.length}): ${r.stale.join(', ')}; viết lại bằng diagram_explain.` : 'Không có sơ đồ nào mà hình đã đổi sau khi giải thích được viết.');
+}
+
 const tx = (reason, fn) => (...args) => core.transaction(reason, () => fn(...args));
 
 module.exports = {
-  check, fromText, list, listDetail, autoDiagrams, coverage, checkErrors, checkWarnings, sourcesBasis, dir, fileOf, contentHash, elementNames, termMatches, TYPE_LABEL,
+  check, fromText, list, listDetail, autoDiagrams, coverage, checkErrors, checkWarnings, sourcesBasis, dir, fileOf, contentHash, basisMatches: model.basisMatches, staleOf, restampRaw, drift, driftReport, DRIFT_LINES, elementNames, termMatches, TYPE_LABEL,
   get: tx('diagram_get', get),
   generate: tx('diagram_generate', generate),
   explain: tx('diagram_explain', explain),
   validate: tx('diagram_validate', validate),
   save: tx('diagram_save', save),
   remove: tx('diagram_remove', remove),
+  restamp: tx('diagram_restamp', restamp),
 };

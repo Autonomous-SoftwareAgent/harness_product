@@ -1,6 +1,6 @@
 'use strict';
 // spec: PORT-S-002
-// BỘ CHUYỂN Mermaid cho cổng "bộ vẽ" (ports/renderer.js, S-055).
+// BỘ CHUYỂN Mermaid cho cổng "bộ vẽ" (ports/renderer.js).
 // Bản khai báo sơ đồ (dữ liệu thuần, đã qua core/diagrams/spec.js) -> văn bản Mermaid. Hàm thuần: cùng một bản khai báo luôn ra cùng
 // một chuỗi, không đọc đĩa, không gọi mạng. Model KHÔNG BAO GIỜ viết cú pháp Mermaid; mọi quyết định cú pháp nằm ở đây.
 // Mọi chuỗi do người viết đều qua escapeLabel: ký tự là cú pháp của Mermaid được đổi thành mã ký tự dạng #số; nên nhãn chứa

@@ -2,7 +2,7 @@
 // spec: LEDG-S-001
 // spec: LEDG-S-002
 // spec: LEDG-S-003
-// CỬA VÀO cho mã còn gọi sổ phiên theo tên cũ (cổng duyệt, công cụ dòng lệnh, bảng phiên). Tệp này chỉ GHÉP (S-055):
+// CỬA VÀO cho mã còn gọi sổ phiên theo tên cũ (cổng duyệt, công cụ dòng lệnh, bảng phiên). Tệp này chỉ GHÉP:
 //   phần SQLite            adapters/storage/ledger-db.js
 //   phần "nghĩ"            core/rules/lib/knowledge.js
 //   skill và bảng nối      adapters/project/workspace.js

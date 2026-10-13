@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-004
-// Phần "nghĩ" của việc quét từ cấm (S-034): một từ trong danh sách khớp những cách viết nào. Thuần: không biết danh sách nằm ở đâu
+// Phần "nghĩ" của việc quét từ cấm: một từ trong danh sách khớp những cách viết nào. Thuần: không biết danh sách nằm ở đâu
 // và không chứa từ nào; bên gọi đưa danh sách vào.
 // Một từ trong danh sách khớp nhiều cách viết, vì người viết hiếm khi gõ đúng một dạng:
 //   - không phân biệt hoa thường;

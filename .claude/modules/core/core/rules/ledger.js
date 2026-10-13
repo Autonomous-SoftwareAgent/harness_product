@@ -1,6 +1,6 @@
 'use strict';
 // spec: LEDG-S-001
-// LUẬT ghi sổ phiên (S-032). Không bao giờ chặn; chỉ ghi lại điều phiên đã nạp để luật đủ kiến thức (skill.js) đối chiếu.
+// LUẬT ghi sổ phiên. Không bao giờ chặn; chỉ ghi lại điều phiên đã nạp để luật đủ kiến thức (skill.js) đối chiếu.
 //   after-action   (mọi công cụ): ghi lời gọi công cụ; mở skill = đã mở skill; đọc SKILL.md = đã mở skill;
 //                  đọc tài liệu bắt buộc của một dịch vụ (CLAUDE.md, STATUS.md) = đã đọc.
 //   user-prompt    người dùng gõ /<tên-skill> = đã mở skill (không có sự kiện công cụ nào cho trường hợp này).
@@ -39,6 +39,8 @@ async function run(event, { workspace: ws, store }) {
         const svc = ws.serviceOf(a.file);
         if (ws.isService(svc)) service = svc;
         if (a.type === 'read-file') {
+          // Chuyển phiên: phiên nhận vừa đọc tờ bàn giao của nó thì ghi nhận, để lời nhắc dừng và phiên giao biết đã tới nơi.
+          if (!agent) { try { ws.transferRead(a.file, sid); } catch { /* không ghi nhận được: lời nhắc còn lặp, không hỏng gì */ } }
           const skill = K.skillOfFile(ws, a.file);
           if (skill) await book.addSkill({ sid, agent, skill, via: 'read' });
           const map = K.loadMap(ws);

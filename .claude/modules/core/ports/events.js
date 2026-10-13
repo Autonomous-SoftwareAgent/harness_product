@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-007
-// CỔNG VÀO của harness (S-055): dạng sự kiện chung và dạng quyết định. Tệp này chỉ là hợp đồng: không nhập gì, không đọc ghi gì.
+// CỔNG VÀO của harness: dạng sự kiện chung và dạng quyết định. Tệp này chỉ là hợp đồng: không nhập gì, không đọc ghi gì.
 // Bên ngoài (Claude Code hôm nay, công cụ chủ khác về sau) muốn nói với lõi thì bộ chuyển của nó dịch sang đúng dạng này; lõi trả lời
 // bằng đúng dạng quyết định dưới đây, bộ chuyển dịch ngược lại. Lõi không bao giờ thấy dạng dữ liệu riêng của công cụ chủ.
 //
@@ -30,7 +30,7 @@
 // QUYẾT ĐỊNH: null (không có ý kiến, cho qua) hoặc { verdict, reason, detail?, service? }:
 //   deny   chặn việc sắp làm (before-action)          ask    hỏi người dùng (before-action)
 //   note   không chặn, nhắn thêm cho phiên            block  giữ lượt lại, chưa cho kết thúc (turn-end)
-//   detail   (tùy chọn) một dòng ngắn cho sổ quyết định của luật (S-060), ví dụ "còn thiếu: services"; thiếu thì cửa vào lấy dòng đầu của reason
+//   detail   (tùy chọn) một dòng ngắn cho sổ quyết định của luật, ví dụ "còn thiếu: services"; thiếu thì cửa vào lấy dòng đầu của reason
 //   service  (tùy chọn) dịch vụ luật đã xét, khi luật biết rõ hơn cửa vào
 const KINDS = ['session-start', 'user-prompt', 'before-action', 'after-action', 'turn-end'];
 const ACTIONS = ['write-file', 'run-command', 'read-file', 'open-skill', 'call-tool', 'other'];

@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-003
-// BỘ CHUYỂN lưu trữ, phần trạng thái theo dõi tài liệu (S-055). Trạng thái theo phiên và theo service nằm ở thư mục trạng thái của harness
+// BỘ CHUYỂN lưu trữ, phần trạng thái theo dõi tài liệu. Trạng thái theo phiên và theo service nằm ở thư mục trạng thái của harness
 // (đường dẫn do gate-paths sinh), không nằm trong thư mục service. Phần "nghĩ" (tệp thuộc loại nào, còn nợ gì) ở core/rules/lib/docs-tracking.js.
 const fs = require('node:fs');
 

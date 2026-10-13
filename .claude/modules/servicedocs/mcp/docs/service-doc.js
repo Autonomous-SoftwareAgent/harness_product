@@ -2,14 +2,15 @@
 // spec: MCP-S-003
 // Nguồn có cấu trúc của MỘT dịch vụ: <dịch-vụ>/docs/service.yaml. Đây là nguồn duy nhất cho hai thứ sinh ra:
 //   - <dịch-vụ>/docs/_generated/overview.md : bản Markdown gọn cho AI agent đọc
-//   - BSN_/docs/portal/<dịch-vụ>/index.html : trang ba tab cho người đọc (khuôn mặc định service-page.js)
+//   - docs/portal/<dịch-vụ>/index.html : trang ba tab cho người đọc (khuôn mặc định service-page.js)
 // Ba phần khớp ba tab: business (nghiệp vụ), architecture (kiến trúc kỹ thuật), problems + progress (vấn đề và tinh chỉnh).
 // Tệp chỉ ghi qua công cụ (MCP bsn-docs: service_doc_set, problem_record), trong giao dịch có khóa của core; hook
 // guard-owned chặn sửa tay. Mọi lần ghi đều kiểm lược đồ trước; sai thì ném lỗi và không ghi gì.
 const path = require('path');
 const core = require('./core');
 const yaml = require('../../../core/core/lib/yaml-lite');
-const { SCHEMA, SECTIONS, SEVERITY, PROBLEM_STATUS, DEP_KIND, LAYOUT, DIAGRAM_TYPES, ID_RE, PROBLEM_ID_RE, MAX, str, oneOf, id, listOf, obj, uniqueIds, all, line, title, text, lines, diagram, SECTION_CHECK, problem, validate, renderAgentMd } = require('../../core/docs/service-doc');
+const { SCHEMA, SECTIONS, SEVERITY, PROBLEM_STATUS, DEP_KIND, LAYOUT, DIAGRAM_TYPES, ID_RE, PROBLEM_ID_RE, MAX, str, oneOf, id, listOf, obj, uniqueIds, all, line, title, text, lines, diagram, SECTION_CHECK, problem, validate, renderAgentMd: renderAgentMdPure } = require('../../core/docs/service-doc');
+const renderAgentMd = (doc) => renderAgentMdPure(doc, { rootName: path.basename(path.resolve(core.BSN_DIR)) });
 
 const file = () => path.join(core.ROOT, 'docs', 'service.yaml');
 const agentMd = () => path.join(core.ROOT, 'docs', '_generated', 'overview.md');
@@ -60,7 +61,7 @@ function setSection({ section, value }) {
   SECTION_CHECK[section](value, section, errs);
   if (errs.length) throw new Error(`Giá trị của '${section}' không hợp lệ, KHÔNG ghi:\n  - ${errs.slice(0, 20).join('\n  - ')}`);
   const doc = load() || empty();
-  if (section === 'meta') Object.assign(doc, { title: value.title, summary: value.summary });
+  if (section === 'meta') { Object.assign(doc, { title: value.title, summary: value.summary }); if (value.first_tab) doc.first_tab = value.first_tab; else delete doc.first_tab; }
   else doc[section] = value;
   save(doc);
   return `Đã ghi phần '${section}' của ${doc.service} vào docs/service.yaml và sinh lại docs/_generated/overview.md. Trang của dịch vụ cập nhật sau khi repo dịch vụ commit.`;

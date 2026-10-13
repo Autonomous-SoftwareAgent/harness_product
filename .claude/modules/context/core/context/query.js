@@ -7,10 +7,10 @@
 // Không trả lỗi cho tình huống bình thường (không thấy gì, kho thiếu một phần): trả phần có và nói rõ phần thiếu.
 const ctx = require('./graph');
 const { capped } = require('../../../diagrams/core/diagrams/compact');
-// Bỏ phần đầu "…/<thư mục cha>/<dịch-vụ>/" (thư mục cha khai trong cấu hình dự án, S-063) hoặc "…/<thư mục đơn vị khai riêng>/"
+// Bỏ phần đầu "…/<thư mục cha>/<dịch-vụ>/" (thư mục cha khai trong cấu hình dự án) hoặc "…/<thư mục đơn vị khai riêng>/"
 // của một đường dẫn, còn lại đường dẫn trong repo của dịch vụ.
 const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-function stripUnit(p, units, parents = ['system_service']) {
+function stripUnit(p, units, parents = []) {
   const rel = String(p).replace(/\\/g, '/');
   for (const parent of parents) {
     const m = new RegExp(`^(?:.*/)?${escapeRe(parent)}/[^/]+/(.*)$`, 'i').exec(rel);
@@ -239,7 +239,7 @@ function impactOf(ix, paths, service, units, parents) {
 
 // Cửa hỏi. q: một từ hoặc một câu; to: vật thứ hai (tìm đường nối); impact: danh sách tệp vừa sửa; service: chỉ hỏi trong một dịch vụ; section: xem đủ một mục.
 // `all` là kho đã dựng (mọi dịch vụ và phần chung); `units` là { tên đơn vị ngoài: thư mục tính từ gốc }; `parents` là các thư mục chứa
-// đơn vị (cấu hình dự án, S-063). Bên gọi đưa vào.
+// đơn vị (cấu hình dự án). Bên gọi đưa vào.
 function explore({ q, to, impact, service, section } = {}, { all, units = {}, parents } = {}) {
   const data = all;
   const ix = index(data, service);

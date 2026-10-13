@@ -13,7 +13,7 @@ process.stdin.on('end', async () => {
   try {
     const req = JSON.parse(input || '{}');
     const tools = require('./mcp-tools');
-    // Công cụ của khối mở rộng (S-065) có thể trả lời hứa: chờ.
+    // Công cụ của khối mở rộng có thể trả lời hứa: chờ.
     out = await (req.op === 'list' ? { tools: tools.list() } : tools.call(req.name, req.arguments || {}));
   } catch (e) {
     out = { crash: String((e && e.stack) || e).slice(0, 1500) };

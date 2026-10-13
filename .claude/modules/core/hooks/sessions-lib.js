@@ -1,8 +1,8 @@
 'use strict';
 // spec: HOOK-S-003
 // spec: HOOK-S-006
-// CỬA VÀO của bảng phiên (S-024, S-054): biết phiên Claude Code nào đang sửa dịch vụ nào, để nhắn đúng phiên và cảnh báo khi hai phiên
-// cùng làm một dịch vụ. Tệp này chỉ GHÉP (S-055):
+// CỬA VÀO của bảng phiên: biết phiên Claude Code nào đang sửa dịch vụ nào, để nhắn đúng phiên và cảnh báo khi hai phiên
+// cùng làm một dịch vụ. Tệp này chỉ GHÉP:
 //   dữ liệu thô về phiên trên máy này   adapters/claude-code/sessions.js (tệp nội bộ và lệnh của Claude Code)
 //   dịch vụ đã sửa, đã đăng ký, skill   sổ của harness (hooks/scope-lib.js, hooks/ledger-lib.js)
 //   ghép thành bảng và viết thành chữ   core/sessions/table.js (thuần)
@@ -40,8 +40,17 @@ function table(root, { now = Date.now(), mySid = process.env.CLAUDE_CODE_SESSION
       i.edits = scope.editsOf(root, sid);
       i.registered = scope.registeredOf(root, sid);
     } catch { i.edits = []; i.registered = null; /* không có sổ: coi như phiên chưa sửa dịch vụ nào */ }
-    // Skill phiên đã mở (sổ phiên, S-032); chưa có sổ thì để trống.
+    // Skill phiên đã mở (sổ phiên); chưa có sổ thì để trống.
     try { i.skills = require('./ledger-lib').skillsOf(root, sid); } catch { i.skills = []; }
+    // Thứ chỉ nạp một lần lúc phiên mở (CLAUDE.md gốc, máy chủ MCP) đã đổi mà phiên chưa được nhắc; null = phiên chưa có dấu gốc.
+    try {
+      const R = require('../core/rules/reload');
+      const items = require('../adapters/project/workspace').loadedOnce(root);
+      const notes = require('./scope-lib').notesOf(root, sid, R.NOTE_PREFIXES);
+      i.stale = R.staleOf(items, notes);
+      // Riêng tệp mồi của máy chủ MCP: phiên phải được nối lại mới nhận bản mới (lệnh refresh dựng lại phiên nền đang rảnh).
+      i.staleMcp = Boolean((R.staleOf(items.filter((x) => x.id === 'mcp'), notes) || []).length);
+    } catch { i.stale = null; i.staleMcp = false; }
   }
   return T.build(snap, { now, mySid });
 }

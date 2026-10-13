@@ -1,7 +1,7 @@
 'use strict';
 // spec: HOOK-S-007
 // spec: HOOK-S-008
-// BỘ CHUYỂN git: làm cổng "kho mã" (ports/repo.js) bằng lệnh git của máy (S-055). Chỉ chạy lệnh ĐỌC; không sửa gì trong kho.
+// BỘ CHUYỂN git: làm cổng "kho mã" (ports/repo.js) bằng lệnh git của máy. Chỉ chạy lệnh ĐỌC; không sửa gì trong kho.
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');

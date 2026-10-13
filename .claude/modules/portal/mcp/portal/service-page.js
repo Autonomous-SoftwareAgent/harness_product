@@ -1,6 +1,6 @@
 'use strict';
 // spec: PORT-S-001
-// Trang ba tab MẶC ĐỊNH của một dịch vụ: BSN_/docs/portal/<dịch-vụ>/index.html (Nghiệp vụ / Kiến trúc kỹ thuật / Vấn đề và tinh chỉnh).
+// Trang ba tab MẶC ĐỊNH của một dịch vụ: docs/portal/<dịch-vụ>/index.html (Nghiệp vụ / Kiến trúc kỹ thuật / Vấn đề và tinh chỉnh).
 // Trang là CỦA DỊCH VỤ: nội dung lấy từ bản ĐÃ COMMIT của repo dịch vụ (docs/service.yaml, docs/diagrams/*.yaml, STATUS.md,
 // DECISIONS.md, traceability.md). Trang tổng (portal.js) không vẽ, không tổng hợp gì; nó chỉ dẫn liên kết tới đây.
 // Dịch vụ muốn trang khác hẳn thì đặt bộ sinh riêng ở generators/<dịch-vụ>/gen-service-page.js (portal.js gọi thay khuôn này).
@@ -23,7 +23,9 @@ const OUT = () => path.join(core.BSN_DIR, 'docs', 'portal');
 const TABS = [['business', 'Nghiệp vụ'], ['architecture', 'Kiến trúc kỹ thuật'], ['problems', 'Vấn đề và tinh chỉnh']];
 const STATUS_LABEL = { open: 'Đang mở', refining: 'Đang tinh chỉnh', resolved: 'Đã xử lý' };
 const SEVERITY_LABEL = { high: 'Cao', medium: 'Vừa', low: 'Thấp' };
-const KIND_LABEL = { service: 'Dịch vụ BSN', external: 'Bên ngoài', infra: 'Hạ tầng' };
+const KIND_LABEL = { service: 'Dịch vụ', external: 'Bên ngoài', infra: 'Hạ tầng' };
+const kindLabel = (kind, ctx) => (kind === 'service' && ctx && ctx.project ? `Dịch vụ ${ctx.project}` : KIND_LABEL[kind]);
+const brandOf = (ctx) => `Cổng ${esc((ctx && ctx.project) || '')}`.trim();
 
 // ---------- thu thập ----------
 
@@ -78,7 +80,7 @@ function git(dir, args) {
 function repoInfo(dir) {
   const top = git(dir, ['rev-parse', '--show-toplevel']);
   if (top === null) return null;
-  // Thư mục con của một repo (đơn vị nằm trong repo gốc, S-033): chỉ tính commit và tệp dở CỦA thư mục đó. Chưa có commit nào chạm tới nó thì null.
+  // Thư mục con của một repo (đơn vị nằm trong repo gốc): chỉ tính commit và tệp dở CỦA thư mục đó. Chưa có commit nào chạm tới nó thì null.
   const nested = path.resolve(top.trim()).toLowerCase() !== path.resolve(dir).toLowerCase();
   const only = nested ? ['--', '.'] : [];
   const line = git(dir, ['log', '-1', '--format=%H%x09%h%x09%cI%x09%s', ...only]);
@@ -158,12 +160,12 @@ function page({ title, body, ctx, current }) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)} · Cổng BSN</title>
+<title>${esc(title)} · ${brandOf(ctx)}</title>
 <link rel="stylesheet" href="../assets/portal.css">
 </head>
 <body data-prefix="../">
 <header class="top">
-  <a class="brand" href="../index.html">← Cổng BSN</a>
+  <a class="brand" href="../index.html">← ${brandOf(ctx)}</a>
   <span class="main"></span>
   <label class="switch">Dịch vụ
     <select id="svc-switch" aria-label="Chuyển sang dịch vụ"><option value="">Chọn…</option>${opts}</select>
@@ -278,7 +280,7 @@ ${table(['Module', 'Số mục', 'Đã làm xong', 'Lệch spec', 'Vấn đề �
 ${drawn}
 <h3>Các lớp</h3>${table(['Lớp', 'Vai trò', 'Nằm ở'], a.layers.map((l) => [`<strong>${inline(l.title)}</strong><br><code class="id">${esc(l.id)}</code>`, inline(l.role), paths(l.paths)]))}
 <h3>Thành phần</h3>${table(['Thành phần', 'Lớp', 'Vai trò', 'Nằm ở'], a.components.map((c) => [`<strong>${inline(c.title)}</strong><br><code class="id">${esc(c.id)}</code>`, esc(c.layer || ''), inline(c.role), paths(c.paths)]))}
-<h3>Phụ thuộc vào</h3>${table(['Bên kia', 'Loại', 'Qua', 'Để làm gì'], a.depends_on.map((d) => [svcLink(d.target), esc(KIND_LABEL[d.kind]), esc(d.via), inline(d.purpose)]))}
+<h3>Phụ thuộc vào</h3>${table(['Bên kia', 'Loại', 'Qua', 'Để làm gì'], a.depends_on.map((d) => [svcLink(d.target), esc(kindLabel(d.kind, ctx)), esc(d.via), inline(d.purpose)]))}
 <h3>Cung cấp cho</h3>${table(['Bên dùng', 'Qua', 'Cung cấp gì'], a.provides.map((p) => [svcLink(p.to), esc(p.via), inline(p.purpose)]))}
 ${modules}
 ${a.decisions.length ? `<h3>Quyết định liên quan</h3><ul>${a.decisions.map((d) => `<li>${s.decisions.some((x) => x.id === d.id) ? `<a href="#${esc(d.id)}">${esc(d.id)}</a>` : `<code>${esc(d.id)}</code>`}: ${inline(d.title)}</li>`).join('')}</ul>` : ''}
@@ -325,14 +327,16 @@ function noSource(s) {
     : `Bản đã commit của dịch vụ này chưa có nguồn có cấu trúc <code>${esc(s.name)}/docs/service.yaml</code>, nên phần này chưa có nội dung. Agent ghi bằng công cụ <code>bsn-docs</code> (<code>service_doc_set</code>, <code>problem_record</code>) với <code>service="${esc(s.name)}"</code>.`}</p>`;
 }
 
+// Tên các tab của MỘT đơn vị: tab đầu lấy tên đơn vị tự khai (service.yaml: first_tab, ghi bằng service_doc_set section=meta), không thì "Nghiệp vụ" (P-004).
+const tabsOf = (s) => TABS.map(([k, label]) => [k, k === 'business' && s.doc && s.doc.first_tab ? esc(s.doc.first_tab) : label]);
 function render(s, ctx) {
   const panels = { business: `${businessTab(s)}${ownPart(s, 'business')}${figures(s, 'business')}`, architecture: architectureTab(s, ctx), problems: `${problemsTab(s)}${ownPart(s, 'problems')}${figures(s, 'problems')}` };
   const body = `<h1>${esc(s.title)}</h1>
 ${s.summary ? `<p class="lead">${inline(s.summary)}</p>` : ''}
 <p class="chips">${checkChip(s)}${s.doc ? chip(s.openProblems ? 'warn' : 'good', `${s.openProblems} vấn đề chưa xong`) : chip('neutral', 'Chưa có service.yaml')}${s.updated ? `<span class="muted small">docs cập nhật ${esc(s.updated)}</span>` : ''}</p>
 <p class="chips">${commitLine(s.commit)}</p>
-<div class="tabs" role="tablist" aria-label="Phần của trang">${TABS.map(([k, label]) => `<a role="tab" id="tab-${k}" href="#${k}" aria-controls="${k}">${label}</a>`).join('')}</div>
-${TABS.map(([k, label]) => `<section class="panel" id="${k}" role="tabpanel" aria-labelledby="tab-${k}"><h2>${label}</h2>${panels[k]}</section>`).join('\n')}`;
+<div class="tabs" role="tablist" aria-label="Phần của trang">${tabsOf(s).map(([k, label]) => `<a role="tab" id="tab-${k}" href="#${k}" aria-controls="${k}">${label}</a>`).join('')}</div>
+${tabsOf(s).map(([k, label]) => `<section class="panel" id="${k}" role="tabpanel" aria-labelledby="tab-${k}"><h2>${label}</h2>${panels[k]}</section>`).join('\n')}`;
   return page({ title: s.title, body, ctx, current: s.name });
 }
 
@@ -448,4 +452,4 @@ const JS = `(function(){
 })();
 ` + view.JS;
 
-module.exports = { render, collectService, figure, autoSection, AUTO_INTRO, coverageHtml, coverageOf, typedSection, typedSections, TYPED, OWN_SECTION, problemsTab, decisionList, repoInfo, git, show, commitLine, chip, esc, inline, parseStatus, parseDecisions, parseTraceability, TABS, CSS, JS, OUT };
+module.exports = { render, collectService, figure, autoSection, AUTO_INTRO, coverageHtml, coverageOf, typedSection, typedSections, TYPED, OWN_SECTION, problemsTab, decisionList, repoInfo, git, show, commitLine, chip, esc, inline, parseStatus, parseDecisions, parseTraceability, TABS, tabsOf, CSS, JS, OUT };

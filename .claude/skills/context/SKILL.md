@@ -26,7 +26,7 @@ Trước khi dùng Grep hay Glob để tìm hiểu một việc trong hệ. Mộ
 ## Ba cách hỏi `context_explore`
 | Cần biết | Gọi | Nhận về |
 |---|---|---|
-| Mọi thứ về một việc | `q`: một từ, một mã (`P-003`, `S-017`, `PHUB-D-020`), một tên tệp, tên bảng, `POST /refunds`, hoặc một câu | Các mục LÀ GÌ, Ở ĐÂU, CHẠY THẾ NÀO, TEST, VÌ SAO, SƠ ĐỒ, LƯU Ý |
+| Mọi thứ về một việc | `q`: một từ, một mã (`P-003`, `BOOK-D-020`), một tên tệp, tên bảng, `POST /refunds`, hoặc một câu | Các mục LÀ GÌ, Ở ĐÂU, CHẠY THẾ NÀO, TEST, VÌ SAO, SƠ ĐỒ, LƯU Ý |
 | Hai vật nối với nhau qua đâu | `q` và `to` | Đường nối ngắn nhất, từng bước kèm nguồn |
 | Sửa tệp này thì chạm tới gì | `impact`: danh sách đường dẫn tệp | Tệp nhập nó (trực tiếp, gián tiếp), test, đường dẫn API và cửa vào khác khai ở đó, sơ đồ, đặc tả, tài liệu nhắc tới |
 
@@ -47,7 +47,7 @@ Trước khi dùng Grep hay Glob để tìm hiểu một việc trong hệ. Mộ
 - Lời gọi qua mạng (HTTP, Kafka) giữa các dịch vụ, trừ khi được khai trong `service.yaml`.
 - Nội dung của Markdown viết tự do (`STATUS.md`, `README.md`): kho chỉ biết tiêu đề mục và dòng.
 - Cửa vào dựng lúc chạy. Kho nhận cửa vào bằng mẫu chữ viết rõ trong mã (đường dẫn API, công cụ MCP, lệnh con của tệp dòng lệnh, hook của Claude Code); lệnh hay đường dẫn lấy từ bảng tra hoặc ghép lúc chạy thì không thấy.
-- Loại tài liệu, ngôn ngữ hay loại cửa vào mà harness chưa có bộ nhận dạng. Cần thêm thì ghi yêu cầu vào `docs/handoff/` cho phiên harness (phiên harness: mục "Thêm một bộ nhận dạng" trong `.claude/plugin/docs/agent/CONVENTIONS.md`).
+- Loại tài liệu, ngôn ngữ hay loại cửa vào mà harness chưa có bộ nhận dạng. Cần thêm thì ghi yêu cầu vào `docs/handoff/` cho phiên harness (phiên harness: mục "Thêm một bộ nhận dạng" trong `.claude/modules/docs/agent/CONVENTIONS.md`).
 
 "Không thấy trong kho" không có nghĩa là "không có". Gặp các trường hợp trên thì Grep, và nói rõ trong câu trả lời là kho không phủ phần đó.
 

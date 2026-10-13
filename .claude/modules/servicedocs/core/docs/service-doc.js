@@ -1,6 +1,6 @@
 'use strict';
 // spec: MCP-S-003
-// LÕI của nguồn có cấu trúc docs/service.yaml (S-055): lược đồ, phép kiểm, và bản Markdown gọn cho agent.
+// LÕI của nguồn có cấu trúc docs/service.yaml: lược đồ, phép kiểm, và bản Markdown gọn cho agent.
 // Thuần: việc đọc, ghi trong giao dịch có khóa và chọn dịch vụ là của mcp/service-doc.js.
 
 const SCHEMA = 1;
@@ -72,7 +72,8 @@ const diagram = all(
 );
 
 const SECTION_CHECK = {
-  meta: obj({ title, summary: str(MAX.line) }),
+  // first_tab (tùy chọn, P-004): tên tab đầu của trang khi đơn vị không phải dịch vụ nghiệp vụ (ví dụ "Việc của nền"). Bỏ trống thì là "Nghiệp vụ".
+  meta: obj({ title, summary: str(MAX.line), first_tab: str(40) }, ['first_tab']),
   business: obj({
     goal: text,
     users: listOf(obj({ who: title, need: line })),
@@ -114,12 +115,13 @@ function validate(doc) {
     service: (v, at, e) => { if (typeof v !== 'string' || !/^[a-z][a-z0-9-]{1,40}$/.test(v)) e.push(`${at}: tên dịch vụ không hợp lệ`); },
     title,
     summary: str(MAX.line),
+    first_tab: str(40),
     updated: str(10, { required: true }),
     business: SECTION_CHECK.business,
     architecture: SECTION_CHECK.architecture,
     problems: all(listOf(problem, 300), uniqueIds('vấn đề')),
     progress: SECTION_CHECK.progress,
-  })(doc, 'service.yaml', errs);
+  }, ['first_tab'])(doc, 'service.yaml', errs);
   // lớp của thành phần phải là lớp đã khai báo
   const arch = doc && doc.architecture;
   if (arch && Array.isArray(arch.layers) && Array.isArray(arch.components)) {
@@ -132,7 +134,8 @@ function validate(doc) {
 }
 
 // ---------- Markdown gọn cho agent ----------
-function renderAgentMd(doc) {
+// rootName: tên thư mục gốc của dự án (để đường dẫn tới trang cho người đọc đọc được từ ngoài dự án); bỏ trống thì không ghi.
+function renderAgentMd(doc, { rootName = '' } = {}) {
   const out = [];
   const bullets = (xs, f = (x) => x) => xs.map((x) => `- ${f(x)}`);
   const sec = (head, body) => { if (body.length) out.push('', head, ...body); };
@@ -141,9 +144,9 @@ function renderAgentMd(doc) {
   out.push('<!-- GENERATED từ docs/service.yaml bằng bsn-docs. Không sửa tay; ghi nguồn bằng service_doc_set / problem_record. -->');
   out.push(`# ${doc.title} (${doc.service})`, '');
   if (doc.summary) out.push(doc.summary, '');
-  out.push(`Cập nhật: ${doc.updated}. Bản cho người đọc: BSN_/docs/portal/${doc.service}/index.html (sinh từ cùng nguồn).`);
+  out.push(`Cập nhật: ${doc.updated}. Bản cho người đọc: ${rootName ? `${rootName}/` : ''}docs/portal/${doc.service}/index.html (sinh từ cùng nguồn).`);
 
-  out.push('', '## Nghiệp vụ');
+  out.push('', `## ${doc.first_tab || 'Nghiệp vụ'}`);
   if (b.goal) out.push('', `Mục tiêu: ${b.goal}`);
   sec('Người dùng và nhu cầu:', bullets(b.users, (u) => `${u.who}: ${u.need}`));
   sec('Giá trị mang lại:', bullets(b.value));

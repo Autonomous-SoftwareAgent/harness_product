@@ -1,9 +1,9 @@
 'use strict';
 // spec: PORT-S-003
-// DÒ GÓI PUBLISH trước khi một phiên Claude đẩy cổng lên claude.ai (bổ sung S-005). Người dùng chốt ngày 2026-10-09: thà báo nhầm còn hơn sót;
+// DÒ GÓI PUBLISH trước khi một phiên Claude đẩy cổng lên claude.ai . Nguyên tắc: thà báo nhầm còn hơn sót;
 // chỗ bị báo phải dò lại; đủ BA LƯỢT dò đều sạch thì mới được đẩy. Chạy cùng một phép dò ba lần thì vô nghĩa, nên ba lượt là ba CÁCH khác nhau,
 // cùng chạy trên đúng những tệp sẽ gửi đi:
-//   1. theo mẫu:      từ cấm (S-034) và các dạng bí mật đã biết, trên văn bản nguyên trạng;
+//   1. theo mẫu:      từ cấm và các dạng bí mật đã biết, trên văn bản nguyên trạng;
 //   2. lột lớp vỏ:    bỏ thẻ HTML, giải mã ký tự mã hóa (thực thể HTML, %XX, \uXXXX, base64), bỏ ký tự vô hình, rồi dò lại như lượt 1;
 //   3. theo dấu hiệu: giá trị đứng sau chữ kiểu password, token, secret; và chuỗi dài trông ngẫu nhiên. Lượt này cố ý báo rộng.
 // Kết quả chỉ nêu TỆP, DÒNG, LOẠI và mã băm ngắn của chuỗi bị báo; không bao giờ in lại chuỗi đó (kẻo chính kết quả làm lộ).

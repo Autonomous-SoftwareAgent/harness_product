@@ -1,6 +1,6 @@
 'use strict';
 // spec: CTX-S-003
-// SỔ ĐĂNG KÝ bộ nhận dạng của kho ngữ nghĩa (S-051). Lõi của kho (context.js, context-scan.js) chỉ biết BA CỔNG dưới đây và dạng chuẩn
+// SỔ ĐĂNG KÝ bộ nhận dạng của kho ngữ nghĩa. Lõi của kho (context.js, context-scan.js) chỉ biết BA CỔNG dưới đây và dạng chuẩn
 // mà mỗi cổng trả về; nó không biết tên một bộ nhận dạng nào. Mỗi bộ nhận dạng là MỘT TỆP trong thư mục của cổng:
 //   sources/  đọc một loại tài liệu hay một lớp sự thật, ghi NÚT và CẠNH vào kho qua "bồn nhận" (chỉ thêm, không sửa, không xóa)
 //   langs/    đọc mã của một ngôn ngữ: lệnh nhập, khai báo chính, chỗ nhập động

@@ -1,7 +1,7 @@
 {
-  "_": "Tệp tự khai của khối (S-064). Đường dẫn trong tệp là đường dẫn logic (tính như ở .claude/modules/ của bố cục cũ). Bộ cài (cli/setup.js) sinh phần của harness trong .claude/settings.json và .mcp.json từ các tệp này; `order` giữ thứ tự hook như đã đo.",
+  "_": "Tệp tự khai của khối. Đường dẫn trong tệp là đường dẫn logic (tính như ở .claude/modules/ của bố cục cũ). Bộ cài (cli/setup.js) sinh phần của harness trong .claude/settings.json và .mcp.json từ các tệp này; `order` giữ thứ tự hook như đã đo.",
   "name": "core",
-  "version": "1.1.0",
+  "version": "1.5.0",
   "api": "0.1",
   "required": true,
   "uses": [],
@@ -10,15 +10,20 @@
     { "event": "PreToolUse", "order": 10, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/guard-scope.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 30, "matcher": "Write|Edit|NotebookEdit|Bash", "file": "gate/gate-hook.js", "args": "tool", "timeout": 10 },
     { "event": "PreToolUse", "order": 40, "matcher": "Write|Edit|NotebookEdit|mcp__bsn-docs__.*", "file": "hooks/guard-skill.js", "timeout": 10 },
+    { "event": "PreToolUse", "order": 50, "matcher": "mcp__.*", "file": "hooks/guard-mcp.js", "timeout": 10 },
     { "event": "PostToolUse", "order": 10, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/forward.js", "args": "track", "timeout": 10 },
     { "event": "PostToolUse", "order": 20, "file": "hooks/ledger.js", "args": "record", "timeout": 10 },
     { "event": "Stop", "order": 10, "file": "hooks/forward.js", "args": "stop", "timeout": 60, "statusMessage": "Checking docs are in sync..." },
     { "event": "Stop", "order": 20, "file": "gate/gate-hook.js", "args": "stop", "timeout": 10 },
     { "event": "UserPromptSubmit", "order": 10, "file": "gate/gate-hook.js", "args": "prompt", "timeout": 90, "statusMessage": "Checking approval..." },
     { "event": "UserPromptSubmit", "order": 20, "file": "hooks/ledger.js", "args": "prompt", "timeout": 10 },
+    { "event": "UserPromptSubmit", "order": 30, "file": "hooks/reload.js", "args": "prompt", "timeout": 10 },
+    { "event": "UserPromptSubmit", "order": 40, "file": "hooks/transfer.js", "args": "prompt", "timeout": 10 },
     { "event": "SessionStart", "order": 10, "file": "gate/gate-hook.js", "args": "health", "timeout": 15 },
     { "event": "SessionStart", "order": 20, "file": "hooks/session-brief.js", "timeout": 10 },
-    { "event": "SessionStart", "order": 30, "file": "hooks/ledger.js", "args": "start", "timeout": 10 }
+    { "event": "SessionStart", "order": 30, "file": "hooks/ledger.js", "args": "start", "timeout": 10 },
+    { "event": "SessionStart", "order": 40, "file": "hooks/reload.js", "args": "start", "timeout": 10 },
+    { "event": "SessionStart", "order": 50, "file": "hooks/transfer.js", "args": "start", "timeout": 10 }
   ],
   "mcpServer": { "name": "bsn-docs", "file": "mcp/mcp-server.js" },
   "permissions": { "allow": ["mcp__bsn-docs"] },
@@ -28,5 +33,5 @@
     "gitHooks": "cli/install-git-hooks.js",
     "bannedScan": "cli/banned-scan.js"
   },
-  "skills": ["services", "new-service", "onboard", "skill-map"]
+  "skills": ["services", "new-service", "onboard", "skill-map", "transfer-session", "mcp-servers"]
 }

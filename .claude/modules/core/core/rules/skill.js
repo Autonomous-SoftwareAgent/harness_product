@@ -1,6 +1,6 @@
 'use strict';
 // spec: LEDG-S-002
-// LUẬT đủ kiến thức (trước khi phiên ghi tệp hoặc gọi công cụ ghi của bsn-docs): CHẶN khi phiên chưa nạp đủ kiến thức cho việc đó (S-032).
+// LUẬT đủ kiến thức (trước khi phiên ghi tệp hoặc gọi công cụ ghi của bsn-docs): CHẶN khi phiên chưa nạp đủ kiến thức cho việc đó.
 // "Việc nào cần gì" khai ở MỘT nơi: bảng nối skills-map.json. "Phiên đã nạp gì" lấy từ sổ phiên (do luật ledger ghi).
 //   - Công cụ ghi của bsn-docs: cần skill tổng quát, skill của công cụ đó, và tài liệu bắt buộc của dịch vụ được ghi.
 //   - Sửa tệp trong một dịch vụ: cần skill tổng quát và tài liệu bắt buộc của dịch vụ đó (CLAUDE.md, docs/agent/STATUS.md).
@@ -24,7 +24,7 @@ async function run(event, { workspace: ws, store }) {
     const miss = K.missing(req, await book.have(event.session, agent));
     if (!miss.skills.length && !miss.docs.length) return null;
     const text = K.denyText(miss, { agent, mapRel: ws.skillsMapRel });
-    // `detail` (còn thiếu gì) đi vào sổ quyết định của luật cùng dịch vụ (S-060); lời cho phiên vẫn là `reason`.
+    // `detail` (còn thiếu gì) đi vào sổ quyết định của luật cùng dịch vụ; lời cho phiên vẫn là `reason`.
     const detail = [...miss.skills, ...miss.docs.map((d) => d.rel)].join(', ');
     const d = map.mode === 'enforce' ? deny(text) : note(text.replace('Lời gọi này bị chặn vì', 'Nhắc (chưa chặn):'));
     return { ...d, detail, service: req.service || '' };

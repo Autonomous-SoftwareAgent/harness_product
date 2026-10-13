@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-011
-// LỆNH CỦA KHỐI MỞ RỘNG (S-065): node <harness>/cli/cli.js extension <việc> ...
+// LỆNH CỦA KHỐI MỞ RỘNG: node <harness>/cli/cli.js extension <việc> ...
 //   list                         mọi khối, tình trạng xác nhận, luật, công cụ, lệnh, lỗi lúc chạy 24 giờ qua
 //   new <tên> | new --unit <đơn vị>  tạo khung khối từ khối mẫu của harness (cả dự án, hoặc một đơn vị)
 //   test <khóa|tên>              chạy các ca thử ở cases.json của BẢN ĐANG SỬA (chưa cần xác nhận)

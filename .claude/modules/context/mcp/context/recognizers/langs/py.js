@@ -4,7 +4,7 @@
 // trong ngoặc, khai báo hàm và lớp ở đầu dòng. Tên module trùng nhiều tệp thì không đoán. `import_module`, `__import__` là vùng tối.
 const { path } = require('../kit');
 
-// Bảng tên module: mọi hậu tố của đường dẫn (src/ingest/core/x.py -> ingest.core.x, core.x, x); tên trùng nhiều tệp thì bỏ (không đoán).
+// Bảng tên module: mọi hậu tố của đường dẫn (src/app/core/x.py -> app.core.x, core.x, x); tên trùng nhiều tệp thì bỏ (không đoán).
 function prepare(codePaths) {
   const modules = new Map(); const clash = new Set();
   for (const p of codePaths) {

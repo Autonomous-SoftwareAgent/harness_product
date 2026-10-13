@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-011
-// BỘ CHUYỂN của khối mở rộng (S-065): mọi việc với đĩa và git của khối mở rộng. Không quyết định gì; hợp đồng và cách gộp quyết định
+// BỘ CHUYỂN của khối mở rộng: mọi việc với đĩa và git của khối mở rộng. Không quyết định gì; hợp đồng và cách gộp quyết định
 // nằm ở core/extensions/contract.js, phần lắp ráp ở hooks/wire.js.
 //   - Tìm khối: cả dự án ở <thư mục dự án>/extensions/<tên>/module.json; một đơn vị ở <thư mục đơn vị>/.harness/module.json.
 //   - Dấu vân tay của thư mục khối (mã băm của mọi tệp, theo đường dẫn), sổ xác nhận, bản đã xác nhận.

@@ -2,7 +2,7 @@
 // spec: PORT-S-004
 // spec: HOOK-S-003
 // spec: HOOK-S-007
-// BỘ CHUYỂN việc của harness: làm cổng "việc của harness" (ports/jobs.js) bằng cách gọi các phần khác của harness trên máy này (S-055):
+// BỘ CHUYỂN việc của harness: làm cổng "việc của harness" (ports/jobs.js) bằng cách gọi các phần khác của harness trên máy này:
 // lệnh cli.js (kiểm tài liệu, bản đồ mã, dựng cổng), bộ cài git hook, kho ngữ nghĩa. Các phần đó được nạp LÚC CẦN và lỗi của
 // chúng không lọt ra ngoài: một luật nhờ việc mà việc hỏng thì luật vẫn chạy tiếp.
 const fs = require('node:fs');
@@ -13,7 +13,7 @@ const { spawnSync } = require('node:child_process');
 //   { portal, gitHooks, contextPortal }. Bộ chuyển không tự nhập mcp/ hay tools/ (test kiến trúc giữ điều đó).
 function create(root, parts = {}) {
   const P = require('../../gate/gate-paths');
-  const cli = P.codePath(root, 'cli/cli.js'); // đường dẫn thật theo bố cục (S-064)
+  const cli = P.codePath(root, 'cli/cli.js'); // đường dẫn thật theo bố cục
   const runCli = (args, opts) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: root, ...opts });
   return {
     async docsCheck(service) {
@@ -39,7 +39,7 @@ function create(root, parts = {}) {
       } catch { /* bỏ qua */ }
     },
     async contextNotice(service) { return parts.contextPortal().noticeFor(service) || ''; },
-    // Việc đẩy cổng lên claude.ai (S-058): bộ dựng cổng quyết định có giao cho phiên này không. Lỗi thì coi như không giao.
+    // Việc đẩy cổng lên claude.ai: bộ dựng cổng quyết định có giao cho phiên này không. Lỗi thì coi như không giao.
     async publishDue(sid) {
       try { const r = parts.portal().claimPublish(sid); return r && r.due ? { due: true, files: r.files } : { due: false }; } catch { return { due: false }; }
     },

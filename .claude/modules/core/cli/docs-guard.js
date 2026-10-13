@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // spec: HOOK-S-008
-// CỬA VÀO dòng lệnh của phép dò "nội dung BSN_/docs/ không bao giờ lên remote" (S-062); phép dò nằm ở adapters/git/docs-leaks.js.
+// CỬA VÀO dòng lệnh của phép dò "nội dung docs/ không bao giờ lên remote"; phép dò nằm ở adapters/git/docs-leaks.js.
 //
 //   node .claude/modules/core/cli/docs-guard.js pre-push <remote>     git hook (banned-scan.js pre-push gọi): đọc danh sách ref từ stdin
 //   node .claude/modules/core/cli/docs-guard.js check [<remote>]      kiểm tay repo đang đứng: các commit của HEAD chưa có ở remote
@@ -13,12 +13,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const D = require('../adapters/git/docs-leaks');
 
-const BSN = require('../gate/gate-paths').rootFrom(__dirname);
+const ROOT = require('../gate/gate-paths').rootFrom(__dirname);
 
 function report(leaks, what) {
   const rows = [...new Set(leaks.map((l) => `${l.commit ? `${l.commit.slice(0, 12)} ` : ''}${l.file}: ${l.why}`))];
   process.stderr.write([
-    `BSN_ DOCS: ${what} có ${rows.length} tệp là nội dung của BSN_/docs/, thứ KHÔNG BAO GIỜ được lên remote (S-062). Từ chối.`,
+    `DOCS: ${what} có ${rows.length} tệp là nội dung của docs/, thứ KHÔNG BAO GIỜ được lên remote. Từ chối.`,
     ...rows.slice(0, 40).map((r) => `  ${r}`),
     rows.length > 40 ? `  ... còn ${rows.length - 40} tệp` : '',
     'Bỏ các tệp đó khỏi commit rồi làm lại. Không tìm đường khác để đẩy; cần thì báo người dùng.',
@@ -26,14 +26,14 @@ function report(leaks, what) {
 }
 
 // Dùng chung cho git hook pre-push. Trả mã thoát.
-function prePush(cwd, remote, stdin, root = BSN) {
+function prePush(cwd, remote, stdin, root = ROOT) {
   const r = D.checkPush(root, cwd, remote, D.parseRefs(stdin));
-  if (r.error) { process.stderr.write(`BSN_ DOCS: không kiểm được các commit sắp đẩy (${r.error}). Từ chối đẩy cho tới khi kiểm được (S-062).\n`); return 1; }
+  if (r.error) { process.stderr.write(`DOCS: không kiểm được các commit sắp đẩy (${r.error}). Từ chối đẩy cho tới khi kiểm được.\n`); return 1; }
   if (r.leaks.length) { report(r.leaks, 'các commit sắp đẩy'); return 1; }
   return 0;
 }
 
-function main(argv, root = BSN) {
+function main(argv, root = ROOT) {
   const [mode, a1] = argv;
   const cwd = process.cwd();
   if (mode === 'pre-push') { let stdin = ''; try { stdin = fs.readFileSync(0, 'utf8'); } catch { /* không có stdin */ } return prePush(cwd, a1, stdin, root); }
@@ -41,14 +41,14 @@ function main(argv, root = BSN) {
     const r = D.checkRef(root, cwd, a1 || 'origin');
     if (r.error) { console.error(`KHÔNG kiểm được: ${r.error}`); return 1; }
     if (r.leaks.length) { report(r.leaks, 'các commit chưa có ở remote'); return 1; }
-    console.log('Sạch: các commit chưa có ở remote không chứa nội dung của BSN_/docs/.');
+    console.log('Sạch: các commit chưa có ở remote không chứa nội dung của docs/.');
     return 0;
   }
   if (mode === 'scan-dir' && a1) {
     let leaks;
     try { leaks = D.scanDir(root, a1); } catch (e) { console.error(`KHÔNG kiểm được: ${e.message}`); return 1; }
     if (leaks.length) { report(leaks, `thư mục ${a1}`); return 1; }
-    console.log(`Sạch: ${a1} không chứa nội dung của BSN_/docs/.`);
+    console.log(`Sạch: ${a1} không chứa nội dung của docs/.`);
     return 0;
   }
   console.error('Dùng: docs-guard.js pre-push <remote> | check [<remote>] | scan-dir <thư-mục>');

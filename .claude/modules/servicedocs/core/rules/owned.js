@@ -9,7 +9,7 @@
 const path = require('node:path');
 const { deny } = require('../../../core/ports/events');
 
-// Đường dẫn được quy về dạng chung "<UNIT>/<tên đơn vị>/<đường dẫn trong đơn vị>" (đơn vị nằm ở đâu do cấu hình dự án khai, S-063),
+// Đường dẫn được quy về dạng chung "<UNIT>/<tên đơn vị>/<đường dẫn trong đơn vị>" (đơn vị nằm ở đâu do cấu hình dự án khai),
 // nên các mẫu dưới đây không phụ thuộc bố cục của dự án nào.
 const UNIT = '@unit';
 const OWNED = [
@@ -24,7 +24,7 @@ const OWNED = [
   { re: /^@unit\/[^/]+\/docs\/context(\/|$)/i,
     how: 'docs/context/ chứa phần agent viết cho kho ngữ nghĩa (từ vựng, quan hệ bổ sung, giải thích và kết quả soát của sơ đồ tự sinh), chỉ ghi qua công cụ MCP bsn-docs: context_term, context_relate, diagram_explain, diagram_review; truyền service="<tên service>".' },
   { re: /^docs\/portal\/(?!history(\/|$))/i,
-    how: 'docs/portal/ là cổng HTML sinh tự động (trang tổng gom liên kết, trang của từng dịch vụ): sửa nguồn (docs/service.yaml và sơ đồ qua bsn-docs, hoặc bộ sinh ở .claude/plugin/mcp/generators/) rồi chạy `node .claude/modules/core/cli/cli.js portal`, không sửa tay trang đã sinh.' },
+    how: 'docs/portal/ là cổng HTML sinh tự động (trang tổng gom liên kết, trang của từng dịch vụ): sửa nguồn (docs/service.yaml và sơ đồ qua bsn-docs, hoặc bộ sinh trang riêng của dự án) rồi chạy `node .claude/modules/core/cli/cli.js portal`, không sửa tay trang đã sinh.' },
 ];
 const MENTIONS_OWNED = /docs[\\/]+modules[\\/]+[^\s'"]+[\\/]+(1-design|2-spec|3-impl)\.md|docs[\\/]+_generated|docs[\\/]+service\.yaml|docs[\\/]+diagrams[\\/]|docs[\\/]+context[\\/]|docs[\\/]+portal[\\/]/i;
 
@@ -39,7 +39,7 @@ const writesMermaid = (file, text) => DOC_EXT.test(String(file)) && MERMAID.test
 const ANCESTOR = /^@unit\/[^/]+\/docs(\/modules(\/[^/]+)?)?$/i;
 
 async function run(event, { workspace: ws }) {
-  // Đường dẫn tính từ gốc dự án; tệp thuộc một đơn vị (thư mục con của thư mục cha khai trong cấu hình, hoặc đơn vị khai riêng như infra/)
+  // Đường dẫn tính từ gốc dự án; tệp thuộc một đơn vị (thư mục con của thư mục cha khai trong cấu hình, hoặc đơn vị khai riêng)
   // được quy về dạng @unit/<tên>/..., để mọi luật ở trên áp dụng y như nhau cho mọi đơn vị.
   const relToRoot = (abs) => {
     const rel = path.relative(ws.root, abs).split(path.sep).join('/');
@@ -70,7 +70,17 @@ async function run(event, { workspace: ws }) {
       const hit = ownedTargetMatch(ws.resolveToken(t, event.cwd));
       if (hit) return deny(`Lệnh này ghi/xóa/dời tệp do công cụ docs sở hữu (${t}). ${hit.how}`);
     }
-    if (sh.inline.some((i) => i.writes && MENTIONS_OWNED.test(i.code)) || (sh.unparsable && MENTIONS_OWNED.test(a.command))) {
+    // Mã nội tuyến (P-007): đích ghi viết thẳng trong mã thì xét đúng đích đó; chỉ khi còn lời gọi ghi KHÔNG RÕ ĐÍCH (biến, ghép chuỗi, sao
+    // chép, đổi tên) mà mã lại nhắc tới tệp được sở hữu thì mới chặn theo sự có mặt của đường dẫn. Mã chỉ đọc rồi in ra màn hình, hoặc đọc
+    // tệp được sở hữu rồi ghi kết quả ra một tệp khác có tên rõ, được qua. Bộ chuyển cũ không tách được (không có openWrites) thì xét như trước.
+    for (const i of sh.inline) {
+      for (const t of i.literalTargets || []) {
+        const hit = ownedTargetMatch(ws.resolveToken(t, event.cwd));
+        if (hit) return deny(`Lệnh này ghi/xóa tệp do công cụ docs sở hữu từ mã nội tuyến (${t}). ${hit.how}`);
+      }
+    }
+    const unknownWrite = (i) => (i.openWrites === undefined ? i.writes : i.openWrites);
+    if (sh.inline.some((i) => unknownWrite(i) && MENTIONS_OWNED.test(i.code)) || (sh.unparsable && MENTIONS_OWNED.test(a.command))) {
       return deny(`Lệnh này có vẻ ghi vào tệp do công cụ docs sở hữu (mã nội tuyến, hoặc lệnh không phân tích được mà nhắc tới chúng). ${OWNED[0].how}`);
     }
     return null;

@@ -8,7 +8,7 @@ const { ID } = require('../kit');
 function run(g, { files }) {
   const rel = 'docs/service.yaml';
   const svcId = ID.svc(g.svc);
-  if (!files.has(rel)) { g.node(svcId, 'service', g.svc, 'system_service/', { text: 'Chưa có docs/service.yaml' }); return; }
+  if (!files.has(rel)) { g.node(svcId, 'service', g.svc, 'docs/service.yaml', { text: 'Chưa có docs/service.yaml' }); return; }
   let doc;
   try { doc = yaml.parse(files.get(rel)); } catch (e) { g.dark(`docs/service.yaml không đọc được: ${e.message}`); g.node(svcId, 'service', g.svc, rel); return; }
   const text = files.get(rel);

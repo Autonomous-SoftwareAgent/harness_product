@@ -15,7 +15,7 @@ function run(g, { files }) {
     try { spec = specs.parse(yaml.parse(text)).spec; } catch { spec = null; }
     if (!spec) { g.dark(`${p}: sơ đồ không hợp lệ, không nạp`); continue; }
     const words = dg.elementNames(spec);
-    const stale = spec.explain ? spec.explain.basis !== dg.contentHash(spec) : false;
+    const stale = spec.explain ? !dg.basisMatches(spec, spec.explain.basis) : false;
     const explain = spec.explain ? (stale ? 'cũ' : 'khớp') : 'chưa có';
     const id = g.node(ID.doc('dg', g.svc, spec.id), 'diagram', spec.title, `${p}:1`, { text: `sơ đồ ${dg.TYPE_LABEL[spec.type]}, ${spec.generated ? 'tự sinh từ cơ sở dữ liệu' : 'agent khai qua công cụ'}`, attrs: { kind: spec.type, tab: spec.tab, explain }, body: spec.explain ? `${words.join('\n')}\n${spec.explain.meaning}` : words.join('\n') });
     g.edge(ID.svc(g.svc), id, 'có sơ đồ', p);

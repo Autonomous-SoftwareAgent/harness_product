@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// BỘ MÁY GHI TÀI LIỆU CỦA MỘT ĐƠN VỊ (thuộc lõi, S-064): chọn đơn vị đang làm ("gốc") và chạy mỗi thao tác ghi trong MỘT giao dịch có khóa.
+// BỘ MÁY GHI TÀI LIỆU CỦA MỘT ĐƠN VỊ (thuộc lõi): chọn đơn vị đang làm ("gốc") và chạy mỗi thao tác ghi trong MỘT giao dịch có khóa.
 // Tách ra từ mcp/docs/core.js để mọi khối ghi tài liệu (ba tầng, sơ đồ, kho ngữ nghĩa) dùng chung mà không khối nào phải nhập khối khác.
 // "Gốc" là thư mục của MỘT đơn vị (nơi có docs/), chọn bằng tham số `service` của từng lời gọi (withService), hoặc mặc định theo
 // BSN_SERVICE, BSN_ROOT, thư mục hiện tại, rồi đơn vị mặc định của cấu hình dự án.
@@ -27,7 +27,7 @@ function setRoot(root) {
 }
 
 // Tên dịch vụ của gốc đang chọn. Gốc là thư mục của một đơn vị khai riêng thì lấy TÊN ĐƠN VỊ (tên có thể khác tên thư mục: harness nằm ở
-// .claude/plugin); ngược lại lấy tên thư mục (dịch vụ trong thư mục cha của đơn vị, hoặc gốc tùy ý do test đặt).
+// .claude/modules); ngược lại lấy tên thư mục (dịch vụ trong thư mục cha của đơn vị, hoặc gốc tùy ý do test đặt).
 function serviceName() {
   const unit = P.serviceOf(BSN_DIR, ROOT);
   return unit && path.resolve(dirOf(unit)).toLowerCase() === ROOT.toLowerCase() ? unit : path.basename(ROOT);
@@ -57,7 +57,7 @@ function listAllServices() {
     .sort();
 }
 
-// Đơn vị mặc định khi lời gọi không truyền `service` (cấu hình dự án, S-063; BSN_ khai payment-hub). '' = luôn phải truyền.
+// Đơn vị mặc định khi lời gọi không truyền `service` (cấu hình dự án, khóa defaultUnit). '' = luôn phải truyền.
 function defaultUnit() { return P.projectConfig(BSN_DIR).defaultUnit; }
 
 function defaultRoot() {

@@ -1,8 +1,8 @@
 'use strict';
 // spec: PORT-S-002
-// BỘ CHUYỂN PostgreSQL (S-055): bộ đọc cấu trúc dữ liệu cho sơ đồ dữ liệu tự sinh (diagram_generate). Hiện có một bộ đọc: PostgreSQL.
+// BỘ CHUYỂN PostgreSQL: bộ đọc cấu trúc dữ liệu cho sơ đồ dữ liệu tự sinh (diagram_generate). Hiện có một bộ đọc: PostgreSQL.
 // Cách làm (không đụng cơ sở dữ liệu của hệ đang chạy):
-//   1. tạo MỘT cơ sở dữ liệu tạm, trống, và một tài khoản tạm trên PostgreSQL local của hạ tầng chung (infra/local);
+//   1. tạo MỘT cơ sở dữ liệu tạm, trống, và một tài khoản tạm trên PostgreSQL local của máy (chạy trong Docker);
 //   2. chạy LỆNH TẠO BẢNG của dịch vụ (mã ở thư mục dịch vụ) trỏ vào cơ sở dữ liệu tạm đó;
 //   3. hỏi PostgreSQL cấu trúc thật: bảng, cột, kiểu, khóa chính, ràng buộc duy nhất, khóa ngoại;
 //   4. xóa cơ sở dữ liệu tạm và tài khoản tạm (kể cả khi bước 2 hay 3 hỏng).
@@ -44,8 +44,8 @@ function psql(db, sql) {
   const pg = PG();
   const r = spawnSync('docker', ['exec', pg.container, 'psql', '-U', pg.admin, '-d', db, '-At', '-v', 'ON_ERROR_STOP=1', '-c', sql],
     { encoding: 'utf8', timeout: 60000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
-  if (r.error) throw new Error(`không gọi được docker (${r.error.message}). Bộ đọc cần PostgreSQL local của hạ tầng chung: chạy \`node infra/bsn.js up --apply\` từ BSN_/.`);
-  if (r.status !== 0) throw new Error(`PostgreSQL local (${pg.container}) trả lỗi: ${(r.stderr || '').trim().slice(0, 300) || `mã thoát ${r.status}`}. Hạ tầng chung đã chạy chưa (\`node infra/bsn.js up --apply\`)?`);
+  if (r.error) throw new Error(`không gọi được docker (${r.error.message}). Bộ đọc cần một PostgreSQL local đang chạy trong Docker (tên container: biến BSN_PG_CONTAINER).`);
+  if (r.status !== 0) throw new Error(`PostgreSQL local (${pg.container}) trả lỗi: ${(r.stderr || '').trim().slice(0, 300) || `mã thoát ${r.status}`}. Container PostgreSQL đó đã chạy chưa?`);
   return r.stdout;
 }
 

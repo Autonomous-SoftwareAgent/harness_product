@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-006
-// LÕI của bảng phiên (S-024, S-054, S-055): từ một ẢNH CHỤP dữ liệu do bộ chuyển gom sẵn, ghép thành bảng "phiên nào ở đâu, đang làm
+// LÕI của bảng phiên: từ một ẢNH CHỤP dữ liệu do bộ chuyển gom sẵn, ghép thành bảng "phiên nào ở đâu, đang làm
 // dịch vụ nào, còn sống hay đã dừng". Thuần: không đọc tệp của công cụ chủ, không hỏi hệ điều hành, không mở sổ, không hỏi giờ.
 // Ảnh chụp (bộ chuyển của công cụ chủ gom; hôm nay là adapters/claude-code/sessions.js):
 //   { error }                                  không đọc được sổ phiên của công cụ chủ; hoặc
@@ -46,7 +46,7 @@ function build(snap, { now, mySid } = {}) {
   const enrich = (sid) => {
     const i = info[sid] || {};
     const services = (i.edits || []).map((e) => ({ name: e.service, ageMs: now - e.lastAt })).sort((a, b) => a.ageMs - b.ageMs);
-    return { skills: i.skills || [], registered: i.registered === undefined ? null : i.registered, services, title: i.title ? i.title.title : null, titleBy: i.title ? i.title.by : null };
+    return { skills: i.skills || [], stale: Array.isArray(i.stale) ? i.stale : null, staleMcp: Boolean(i.staleMcp), registered: i.registered === undefined ? null : i.registered, services, title: i.title ? i.title.title : null, titleBy: i.title ? i.title.by : null };
   };
   const rows = [];
   for (const o of records) {
@@ -92,7 +92,7 @@ function text({ rows, error, host, background }, { withBackground } = {}) {
   const line = (r) => {
     const svc = r.services.length ? r.services.map((s) => `${s.name} (sửa ${ago(s.ageMs)}${s.ageMs > ACTIVE_MS ? ', đã cũ' : ''})`).join(', ') : 'chưa sửa dịch vụ nào';
     const reg = r.registered ? ` | đăng ký theo kế hoạch: ${r.registered.join(', ') || 'chưa'}` : '';
-    return `  ${r.name}${r.me ? ' (phiên này)' : ''} | ${whereText(r)} | tiêu đề: ${r.title ? `"${r.title}" (${r.titleBy})` : 'chưa có'} | ${svc}${reg} | ${statusText(r.status, r)} | skill đã mở: ${(r.skills || []).join(', ') || 'chưa'}`;
+    return `  ${r.name}${r.me ? ' (phiên này)' : ''} | ${whereText(r)} | tiêu đề: ${r.title ? `"${r.title}" (${r.titleBy})` : 'chưa có'} | ${svc}${reg} | ${statusText(r.status, r)} | skill đã mở: ${(r.skills || []).join(', ') || 'chưa'}${r.stale && r.stale.length ? ` | ĐANG GIỮ BẢN CŨ của: ${r.stale.join(', ')} (đổi sau khi phiên nạp; phiên được nhắc ở lượt kế tiếp)` : ''}`;
   };
   return ['Bảng phiên (tên nhắn tin | ở đâu | tiêu đề | dịch vụ đã sửa | trạng thái | skill đã mở):', ...rows.map(line), ...foot].join('\n');
 }

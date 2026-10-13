@@ -18,9 +18,9 @@ async function run(event, { workspace: ws, store, jobs }, params = {}) {
   const TRACK_ENTRY = params.entry;
   const abs = event.action.file;
   if (!abs) return null;
-  // Tờ khai báo infra/services/<dịch-vụ>.json là của CHÍNH dịch vụ đó (S-023), dù nằm trong thư mục của đơn vị infra: ghi nó không
-  // tính là "phiên đã sửa infra". Trước đây có tính, nên phiên dịch vụ tự ghim xong thì bị hỏi ở MỌI lần sửa sau đó (gặp 2026-10-09).
-  if (ws.sheetOwner(abs)) return null; // luật unitSheets của cấu hình dự án (S-063)
+  // Tờ của một đơn vị (luật unitSheets) là của CHÍNH đơn vị đó, dù nằm trong thư mục của đơn vị khác: ghi nó không
+  // tính là "phiên đã sửa đơn vị chứa nó". Trước đây có tính, nên phiên ghi tờ của mình xong thì bị hỏi ở MỌI lần sửa sau đó.
+  if (ws.sheetOwner(abs)) return null; // luật unitSheets của cấu hình dự án
   const svc = ws.serviceOf(abs);
   if (!svc || !ws.isService(svc)) return null;
   // Lần sửa này ĐÃ CHẠY: ghi vào sổ theo kế hoạch đang hiệu lực của phiên.

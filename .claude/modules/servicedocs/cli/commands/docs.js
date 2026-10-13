@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Lệnh dòng lệnh của khối servicedocs (S-064), góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/servicedocs.json.
+// Lệnh dòng lệnh của khối servicedocs, góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/servicedocs.json.
 // `register(on, ctx)`: ctx = { argv, cmd, arg, si, core }.
 function register(on, { arg, argv }) {
   const core = require('../../mcp/docs/core');
@@ -29,6 +29,12 @@ function register(on, { arg, argv }) {
   on('service-doc', () => {
     // In nguồn có cấu trúc docs/service.yaml của service (ghi thì dùng MCP bsn-docs: service_doc_set, problem_record).
     console.log(require('../../mcp/docs/service-doc').get());
+  });
+  on('paths-rename', () => {
+    // Mã của đơn vị dời chỗ: đổi đúng các đường dẫn tệp đó trong tài liệu do công cụ sở hữu (một giao dịch có khóa). Mặc định chỉ in.
+    if (!arg) throw new Error('Dùng: cli.js --service <đơn vị> paths-rename <bảng.json> [--apply]   (bảng: { "<đường dẫn cũ>": "<đường dẫn mới>" }, tính từ thư mục đơn vị)');
+    const map = JSON.parse(require('node:fs').readFileSync(arg, 'utf8'));
+    console.log(require('../../mcp/docs/paths-rename').run(map, { apply: argv.includes('--apply') }));
   });
 }
 

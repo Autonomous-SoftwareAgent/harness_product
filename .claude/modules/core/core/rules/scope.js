@@ -2,15 +2,15 @@
 // spec: HOOK-S-001
 // spec: HOOK-S-005
 // spec: HOOK-S-009
-// LUẬT phạm vi (trước khi phiên ghi một tệp). Giữ phạm vi của phiên theo chuỗi (S-050):
+// LUẬT phạm vi (trước khi phiên ghi một tệp). Giữ phạm vi của phiên theo chuỗi:
 //   phiên -> kế hoạch người dùng đã duyệt -> dịch vụ phiên đã đăng ký -> lần sửa.
 // - Tệp thuộc một dịch vụ (thư mục con của thư mục dịch vụ, hoặc một đơn vị khai trong units.json): CHỈ được sửa khi dịch vụ đó có
 //   trong kế hoạch đã duyệt và phiên đã đăng ký nó (công cụ scope_register). Ngoài ra thì CHẶN, kèm lời nói rõ phải làm gì.
-// - Tờ khai báo infra/services/<dịch-vụ>.json là của CHÍNH dịch vụ đó (S-023): tính cho dịch vụ <dịch-vụ>, không tính cho infra.
+// - Tờ của một đơn vị nằm trong thư mục đơn vị khác (luật unitSheets) là của CHÍNH đơn vị đó: tính cho đơn vị chủ, không tính cho đơn vị chứa nó.
 // - Sửa trong external/ (mã bên ngoài chỉ để đọc): hỏi người dùng.
 // - Phần dùng chung khác ở gốc (docs/system, docs/handoff, CLAUDE.md, .claude/skills): không thuộc dịch vụ nào, không cần đăng ký.
 // - Lần đầu phiên sửa một dịch vụ: kèm lời nhắc nguyên tắc, và cảnh báo nếu phiên khác vừa sửa cùng dịch vụ.
-// Chế độ (scope.config.json): enforce là luật trên; legacy là cách trước S-050 (hỏi khi phiên sửa dịch vụ khác dịch vụ đang làm);
+// Chế độ (scope.config.json): enforce là luật trên; legacy là cách cũ (hỏi khi phiên sửa dịch vụ khác dịch vụ đang làm);
 // off là không làm gì. Không mở được sổ thì KHÔNG chặn (phép kiểm sức khỏe báo). Lệnh ghi qua shell không đi qua luật này.
 const path = require('node:path');
 const { deny, ask, note } = require('../../ports/events');
@@ -42,9 +42,9 @@ async function run(event, { workspace: ws, store }) {
 
   const fromRoot = path.relative(ws.root, abs);
   const posixRel = fromRoot.split(path.sep).join('/');
-  // Thư mục chỉ đọc do dự án khai (luật readOnlyDirs; ở BSN_: external/, mã bên ngoài để tham khảo).
+  // Thư mục chỉ đọc do dự án khai (luật readOnlyDirs; ví dụ một thư mục mã bên ngoài để tham khảo).
   const readOnly = (ws.policy('readOnlyDirs') || []).find((d) => posixRel.toLowerCase() === d.toLowerCase() || posixRel.toLowerCase().startsWith(`${d.toLowerCase()}/`));
-  // "Tờ của một đơn vị" nằm trong thư mục đơn vị khác (luật unitSheets; ở BSN_: infra/services/<dịch-vụ>.json, S-023) thuộc đơn vị chủ.
+  // "Tờ của một đơn vị" nằm trong thư mục đơn vị khác (luật unitSheets; ví dụ deploy/services/<đơn-vị>.json) thuộc đơn vị chủ.
   const owner = ws.sheetOwner(abs);
   const decl = owner ? [posixRel, owner] : null;
   // Dịch vụ của tệp: tờ thuộc đơn vị chủ của nó; còn lại theo thư mục.
@@ -69,13 +69,13 @@ async function run(event, { workspace: ws, store }) {
   } else if (decl) {
     // legacy: tờ khai báo của dịch vụ khác dịch vụ phiên đang làm thì hỏi người dùng.
     if (home && ws.caseKey(home) !== ws.caseKey(top)) {
-      return ask(`Tờ khai báo ${decl[0]} là của dịch vụ "${top}" (S-023: mỗi dịch vụ tự ghi commit mình muốn chạy). ` +
+      return ask(`Tờ khai báo ${decl[0]} là của dịch vụ "${top}" (mỗi dịch vụ tự ghi commit mình muốn chạy). ` +
         `Phiên này đang làm "${home}". Việc của "${top}" nên để phiên của nó làm, hoặc ghi yêu cầu vào docs/handoff/. Cho phép nếu người dùng đã bảo ghim hộ.`);
     }
   } else if (home && home !== top) {
     // legacy: một phiên một dịch vụ một lúc; người dùng đồng ý thì lần sửa chạy và luật theo dõi chuyển dịch vụ đang làm sang `top`.
     return ask(`Nguyên tắc: một phiên một dịch vụ. Phiên này đang làm "${home}", giờ lại sửa "${top}" (${abs}). ` +
-      `Việc của "${top}" nên làm ở một phiên riêng (mở ở gốc BSN_/ và giao việc cho "${top}"), hoặc ghi yêu cầu vào docs/handoff/. ` +
+      `Việc của "${top}" nên làm ở một phiên riêng (mở ở gốc dự án và giao việc cho "${top}"), hoặc ghi yêu cầu vào docs/handoff/. ` +
       `Cho phép nghĩa là phiên CHUYỂN sang làm "${top}": từ đó sửa "${top}" không bị hỏi nữa, còn quay lại "${home}" thì bị hỏi lại.`);
   }
   if (decl) return null;
@@ -91,8 +91,8 @@ async function run(event, { workspace: ws, store }) {
           `tài liệu ba tầng và docs/service.yaml ghi qua bsn-docs thì có khóa nên không mất cập nhật.`;
       }
     } catch { /* không đọc được thì không cảnh báo */ }
-    return note(`Bạn đang sửa dịch vụ "${top}" từ phiên mở ở gốc BSN_. Theo CLAUDE.md gốc: một phiên làm một dịch vụ. ` +
-      `Làm theo ${at}/CLAUDE.md (quy tắc riêng, thiết kế ba lớp), ${at}/docs/agent/STATUS.md và skill ở BSN_/.claude/skills/ (chỉ đường chung, mở trước: services; tài liệu: service-docs; sơ đồ: diagrams, không tự viết Mermaid; trang trên cổng: service-page). ` +
+    return note(`Bạn đang sửa dịch vụ "${top}" từ phiên mở ở gốc dự án. Theo CLAUDE.md gốc: một phiên làm một dịch vụ. ` +
+      `Làm theo ${at}/CLAUDE.md (quy tắc riêng, thiết kế ba lớp), ${at}/docs/agent/STATUS.md và skill ở .claude/skills/ (chỉ đường chung, mở trước: services; tài liệu: service-docs; sơ đồ: diagrams, không tự viết Mermaid; trang trên cổng: service-page). ` +
       `Sửa xong thì cập nhật STATUS và tài liệu bằng công cụ bsn-docs (service="${top}"). Việc đụng dịch vụ khác thì ghi docs/handoff/, đừng tự sửa.${clash}`);
   }
   return null;

@@ -1,7 +1,7 @@
 'use strict';
 // spec: HOOK-S-010
 // harness-export: giữ đường dẫn bố cục cũ
-// CÀI, NÂNG CẤP, CHUYỂN BỐ CỤC (S-064). Chạy TỪ BẢN MỚI (gói harness_product, bố cục khối) vào một dự án:
+// CÀI, NÂNG CẤP, CHUYỂN BỐ CỤC. Chạy TỪ BẢN MỚI (gói harness_product, bố cục khối) vào một dự án:
 //   node <gói>/.claude/modules/core/cli/cli.js install <dự án> [--apply | --undo]
 // Ba trường hợp, tự nhận:
 //   - mới: dự án chưa có harness. Chép mã, khuôn phần của dự án, skill; sinh settings.json và .mcp.json.
@@ -28,7 +28,7 @@ const LEGACY_PROJECT = [
   ['project.json', 'project.json'], ['units.json', 'units.json'], ['skills-map.json', 'skills-map.json'], ['scope.config.json', 'scope.config.json'],
   [path.join('gate', 'gate.config.json'), 'gate.config.json'], [path.join('gate', 'MIGRATED_AT'), 'MIGRATED_AT'],
   [path.join('mcp', 'context.config.json'), 'context.config.json'], [path.join('mcp', 'portal', 'generators'), 'generators'], ['rules', 'rules'],
-  // Khối mở rộng của dự án (S-065). Dấu vân tay tính theo nội dung, nên khối đã xác nhận vẫn còn hiệu lực sau khi dời chỗ.
+  // Khối mở rộng của dự án. Dấu vân tay tính theo nội dung, nên khối đã xác nhận vẫn còn hiệu lực sau khi dời chỗ.
   ['extensions', 'extensions'],
 ];
 const GIT_HOOKS = ['post-commit', 'pre-commit', 'commit-msg', 'pre-push'];
@@ -215,7 +215,9 @@ function undo(dest) {
 }
 
 function run(src, dest, { apply: doApply = false, undo: doUndo = false } = {}) {
-  if (!P.isModular(src)) return { ok: false, text: 'Lệnh install chạy từ GÓI đã đóng (bố cục khối, .claude/modules/), không chạy từ bản mã nguồn. Đóng gói trước: cli.js public-export <thư mục>.' };
+  // Gói đã đóng có FILES.json (dấu từng tệp, lệnh đóng gói ghi). Bản mã nguồn cũng ở bố cục khối nhưng còn test và tài liệu của
+  // chính harness, không có FILES.json: không cài từ đó.
+  if (!P.isModular(src) || !exists(path.join(src, '.claude', 'modules', 'FILES.json'))) return { ok: false, text: 'Lệnh install chạy từ GÓI đã đóng (bố cục khối, .claude/modules/, có FILES.json), không chạy từ bản mã nguồn. Đóng gói trước: cli.js public-export <thư mục>.' };
   if (!exists(dest) || !fs.statSync(dest).isDirectory()) return { ok: false, text: `Không có thư mục dự án: ${dest}` };
   if (path.resolve(src).toLowerCase() === path.resolve(dest).toLowerCase()) return { ok: false, text: 'Dự án đích chính là gói đang chạy: chọn thư mục dự án khác.' };
   if (doUndo) return undo(dest);

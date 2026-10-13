@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Công cụ MCP của khối servicedocs (S-064): tài liệu ba tầng, docs/service.yaml, sổ vấn đề. mcp-tools.js gom qua bảng đăng ký
+// Công cụ MCP của khối servicedocs: tài liệu ba tầng, docs/service.yaml, sổ vấn đề. mcp-tools.js gom qua bảng đăng ký
 // (khóa `tools` trong modules/servicedocs.json); khối tắt thì các công cụ này không có trong danh sách.
 const core = require('./core');
 const serviceDoc = require('./service-doc');
@@ -95,7 +95,7 @@ const TOOLS = [
   },
   {
     name: 'service_doc_get',
-    description: 'Đọc nguồn có cấu trúc của dịch vụ (docs/service.yaml): nghiệp vụ, kiến trúc kỹ thuật, vấn đề và tiến độ. Đây là nguồn sinh ra docs/_generated/overview.md (cho agent) và trang ba tab của dịch vụ ở BSN_/docs/portal/<dịch-vụ>/ (cho người đọc).',
+    description: 'Đọc nguồn có cấu trúc của dịch vụ (docs/service.yaml): nghiệp vụ, kiến trúc kỹ thuật, vấn đề và tiến độ. Đây là nguồn sinh ra docs/_generated/overview.md (cho agent) và trang ba tab của dịch vụ ở docs/portal/<dịch-vụ>/ (cho người đọc).',
     inputSchema: { type: 'object', properties: {} },
     run: () => serviceDoc.get(),
   },
@@ -103,7 +103,7 @@ const TOOLS = [
     name: 'service_doc_set',
     description:
       'Ghi THAY TOÀN BỘ một phần của docs/service.yaml (đọc bằng service_doc_get trước, sửa rồi ghi lại cả phần). Kiểm lược đồ trước khi ghi; sai thì không ghi gì. ' +
-      'section=meta: {title, summary}. ' +
+      'section=meta: {title, summary, first_tab?: tên tab đầu của trang khi đơn vị không phải dịch vụ nghiệp vụ, mặc định "Nghiệp vụ"}. ' +
       'section=business: {goal, users:[{who,need}], value:[..], flows:[{id,title,steps:[..]}], out_of_scope:[..], unverified:[..]} (unverified = điều CHƯA kiểm với hệ thống thật). ' +
       'section=architecture: {summary, layers:[{id,title,role,paths:[..]}], components:[{id,title,layer?,role,paths:[..]}], depends_on:[{target,kind:service|external|infra,via,purpose}], provides:[{to,via,purpose}], ' +
       'diagrams?:[] (trường CŨ, không còn được vẽ; sơ đồ mới khai bằng diagram_save), decisions:[{id,title}], ' +

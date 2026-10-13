@@ -20,7 +20,7 @@ const STYLE = ['blue', 'amber', 'green', 'teal', 'pink'];
 
 function codeFiles(g) { return g.nodes.filter((n) => n.type === 'file' && n.attrs && n.attrs.lang !== 'khác'); }
 function layers(g) { return g.nodes.filter((n) => n.type === 'layer').map((n) => ({ id: n.id.split(':')[2], title: n.name })); }
-// Tiền tố thư mục chung của mọi tệp mã (ví dụ "src/ingest/"), bỏ đi cho nhãn ngắn.
+// Tiền tố thư mục chung của mọi tệp mã (ví dụ "src/app/"), bỏ đi cho nhãn ngắn.
 function commonDir(paths) {
   if (!paths.length) return '';
   let pre = paths[0].split('/').slice(0, -1);
@@ -36,7 +36,7 @@ function moduleDeps(g) {
   const touched = new Set(g.edges.filter((e) => e.type === 'nhập').flatMap((e) => [e.src, e.dst]));
   const files = codeFiles(g).filter((f) => ((f.attrs && f.attrs.lines) || 0) > 2 || touched.has(f.id));
   if (!files.length) return null;
-  // Nhãn bỏ phần thư mục chung của các tệp thuộc lớp (ví dụ "src/ingest/"); tệp nằm ngoài phần đó giữ đường dẫn đủ.
+  // Nhãn bỏ phần thư mục chung của các tệp thuộc lớp (ví dụ "src/app/"); tệp nằm ngoài phần đó giữ đường dẫn đủ.
   const layered = files.filter((f) => f.attrs && f.attrs.layer);
   const base = commonDir((layered.length ? layered : files).map((f) => f.name));
   const relOf = (name) => (name.startsWith(base) ? name.slice(base.length) : name);
@@ -114,9 +114,10 @@ function layerDeps(g) {
 }
 
 // 3. Cửa vào/ra của dịch vụ, dạng tầng: các loại cửa vào (mỗi loại một tầng), dịch vụ, rồi topic, bảng và thứ nó phụ thuộc.
-// Hàm này KHÔNG biết loại cửa vào nào (S-051): tên tầng, đơn vị đếm và cách gom do bộ nhận dạng ở recognizers/entries/ khai, đi theo kho
+// Hàm này KHÔNG biết loại cửa vào nào: tên tầng, đơn vị đếm và cách gom do bộ nhận dạng ở recognizers/entries/ khai, đi theo kho
 // (g.entryKinds và thuộc tính kind, bucket của nút). Thêm một loại cửa vào thì hình tự có thêm một tầng, không sửa gì ở đây.
-function interfaces(g) {
+// project: tên dự án theo cấu hình (nhãn của phụ thuộc loại "dịch vụ"); bỏ trống thì nhãn là "dịch vụ trong hệ".
+function interfaces(g, { project = '' } = {}) {
   const svc = g.nodes.find((n) => n.type === 'service');
   const kinds = (g.entryKinds || []).map((k) => ({ ...k, list: g.nodes.filter((n) => n.attrs && n.attrs.kind === k.id && (n.type === 'api' || n.type === 'entry')) })).filter((k) => k.list.length);
   const topics = g.nodes.filter((n) => n.type === 'topic');
@@ -160,7 +161,7 @@ function interfaces(g) {
     }
     if (deps.length) {
       groups.push({ id: 'g_dep', label: 'Phụ thuộc vào (khai trong service.yaml)' });
-      for (const d of deps) add('g_dep', d.target, [d.kind === 'service' ? 'dịch vụ BSN' : d.kind === 'infra' ? 'hạ tầng' : 'bên ngoài', d.via || ''].filter(Boolean), 'gray');
+      for (const d of deps) add('g_dep', d.target, [d.kind === 'service' ? (project ? `dịch vụ ${project}` : 'dịch vụ trong hệ') : d.kind === 'infra' ? 'hạ tầng' : 'bên ngoài', d.via || ''].filter(Boolean), 'gray');
       edges.push({ from: 'svc', to: 'g_dep', line: 'thick' });
     }
     return { nodes, edges, groups };
@@ -192,16 +193,26 @@ function systemMap(all) {
     if (!extId.has(d.target)) { extId.set(d.target, `x${x++}`); nodes.push({ id: extId.get(d.target), label: short(d.target), style: 'gray', shape: 'cylinder' }); }
     edges.push({ from: idOf.get(n), to: extId.get(d.target) });
   }
+  // "Cung cấp cho" (P-004): đơn vị khai nó cung cấp gì cho đơn vị nào thì vẽ mũi tên từ bên DÙNG sang bên cung cấp (nét chấm), trừ khi bên dùng
+  // đã tự khai phụ thuộc đó (đã có mũi tên liền). Bên dùng không phải đơn vị của hệ thì chỉ có trong bảng ở trang của đơn vị.
+  const drawn = new Set(edges.map((e) => `${e.from}>${e.to}`));
+  for (const n of names) for (const p of all.services[n].provides || []) {
+    if (!idOf.has(p.to) || p.to === n) continue;
+    const key = `${idOf.get(p.to)}>${idOf.get(n)}`;
+    if (drawn.has(key)) continue;
+    drawn.add(key);
+    edges.push({ from: idOf.get(p.to), to: idOf.get(n), label: short(p.via || 'dùng', 26), line: 'dotted' });
+  }
   if (nodes.length > specs.MAX.nodes || edges.length > specs.MAX.edges) return null;
   return { id: `${AUTO_PREFIX}ban-do-he`, type: 'flowchart', title: 'Bản đồ cả hệ: dịch vụ, topic và hạ tầng dùng chung', tab: 'architecture', direction: 'LR', groups: [], nodes, edges };
 }
 
 const SERVICE_DIAGRAMS = [moduleDeps, layerDeps, interfaces];
 // Mọi sơ đồ tự sinh của một dịch vụ: [{ spec (đã qua lược đồ), origin }]. Sơ đồ không dựng được (quá lớn, thiếu dữ liệu) thì bỏ qua, không bịa.
-function forService(g) {
+function forService(g, opts = {}) {
   const out = [];
   for (const make of SERVICE_DIAGRAMS) {
-    const made = make(g);
+    const made = make(g, opts);
     if (!made) continue;
     const { __detail: detail, ...raw } = made;
     const r = specs.parse(raw);

@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Lệnh dòng lệnh của khối portal (S-064), góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/portal.json.
+// Lệnh dòng lệnh của khối portal, góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/portal.json.
 const fs = require('fs');
 const path = require('path');
 
@@ -33,7 +33,7 @@ function register(on, { argv, arg, core, autoCheck, generator, cmdRel }) {
     const b = portal().publishBundle();
     console.log(b.report);
     if (!b.scan.ok) { console.log('KHÔNG ĐƯỢC ĐẨY.'); process.exitCode = 1; }
-    else console.log(`ĐƯỢC ĐẨY (S-058: commit là publish theo). Đẩy bằng công cụ Artifact, tải lại rồi chạy portal-verify <thư mục>, cuối cùng: node ${cmdRel} portal-published\n${JSON.stringify({ page: b.page, files: b.files }, null, 2)}`);
+    else console.log(`ĐƯỢC ĐẨY (commit là publish theo). Đẩy bằng công cụ Artifact, tải lại rồi chạy portal-verify <thư mục>, cuối cùng: node ${cmdRel} portal-published\n${JSON.stringify({ page: b.page, files: b.files }, null, 2)}`);
   });
   on('portal-verify', () => {
     // Sau khi đẩy: dò ba lượt trên bản TẢI VỀ từ claude.ai (thư mục chứa các tệp cùng tên với gói), so với bản trên máy, kiểm liên kết. Thoát 1 nếu không đạt.

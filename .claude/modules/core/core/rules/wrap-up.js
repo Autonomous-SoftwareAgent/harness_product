@@ -8,9 +8,9 @@ const path = require('node:path');
 const { block } = require('../../ports/events');
 const D = require('./lib/docs-tracking');
 
-// Lời giao việc đẩy cổng (S-058). Commit là publish theo: phiên không chờ người dùng bảo. Lõi chỉ nói PHẢI LÀM GÌ; đường link và chi tiết ở tài liệu.
+// Lời giao việc đẩy cổng. Commit là publish theo: phiên không chờ người dùng bảo. Lõi chỉ nói PHẢI LÀM GÌ; đường link và chi tiết ở tài liệu.
 const PUBLISH = (n) => [
-  `PUBLISH (S-058): cổng trên máy mới hơn bản trên claude.ai và gói ${n || ''} tệp đã dò ba lượt sạch. Commit là publish theo, áp cho mọi phiên: đẩy NGAY trong lượt này, không hỏi lại người dùng.`,
+  `PUBLISH: cổng trên máy mới hơn bản trên claude.ai và gói ${n || ''} tệp đã dò ba lượt sạch. Commit là publish theo, áp cho mọi phiên: đẩy NGAY trong lượt này, không hỏi lại người dùng.`,
   'Làm đúng thứ tự (chi tiết và đường link: docs/system/portal-publish.md):',
   '1. `node .claude/modules/core/cli/cli.js portal-publish` phải in "ĐƯỢC ĐẨY"; in "KHÔNG ĐƯỢC ĐẨY" thì DỪNG và báo người dùng.',
   '2. Công cụ Artifact: đọc Artifact ở đường link đó (action read), rồi publish với `url` là đường link, `file_path` và `files` đúng như lệnh vừa in.',

@@ -9,7 +9,7 @@
 //   node .claude/modules/core/cli/banned-scan.js pre-commit            git hook: quét phần SẮP commit (dòng thêm vào và tên tệp)
 //   node .claude/modules/core/cli/banned-scan.js commit-msg <tệp>      git hook: quét lời nhắn commit
 //   node .claude/modules/core/cli/banned-scan.js pre-push <remote>     git hook: quét MỌI commit sắp đẩy (đọc danh sách ref từ stdin);
-//                                                                trước đó dò nội dung BSN_/docs/ (docs-guard.js, S-062)
+//                                                                trước đó dò nội dung docs/ (docs-guard.js)
 //   node .claude/modules/core/cli/banned-scan.js scan [--history]      quét tay repo đang đứng: tệp đang theo dõi; thêm --history thì cả mọi commit
 //
 // Mỗi từ khớp nhiều cách viết (hoa thường, chen dấu phân cách, số nhiều, camelCase, và với từ dài là cả khi dính liền trong từ khác):
@@ -22,16 +22,16 @@ const { spawnSync } = require('node:child_process');
 
 const P = require('../gate/gate-paths');
 
-const BSN = P.rootFrom(__dirname);
+const ROOT = P.rootFrom(__dirname);
 const ZERO = /^0+$/;
 const MAX = 1024 * 1024 * 1024;
 
-// Danh sách từ cấm của máy do bộ chuyển dự án đọc; luật khớp (một từ khớp những cách viết nào) là phần "nghĩ", nằm ở lõi (S-055).
+// Danh sách từ cấm của máy do bộ chuyển dự án đọc; luật khớp (một từ khớp những cách viết nào) là phần "nghĩ", nằm ở lõi.
 const project = require('../adapters/project/workspace');
 const { matcher, linesWith } = require('../core/rules/lib/banned-words');
 
 // Trả mảng từ (đã bỏ rỗng), hoặc null khi máy không có danh sách hay tệp hỏng.
-const loadWords = (root = BSN) => project.loadWords(root);
+const loadWords = (root = ROOT) => project.loadWords(root);
 
 const git = (cwd, args, input) => spawnSync('git', ['-c', 'core.quotepath=false', ...args], { cwd, encoding: 'utf8', maxBuffer: MAX, input });
 
@@ -65,7 +65,7 @@ function report(hits, what) {
     if (!seen.has(row)) { seen.add(row); rows.push(row); }
   }
   process.stderr.write([
-    `BSN_ TỪ CẤM: ${what} có từ nằm trong danh sách cấm của máy này (${rows.length} chỗ). Từ chối.`,
+    `TỪ CẤM: ${what} có từ nằm trong danh sách cấm của máy này (${rows.length} chỗ). Từ chối.`,
     ...rows.slice(0, 40).map((r) => `  ${r}`),
     rows.length > 40 ? `  ... còn ${rows.length - 40} chỗ` : '',
     'Danh sách từ: tệp ở máy do người dùng giữ (đường dẫn: xem tóm tắt đầu phiên). Sửa nội dung, tên tệp hay lời nhắn rồi làm lại; không chép từ trong danh sách vào đâu.',
@@ -113,7 +113,7 @@ function prePush(cwd, remote, stdin, re) {
     const fresh = [local, '--not', `--remotes=${remote || 'origin'}`];
     let r = ZERO.test(remoteSha || '0') ? historyHits(cwd, fresh, re) : historyHits(cwd, [`${remoteSha}..${local}`], re);
     if (r.error && !ZERO.test(remoteSha || '0')) r = historyHits(cwd, fresh, re); // máy chưa có commit phía remote: quét mọi commit chưa thuộc remote
-    if (r.error) { process.stderr.write(`BSN_ TỪ CẤM: không quét được các commit sắp đẩy (${r.error}). Từ chối đẩy cho tới khi quét được.\n`); return 1; }
+    if (r.error) { process.stderr.write(`TỪ CẤM: không quét được các commit sắp đẩy (${r.error}). Từ chối đẩy cho tới khi quét được.\n`); return 1; }
     all.push(...r.hits);
   }
   if (!all.length) return 0;
@@ -139,14 +139,14 @@ function scan(cwd, re, { history = false } = {}) {
 
 function main(argv) {
   const [mode, a1] = argv;
-  // pre-push còn dò nội dung BSN_/docs/ (S-062), kể cả khi máy không có danh sách từ cấm. Nằm ở đây để git hook đã cài ở mọi repo
+  // pre-push còn dò nội dung docs/, kể cả khi máy không có danh sách từ cấm. Nằm ở đây để git hook đã cài ở mọi repo
   // (gọi `banned-scan.js pre-push`) có thêm phép dò mà không phải cài lại hook nào.
   let pushStdin = null;
   if (mode === 'pre-push') {
     try { pushStdin = fs.readFileSync(0, 'utf8'); } catch { pushStdin = ''; }
-    if (require('./docs-guard').prePush(process.cwd(), a1, pushStdin, BSN)) return 1;
+    if (require('./docs-guard').prePush(process.cwd(), a1, pushStdin, ROOT)) return 1;
   }
-  const words = loadWords(BSN);
+  const words = loadWords(ROOT);
   if (!words) {
     if (mode === 'scan') { console.log('Máy này không có danh sách từ cấm: KHÔNG quét.'); return 0; }
     return 0;

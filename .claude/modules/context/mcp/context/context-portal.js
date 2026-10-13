@@ -14,7 +14,7 @@ const mermaid = require('../../../diagrams/adapters/mermaid/render');
 const compact = require('../../../diagrams/core/diagrams/compact');
 
 const P = require('../../../core/gate/gate-paths');
-const CONFIG = P.contextConfigPath(P.rootFrom(__dirname)); // phần của dự án (S-064)
+const CONFIG = P.contextConfigPath(P.rootFrom(__dirname)); // phần của dự án
 // Hai công tắc đưa tầng này tới các phiên dịch vụ, mặc định TẮT cho tới khi người dùng bật:
 //   notify:    nhắc phiên đang làm dịch vụ khi sơ đồ tự sinh của dịch vụ đó đổi (cần viết giải thích, soát)
 //   advertise: tóm tắt đầu phiên nhắc mọi phiên hỏi context_explore trước khi Grep
@@ -39,7 +39,7 @@ function figureData(d, entries) {
     explain: st.explain, explainStale: st.explainStale, review: st.review, reviewStale: st.reviewStale, hash: hashOf(d.spec), spec: d.spec, detail: d.detail };
 }
 
-// Danh sách chờ của một dịch vụ: sơ đồ tự sinh chưa có giải thích khớp hình hoặc chưa được soát ở bản hiện tại, kèm vì sao.
+// Danh sách chờ của một dịch vụ: sơ đồ tự sinh chưa có giải thích khớp hình (máy tự viết, nên chỉ còn loại hình máy chưa viết được), kèm vì sao.
 // So với dấu của lần dựng trước để nói rõ "mới" hay "đổi" và đổi bao nhiêu dòng.
 function pendingOf(name, figures, commit) {
   const stateFile = path.join(ctx.OUT(), `${name}.state.json`);
@@ -55,7 +55,8 @@ function pendingOf(name, figures, commit) {
     if (!old) change = { kind: 'mới', added: lines.length, removed: 0, commit };
     else if (changed) { const before = new Set(old.lines || []); const after = new Set(lines); change = { kind: 'đổi', added: lines.filter((l) => !before.has(l)).length, removed: (old.lines || []).filter((l) => !after.has(l)).length, commit, addedLines: lines.filter((l) => !before.has(l)).slice(0, 30), removedLines: (old.lines || []).filter((l) => !after.has(l)).slice(0, 30) }; }
     const needExplain = !f.explain || f.explainStale;
-    const needReview = !f.review || f.reviewStale;
+    // Soát với mã là việc tự nguyện (trang vẫn ghi đã soát hay chưa): không xếp hàng chờ agent vì nó.
+    const needReview = false;
     if (!needExplain && !needReview) change = null;
     now.diagrams[f.id] = { hash: f.hash, lines, ...(change ? { change } : {}) };
     if (needExplain || needReview) pending.push({ id: f.id, title: f.title, kind: change ? change.kind : 'chờ', added: change ? change.added : 0, removed: change ? change.removed : 0, needExplain, needReview, addedLines: (change && change.addedLines) || [], removedLines: (change && change.removedLines) || [] });
@@ -94,7 +95,7 @@ function prepare(notes = []) {
   const figs = new Map(); const pend = new Map();
   for (const [name, g] of Object.entries(all.services)) {
     try {
-      const list = auto.forService(g).map((d) => figureData(d, g.auto));
+      const list = auto.forService(g, { project: P.projectConfig(P.rootFrom(__dirname)).name }).map((d) => figureData(d, g.auto));
       figs.set(name, list);
       pend.set(name, pendingOf(name, list, g.commit));
       writeIfChanged(path.join(ctx.OUT(), `${name}.md`), agentMd(g, list));

@@ -1,6 +1,6 @@
 'use strict';
 // spec: LEDG-S-004
-// BỘ CHUYỂN lưu trữ, schema `eval` (S-060): đo hiệu quả của công cụ, skill và luật của harness. Tệp riêng (.claude/.state/eval.db), không
+// BỘ CHUYỂN lưu trữ, schema `eval`: đo hiệu quả của công cụ, skill và luật của harness. Tệp riêng (.claude/.state/eval.db), không
 // nằm chung sổ phiên: đo lường ghi theo đợt, nhiều dòng một lúc, nên không được làm hook trên đường nóng phải chờ khóa của sổ phiên.
 // Đi MỘT CHIỀU: sổ này đọc sổ phiên (gắn tạm bằng ATTACH, chỉ đọc); sổ phiên và các luật không bao giờ đọc sổ này.
 //

@@ -1,6 +1,6 @@
 'use strict';
 // spec: GATE-S-003
-// Quản lý hook của gate phê duyệt. Nguồn chuẩn chính là BSN_/.claude/modules/core/gate (harness chỉ có MỘT chỗ, ở gốc BSN_).
+// Quản lý hook của gate phê duyệt. Nguồn chuẩn chính là .claude/modules/core/gate (harness chỉ có MỘT chỗ, ở gốc dự án).
 //   node .claude/modules/core/gate/install.js --stamp [<thư-mục>]          ghi MANIFEST.json (băm các tệp mã); làm sau khi cố ý sửa mã
 //   node .claude/modules/core/gate/install.js --migrate [<thư-mục>]        ghi mốc MIGRATED_AT (làm MỘT lần khi nâng cấp gate đang có phiên mở)
 //   node .claude/modules/core/gate/install.js --verify [<thư-mục>]         kiểm từ bên ngoài: tệp đủ, khớp MANIFEST, settings.json có hook trỏ tới tệp thật; thoát 1 nếu lệch
@@ -17,14 +17,18 @@ const { CODE_FILES, stamp, health } = require('./gate-health');
 const CONFIG_FILE = 'gate.config.json';
 const MARK = 'gate-hook.js';
 // Neo vào gốc dự án: Claude Code cấp CLAUDE_PROJECT_DIR cho hook. Khai tương đối thì hook hỏng khi thư mục làm việc của phiên đổi.
-const CMD = (mode) => `node "$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js" ${mode}`;
-
-const WANTED = [
-  { event: 'UserPromptSubmit', group: { hooks: [{ type: 'command', command: CMD('prompt'), timeout: 90, statusMessage: 'Checking approval...' }] } },
-  { event: 'Stop', group: { hooks: [{ type: 'command', command: CMD('stop'), timeout: 10 }] } },
-  { event: 'PreToolUse', group: { matcher: 'Write|Edit|NotebookEdit|Bash', hooks: [{ type: 'command', command: CMD('tool'), timeout: 10 }] } },
-  { event: 'SessionStart', group: { hooks: [{ type: 'command', command: CMD('health'), timeout: 15 }] } },
-];
+// Đường dẫn của tệp hook theo BỐ CỤC CỦA ĐÍCH: đích ở bố cục khối thì mã cổng duyệt nằm trong khối lõi, không thì ở bố cục cũ.
+const paths = require('./gate-paths');
+const SOURCE_ROOT = paths.rootFrom(SRC);
+const wanted = (target) => {
+  const CMD = (mode) => `node "$CLAUDE_PROJECT_DIR/${paths.codeRel(target, `gate/${MARK}`)}" ${mode}`;
+  return [
+    { event: 'UserPromptSubmit', group: { hooks: [{ type: 'command', command: CMD('prompt'), timeout: 90, statusMessage: 'Checking approval...' }] } },
+    { event: 'Stop', group: { hooks: [{ type: 'command', command: CMD('stop'), timeout: 10 }] } },
+    { event: 'PreToolUse', group: { matcher: 'Write|Edit|NotebookEdit|Bash', hooks: [{ type: 'command', command: CMD('tool'), timeout: 10 }] } },
+    { event: 'SessionStart', group: { hooks: [{ type: 'command', command: CMD('health'), timeout: 15 }] } },
+  ];
+};
 
 // Thư mục harness của đích có chính là thư mục chứa install.js này (nguồn chuẩn) không.
 const isSource = (harnessDir) => path.resolve(harnessDir).toLowerCase() === path.resolve(SRC).toLowerCase();
@@ -43,10 +47,10 @@ function removeGate(settings) {
   return settings;
 }
 
-function mergeGate(settings) {
+function mergeGate(settings, target = SOURCE_ROOT) {
   removeGate(settings);
   settings.hooks = settings.hooks || {};
-  for (const { event, group } of WANTED) {
+  for (const { event, group } of wanted(target)) {
     settings.hooks[event] = settings.hooks[event] || [];
     settings.hooks[event].push(JSON.parse(JSON.stringify(group)));
   }
@@ -66,14 +70,17 @@ function readSettings(file) {
 
 function install(target, { dryRun = false } = {}) {
   const log = [];
-  const harness = require('./gate-paths').harnessDir(target); // theo bố cục của đích (S-064)
+  const harness = require('./gate-paths').harnessDir(target); // theo bố cục của đích
   const settingsFile = path.join(target, '.claude', 'settings.json');
   const ver = version();
   if (isSource(harness)) {
-    // Nguồn chuẩn chính là thư mục đang chạy (BSN_/.claude/modules/core/gate): không chép đè lên chính nó, chỉ ghi dấu phiên bản.
+    // Nguồn chuẩn chính là thư mục đang chạy (.claude/modules/core/gate): không chép đè lên chính nó, chỉ ghi dấu phiên bản.
     log.push('đây là nguồn chuẩn, không chép tệp');
-    if (!dryRun) fs.writeFileSync(path.join(harness, 'VERSION'), `${ver}\n`);
+    if (!dryRun) fs.writeFileSync(paths.versionPath(target), `${ver}\n`);
     log.push(`VERSION ${ver}`);
+  } else if (paths.isModular(target)) {
+    // Đích đã cài harness theo bố cục khối: mã cổng duyệt là của bản cài (lệnh cli.js install thay nó); ở đây chỉ trộn hook.
+    log.push('đích ở bố cục khối: mã cổng duyệt do bản cài giữ, không chép tệp');
   } else {
     if (!dryRun) fs.mkdirSync(harness, { recursive: true });
     for (const f of CODE_FILES) {
@@ -82,12 +89,16 @@ function install(target, { dryRun = false } = {}) {
     }
     const cfgDest = path.join(harness, CONFIG_FILE);
     if (fs.existsSync(cfgDest)) log.push(`giữ nguyên ${CONFIG_FILE} (đã có)`);
-    else { log.push(`tạo ${CONFIG_FILE}`); if (!dryRun) fs.copyFileSync(path.join(SRC, CONFIG_FILE), cfgDest); }
+    else {
+      // Cấu hình mẫu lấy từ chỗ nguồn đang giữ (bố cục khối: phần của dự án). Nguồn không có thì không tạo: cổng duyệt dùng mặc định.
+      const cfgSrc = paths.configPath(SOURCE_ROOT);
+      if (fs.existsSync(cfgSrc)) { log.push(`tạo ${CONFIG_FILE}`); if (!dryRun) fs.copyFileSync(cfgSrc, cfgDest); } else log.push(`không tạo ${CONFIG_FILE} (nguồn không có; cổng duyệt dùng mặc định)`);
+    }
     if (!dryRun) fs.writeFileSync(path.join(harness, 'VERSION'), `${ver}\n`);
     log.push(`VERSION ${ver}`);
     if (!dryRun) { stamp(target); log.push('MANIFEST.json'); }
   }
-  const merged = mergeGate(readSettings(settingsFile));
+  const merged = mergeGate(readSettings(settingsFile), target);
   log.push(`trộn hook vào ${path.relative(target, settingsFile) || settingsFile} (UserPromptSubmit, Stop, PreToolUse, SessionStart)`);
   if (!dryRun) fs.writeFileSync(settingsFile, `${JSON.stringify(merged, null, 2)}\n`);
   return log;
@@ -102,10 +113,13 @@ function uninstall(target, { dryRun = false } = {}) {
     if (!dryRun) fs.writeFileSync(settingsFile, `${JSON.stringify(cleaned, null, 2)}\n`);
   }
   const harness = require('./gate-paths').harnessDir(target);
+  const shown = path.relative(target, harness).split(path.sep).join('/');
   if (isSource(harness)) {
-    log.push('giữ .claude/modules/core/gate/ (đây là nguồn chuẩn, không xóa)');
+    log.push(`giữ ${shown}/ (đây là nguồn chuẩn, không xóa)`);
+  } else if (paths.isModular(target)) {
+    log.push(`giữ ${shown}/ (bố cục khối: mã do bản cài giữ; gỡ cả harness bằng cli.js install <dự án> --undo)`);
   } else if (fs.existsSync(harness)) {
-    log.push('xóa .claude/modules/core/gate/');
+    log.push(`xóa ${shown}/`);
     if (!dryRun) fs.rmSync(harness, { recursive: true, force: true });
   }
   return log;

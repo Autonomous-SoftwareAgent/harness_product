@@ -1,7 +1,7 @@
 'use strict';
 // spec: HOOK-S-007
 // spec: LEDG-S-004
-// BỘ CHUYỂN lưu trữ: làm cổng "sổ" (ports/store.js) bằng SQLite và tệp trạng thái trên đĩa của máy này (S-055).
+// BỘ CHUYỂN lưu trữ: làm cổng "sổ" (ports/store.js) bằng SQLite và tệp trạng thái trên đĩa của máy này.
 // Mọi hàm trả lời hứa để khớp hợp đồng "có chờ", dù SQLite trả lời ngay. Không mở được sổ thì trả giá trị rỗng theo hợp đồng, không ném lỗi.
 const L = require('./ledger-db');
 const S = require('./scope-db');
@@ -14,7 +14,7 @@ function create(root) {
     prune: async () => L.prune(db),
     addSkill: async (row) => L.addSkill(db, row),
     addDoc: async (row) => L.addDoc(db, row),
-    // Lời gọi công cụ gắn với kế hoạch đang hiệu lực của phiên lúc đó (0 nếu không có), để truy được kế hoạch -> việc đã làm (S-060).
+    // Lời gọi công cụ gắn với kế hoạch đang hiệu lực của phiên lúc đó (0 nếu không có), để truy được kế hoạch -> việc đã làm.
     addTool: async (row) => L.addTool(db, { ...row, planId: S.planIdOf(db, root, row.sid) }),
     have: async (sid, agent) => L.have(db, sid, agent),
   });

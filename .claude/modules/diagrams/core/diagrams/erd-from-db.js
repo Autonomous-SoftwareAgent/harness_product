@@ -1,6 +1,6 @@
 'use strict';
 // spec: PORT-S-002
-// LÕI (S-055): từ cấu trúc thô của một cơ sở dữ liệu quan hệ (bảng, cột, kiểu, khóa) ra nội dung của sơ đồ dữ liệu.
+// LÕI: từ cấu trúc thô của một cơ sở dữ liệu quan hệ (bảng, cột, kiểu, khóa) ra nội dung của sơ đồ dữ liệu.
 // Thuần: việc tạo cơ sở dữ liệu tạm và hỏi cấu trúc là của bộ chuyển (adapters/postgres/reader.js).
 const specs = require('./spec');
 

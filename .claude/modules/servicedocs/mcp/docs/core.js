@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// ---------- gốc đang làm và giao dịch: bộ máy ghi tài liệu của lõi (adapters/storage/unit-docs.js, S-064) ----------
+// ---------- gốc đang làm và giao dịch: bộ máy ghi tài liệu của lõi (adapters/storage/unit-docs.js) ----------
 // Tệp này giữ phần BA TẦNG; chọn đơn vị và giao dịch có khóa là việc chung của mọi khối ghi tài liệu nên nằm ở lõi.
 const E = require('../../../core/adapters/storage/unit-docs');
 const P = require('../../../core/gate/gate-paths');
@@ -17,7 +17,7 @@ const { BSN_DIR, SERVICES_DIR, dirOf, serviceName, setRoot, withService, service
 const { DESIGN_FIELDS, SPEC_FIELDS, IMPL_FIELDS, DESIGN_STATUS, IMPL_STATUS, INACTIVE_DESIGN, ID_RE, hash, norm, oneLine, pad, num, list, parseDoc, serialize, designHash, specHash, find, addStubs, HASH_EXT, markerHint, ENTRY_SECTIONS, formatCheck, normalizeTasks } = require('../../core/docs/tiers');
 
 const SCAN_EXT = new Set(['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs', '.py', '.go', '.java', '.cs', '.rs', '.kt', '.sql', '.sh', '.ps1', '.yml', '.yaml', '.vue', '.html', '.css']);
-// `external` holds reference projects (not BSN code); the rest are generated or vendored folders.
+// `external` holds reference projects (not project code); the rest are generated or vendored folders.
 const SCAN_SKIP = new Set(['node_modules', '.git', 'docs', '.claude', 'external', 'dist', 'build', 'coverage', 'vendor', '.venv', '__pycache__', 'target', '.next']);
 
 // ---------- small helpers ----------
@@ -68,7 +68,7 @@ function ensureModule(name, prefix) {
   for (const m of listModules()) {
     if (loadModule(m).prefix === prefix) throw new Error(`Prefix '${prefix}' đã được module '${m}' dùng`);
   }
-  makeDir(modDir(name)); // chỉ thư mục module: HTML cho người đọc nằm ở cổng BSN_/docs/portal, không có artifacts/ trong dịch vụ
+  makeDir(modDir(name)); // chỉ thư mục module: HTML cho người đọc nằm ở cổng docs/portal, không có artifacts/ trong dịch vụ
   const titles = {
     design: `# ${name} - Design (tầng 1)\n\nVì sao và cái gì: quyết định nghiệp vụ và kỹ thuật của module. Chỉ ghi qua tool \`design_record\` / \`design_update\`.`,
     spec: `# ${name} - Spec (tầng 2)\n\nDesign được tách thành yêu cầu, contract, tiêu chí nghiệm thu và task. Khung tự sinh từ design; điền qua tool \`spec_fill\`.`,
@@ -264,7 +264,7 @@ function checkInner() {
   warnings.push(...citationWarnings());
   warnings.push(...entryWarnings());
   errors.push(...require('./service-doc').checkErrors()); // nguồn có cấu trúc docs/service.yaml (nếu dịch vụ có)
-  // Phép kiểm do các khối khác góp (S-064, khóa `checks` trong tệp tự khai): sơ đồ (thiếu loại, sơ đồ dữ liệu tự sinh đã cũ: chỉ nhắc),
+  // Phép kiểm do các khối khác góp (khóa `checks` trong tệp tự khai): sơ đồ (thiếu loại, sơ đồ dữ liệu tự sinh đã cũ: chỉ nhắc),
   // kho ngữ nghĩa (từ vựng, quan hệ bổ sung, giải thích sơ đồ tự sinh: chỉ ghi qua công cụ). Khối tắt thì phép kiểm của nó không chạy.
   const checks = P.contributions(BSN_DIR, 'checks').map((c) => require(c.file));
   for (const c of checks) if (c.checkErrors) errors.push(...c.checkErrors());

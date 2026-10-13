@@ -22,7 +22,7 @@ function explainHtml(d) {
   if (!e) return '';
   const list = (tag, xs) => `<${tag}>${xs.map((x) => `<li>${esc(x)}</li>`).join('')}</${tag}>`;
   return `<section class="diagram-explain" aria-label="Giải thích sơ đồ ${esc(d.title || d.id)}">
-${d.explainStale ? '<p class="explain-stale">Sơ đồ đã đổi sau khi phần giải thích này được viết; nội dung dưới đây có thể đã cũ.</p>\n' : ''}<h5>Ý nghĩa</h5>
+${d.explainStale ? '<p class="explain-stale">Sơ đồ đã đổi sau khi phần giải thích này được viết; nội dung dưới đây có thể đã cũ.</p>\n' : ''}${e.machine ? '<p class="dz-src">Phần giải thích này do máy viết từ dữ liệu của hình, cập nhật theo hình sau mỗi commit.</p>\n' : ''}<h5>Ý nghĩa</h5>
 <p>${esc(e.meaning)}</p>
 <h5>Cách đọc</h5>
 ${list('ol', e.read)}${e.details && e.details.length ? `
@@ -48,7 +48,7 @@ function figure(d, opts = {}) {
 <p class="dz-note mm-note">Đang hiện dạng chữ vì trang chưa có thư viện vẽ Mermaid (<code>docs/portal/assets/mermaid.min.js</code>).</p>${src}</figure>${explainHtml(d) ? `\n${explainHtml(d)}` : d.origin && !opts.noExplainHint ? '\n<p class="explain-stale">Sơ đồ này chưa có phần giải thích (agent ghi bằng <code>diagram_explain</code>).</p>' : ''}`;
 }
 
-// CSS tự đủ: mọi màu có giá trị dự phòng, nên dùng được trên trang có bộ biến màu khác (trang riêng của payment-hub).
+// CSS tự đủ: mọi màu có giá trị dự phòng, nên dùng được trên trang có bộ biến màu khác (trang do bộ sinh riêng của một đơn vị dựng).
 const CSS = `
 figure.diagram{margin:14px 0 10px;padding:0;min-width:0;background:#fff;color:#15212b;border:1px solid var(--line,#d5dde4);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
 figure.diagram figcaption{font-weight:600;font-size:.95rem;margin:0;padding:8px 12px;background:var(--surface,#fff);color:var(--text,var(--fg,#15212b));border-bottom:1px solid var(--line,#d5dde4)}

@@ -2,12 +2,12 @@
 // spec: HOOK-S-004
 // spec: HOOK-S-008
 // spec: HOOK-S-009
-// LUẬT đưa mã ra ngoài (trước khi phiên chạy một lệnh): chặn các lệnh git vượt hai luật (S-034, S-035):
+// LUẬT đưa mã ra ngoài (trước khi phiên chạy một lệnh): chặn các lệnh git vượt hai luật:
 //   1. Repo gốc của dự án không bao giờ đẩy lên remote: từ chối `git push`, `git remote add|set-url` nhắm vào repo gốc,
 //      và mọi lệnh đụng tới chốt chặn đẩy trong cấu hình git của repo gốc.
 //   2. Git hook quét từ cấm không được bỏ qua, ở MỌI repo: từ chối `git commit --no-verify` (và -n), `git push --no-verify`,
 //      và việc đổi `core.hooksPath`.
-//   3. Nội dung thư mục `docs/` của dự án không bao giờ lên remote (S-062): `git push` ở repo khác bị từ chối khi các commit sắp đẩy
+//   3. Nội dung thư mục `docs/` của dự án không bao giờ lên remote: `git push` ở repo khác bị từ chối khi các commit sắp đẩy
 //      chứa bản chép của tệp trong docs/ (cổng kho mã dò); lệnh đưa tệp lên mạng bằng đường khác (gh, curl, scp, rsync...) mà đối số
 //      trỏ vào docs/ cũng bị từ chối.
 // Đây là lớp cho phiên. Lớp của git (hook pre-push luôn từ chối ở repo gốc và dò docs/ ở mọi repo khác, chốt đổi địa chỉ trong cấu hình)
@@ -17,7 +17,7 @@ const { deny } = require('../../../core/ports/events');
 const { parse, commitFlags } = require('../../../core/core/rules/lib/shell-words');
 
 const LOCK = 'khong-day://';
-// Lệnh có thể đưa tệp ở máy lên mạng. Đối số nào của chúng trỏ vào docs/ thì từ chối (S-062).
+// Lệnh có thể đưa tệp ở máy lên mạng. Đối số nào của chúng trỏ vào docs/ thì từ chối.
 const UPLOADERS = new Set(['gh', 'curl', 'wget', 'scp', 'sftp', 'rsync', 'rclone', 'aws', 'gsutil', 'az', 'gcloud']);
 
 // Các đường dẫn mà một từ có thể mang: nguyên từ, phần sau "=" (--flag=x, key=@x), bỏ "@" đầu (curl -F f=@x, gh -F f=@x).
@@ -36,10 +36,10 @@ async function run(event, { workspace: ws, repo }) {
   const no = (why) => deny(`${why} Không tìm cách khác để làm việc này; cần thì báo người dùng.`);
   const docsDir = ws.norm(`${ws.root}/docs`);
   const inDocs = (abs) => { const n = ws.norm(abs); return n === docsDir || n.startsWith(`${docsDir}/`) || n.startsWith(`${docsDir}\\`); };
-  // Hai luật riêng của dự án, bật trong cấu hình (S-063): repo gốc không đẩy (S-035), nội dung docs/ không lên remote (S-062).
+  // Hai luật riêng của dự án, bật trong cấu hình: repo gốc không đẩy, nội dung docs/ không lên remote.
   const rootNeverPush = ws.policy('rootNeverPush') === true;
   const docsNeverPush = ws.policy('docsNeverPush') === true;
-  // Lệnh đưa tệp lên mạng mà đối số trỏ vào docs/ (S-062).
+  // Lệnh đưa tệp lên mạng mà đối số trỏ vào docs/.
   if (docsNeverPush) {
     let cwd = event.cwd;
     for (const seg of parse(cmd)) {
@@ -53,7 +53,7 @@ async function run(event, { workspace: ws, repo }) {
         for (const p of pathCandidates(word)) {
           let abs = '';
           try { abs = ws.resolveToken(p, cwd); } catch { continue; }
-          if (abs && inDocs(abs)) return no(`Lệnh này đưa tệp trong thư mục docs/ của dự án lên mạng (${p}): nội dung docs/ không bao giờ lên remote (S-062).`);
+          if (abs && inDocs(abs)) return no(`Lệnh này đưa tệp trong thư mục docs/ của dự án lên mạng (${p}): nội dung docs/ không bao giờ lên remote.`);
         }
       }
     }
@@ -82,15 +82,15 @@ async function run(event, { workspace: ws, repo }) {
       sub = rest[i]; break;
     }
     const text = rest.join(' ');
-    if (/core\.hookspath/i.test(text)) return no('Lệnh này đổi `core.hooksPath`, tức là bỏ qua git hook quét từ cấm (S-034).');
-    if (sub === 'push' && rest.includes('--no-verify')) return no('`git push --no-verify` bỏ qua git hook quét từ cấm (S-034) nên bị chặn.');
-    if (sub === 'commit' && commitFlags(rest).some((x) => x === '--no-verify' || /^-[a-zA-Z]*n[a-zA-Z]*$/.test(x))) return no('`git commit --no-verify` (hay `-n`) bỏ qua git hook quét từ cấm (S-034) nên bị chặn.');
+    if (/core\.hookspath/i.test(text)) return no('Lệnh này đổi `core.hooksPath`, tức là bỏ qua git hook quét từ cấm.');
+    if (sub === 'push' && rest.includes('--no-verify')) return no('`git push --no-verify` bỏ qua git hook quét từ cấm nên bị chặn.');
+    if (sub === 'commit' && commitFlags(rest).some((x) => x === '--no-verify' || /^-[a-zA-Z]*n[a-zA-Z]*$/.test(x))) return no('`git commit --no-verify` (hay `-n`) bỏ qua git hook quét từ cấm nên bị chặn.');
     const inRoot = async () => rootNeverPush && sameDir(await repoOf(w.slice(g), cwd), ws.root);
-    if (sub === 'push' && await inRoot()) return no('Repo gốc BSN_ (harness) KHÔNG BAO GIỜ đẩy lên remote (S-035): chỉ commit ở máy.');
-    if (sub === 'remote' && /\b(add|set-url)\b/.test(text) && await inRoot()) return no('Repo gốc BSN_ (harness) không được có remote (S-035).');
-    if (sub === 'config' && (text.includes(LOCK) || /\burl\..*insteadof\b/i.test(text)) && await inRoot()) return no('Lệnh này đụng tới chốt chặn đẩy trong cấu hình git của repo gốc (S-035); chỉ người dùng được đổi.');
+    if (sub === 'push' && await inRoot()) return no('Repo gốc của dự án KHÔNG BAO GIỜ đẩy lên remote: chỉ commit ở máy.');
+    if (sub === 'remote' && /\b(add|set-url)\b/.test(text) && await inRoot()) return no('Repo gốc của dự án không được có remote.');
+    if (sub === 'config' && (text.includes(LOCK) || /\burl\..*insteadof\b/i.test(text)) && await inRoot()) return no('Lệnh này đụng tới chốt chặn đẩy trong cấu hình git của repo gốc; chỉ người dùng được đổi.');
     if (sub === 'push' && docsNeverPush && repo.docsLeaks) {
-      // Repo khác repo gốc: các commit sắp đẩy có bản chép của tệp trong docs/ không (S-062). Lấy remote và nhánh nguồn từ đối số.
+      // Repo khác repo gốc: các commit sắp đẩy có bản chép của tệp trong docs/ không. Lấy remote và nhánh nguồn từ đối số.
       const args = rest.slice(rest.indexOf('push') + 1).filter((x) => !x.startsWith('-'));
       const remote = args[0] || 'origin';
       const ref = (args[1] || 'HEAD').replace(/^\+/, '').split(':')[0] || 'HEAD';
@@ -98,7 +98,7 @@ async function run(event, { workspace: ws, repo }) {
       const leaks = dir ? await repo.docsLeaks(dir, remote, ref) : [];
       if (leaks.length) {
         const list = leaks.slice(0, 10).map((l) => `${l.file} (${l.why})`).join('; ');
-        return no(`Các commit sắp đẩy chứa ${leaks.length} tệp là nội dung của thư mục docs/ của dự án, thứ không bao giờ lên remote (S-062): ${list}${leaks.length > 10 ? '; ...' : ''}. Bỏ các tệp đó khỏi commit rồi làm lại.`);
+        return no(`Các commit sắp đẩy chứa ${leaks.length} tệp là nội dung của thư mục docs/ của dự án, thứ không bao giờ lên remote: ${list}${leaks.length > 10 ? '; ...' : ''}. Bỏ các tệp đó khỏi commit rồi làm lại.`);
       }
     }
   }

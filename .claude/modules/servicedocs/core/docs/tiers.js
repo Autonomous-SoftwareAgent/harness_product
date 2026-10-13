@@ -2,7 +2,7 @@
 // spec: MCP-S-002
 // spec: MCP-S-003
 // spec: MCP-S-004
-// LÕI của tài liệu ba tầng (S-016, S-055): dạng tệp design/spec/impl, dấu "đã đổi" của từng tầng, khung còn thiếu, lời in ra.
+// LÕI của tài liệu ba tầng: dạng tệp design/spec/impl, dấu "đã đổi" của từng tầng, khung còn thiếu, lời in ra.
 // Thuần: không đọc ghi đĩa, không biết dịch vụ nào đang được chọn, không hỏi giờ. Việc đọc, ghi có khóa và chọn dịch vụ là của mcp/core.js.
 const crypto = require('node:crypto');
 const path = require('node:path');
@@ -134,7 +134,7 @@ function markerHint(file, sid) {
   return `// spec: ${sid}`;
 }
 
-// Tệp cửa vào của dịch vụ (CLAUDE.md ở gốc dịch vụ) theo MỘT khuôn (S-032, S-036): bốn mục bắt buộc, so theo đầu tiêu đề cấp hai
+// Tệp cửa vào của dịch vụ (CLAUDE.md ở gốc dịch vụ) theo MỘT khuôn: bốn mục bắt buộc, so theo đầu tiêu đề cấp hai
 // để mỗi dịch vụ còn thêm được lời riêng ("Quy tắc riêng của ...", "Lệnh thường dùng (chạy từ ...)"). Mục khác thì tự do thêm.
 const ENTRY_SECTIONS = ['Phạm vi', 'Đọc gì khi nào', 'Quy tắc', 'Lệnh thường dùng'];
 

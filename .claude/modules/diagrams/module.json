@@ -7,5 +7,6 @@
   "tools": [{ "file": "mcp/diagrams/tools.js", "order": 20 }],
   "commands": ["cli/commands/diagrams.js"],
   "checks": ["mcp/diagrams/diagrams.js"],
+  "provides": { "diagramRestamp": "mcp/diagrams/diagrams.js" },
   "skills": ["diagrams"]
 }

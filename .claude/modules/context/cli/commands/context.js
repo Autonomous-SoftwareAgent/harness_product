@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-010
-// Lệnh dòng lệnh của khối context (S-064), góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/context.json.
+// Lệnh dòng lệnh của khối context, góp vào bảng lệnh của cli.js qua khóa `commands` trong modules/context.json.
 const fs = require('fs');
 
 function register(on, { argv, cmd, arg, si, core }) {

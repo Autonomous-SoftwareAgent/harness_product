@@ -1,6 +1,6 @@
 'use strict';
 // spec: GATE-S-007
-// LỜI CỦA LÕI BẰNG TIẾNG ANH (S-064). Lõi và cổng duyệt viết lời bằng tiếng Việt; khi cấu hình dự án đặt "lang": "en", hai chỗ dịch
+// LỜI CỦA LÕI BẰNG TIẾNG ANH. Lõi và cổng duyệt viết lời bằng tiếng Việt; khi cấu hình dự án đặt "lang": "en", hai chỗ dịch
 // quyết định ra dữ liệu của Claude Code (gate/gate-host.js và adapters/claude-code/hook.js) đưa lời qua bảng này ngay trước khi in.
 // Mỗi mục là một mẫu câu (có nhóm bắt phần thay đổi) và bản tiếng Anh. Câu không khớp mẫu nào thì giữ nguyên (tiếng Việt), không đoán.
 // Thêm lời mới cho lõi: thêm một mục ở đây và một ca trong test (gate/test/messages-en.test.js).
@@ -43,7 +43,7 @@ const RULES = [
   [/([^\s]+)\/ là thư mục dự án khai là chỉ để đọc \(mã bên ngoài để tham khảo\): ([^\n]*?)\. Sửa ở đây thường là nhầm chỗ\./g,
     '$1/ is declared read-only by the project (outside code kept for reference): $2. Editing here is usually a mistake.'],
   // Chặn theo skill
-  [/Lời gọi này bị chặn vì phiên chưa nạp đủ kiến thức cho việc đang làm \(S-032, bảng nối ([^)]*)\)\. Còn thiếu: ([^\n]*?)\. Cách làm: /g,
+  [/Lời gọi này bị chặn vì phiên chưa nạp đủ kiến thức cho việc đang làm \(bảng nối ([^)]*)\)\. Còn thiếu: ([^\n]*?)\. Cách làm: /g,
     'This call is blocked because the session has not loaded the knowledge this work needs (skill map $1). Missing: $2. How: '],
   [/mở từng skill bằng công cụ Skill \(hoặc đọc trọn ([^ ]+) bằng công cụ Read\)/g, (all, f) => `open each skill with the Skill tool (or read all of ${f.replace('<tên>', '<name>')} with the Read tool)`],
   [/(Missing: [^\n]*?)\btài liệu: /g, '$1documents: '],

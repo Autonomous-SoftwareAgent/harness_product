@@ -1,6 +1,6 @@
 'use strict';
 // spec: HOOK-S-011
-// HỢP ĐỒNG CỦA KHỐI MỞ RỘNG, bản 1.0 (S-065). Thuần: kiểm khai báo, dựng quyết định, gộp quyết định. Việc tìm khối trên đĩa, bản đã
+// HỢP ĐỒNG CỦA KHỐI MỞ RỘNG, bản 1.0. Thuần: kiểm khai báo, dựng quyết định, gộp quyết định. Việc tìm khối trên đĩa, bản đã
 // xác nhận và cửa sổ nhìn là của bộ chuyển (adapters/project/extensions.js); chạy luật kèm giới hạn thời gian là của cửa vào (hooks/wire.js).
 //
 // module.json: { "name", "api": "1.0", "scope": "project" | "unit", "rules": [tệp], "tools": [tệp], "commands": [tệp], "timeout": giây }
@@ -15,6 +15,8 @@ const { KINDS, checkDecision } = require('../../ports/events');
 
 const EXT_API = '1.0';
 const UNIT_KINDS = ['before-action', 'after-action'];
+// Công cụ một luật before-action nhận khi nó không khai matcher: các công cụ ghi. Bộ cài luôn khai nhóm hook cho đúng các công cụ này.
+const DEFAULT_MATCHER = 'Write|Edit|NotebookEdit|Bash';
 const NAME_RE = /^[a-z][a-z0-9-]{0,40}$/;
 const TOOL_RE = /^[a-z][a-z0-9_]{0,40}$/;
 const DEFAULT_TIMEOUT = 2;
@@ -130,4 +132,4 @@ function shapeAction(action, rel, writesAbs) {
   };
 }
 
-module.exports = { EXT_API, UNIT_KINDS, DEFAULT_TIMEOUT, MAX_TIMEOUT, apiCompatible, checkManifest, checkRule, checkTool, checkCommand, toolName, answers, label, merge, shapeAction };
+module.exports = { EXT_API, UNIT_KINDS, DEFAULT_MATCHER, DEFAULT_TIMEOUT, MAX_TIMEOUT, apiCompatible, checkManifest, checkRule, checkTool, checkCommand, toolName, answers, label, merge, shapeAction };

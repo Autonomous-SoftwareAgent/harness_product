@@ -1,6 +1,6 @@
 'use strict';
 // spec: CTX-S-003
-// Bộ nhận dạng NGUỒN: tờ khai báo của từng dịch vụ ở infra/services/<tên>.json (S-023), chỉ ở phần chung của cả hệ.
+// Bộ nhận dạng NGUỒN: tờ khai báo của từng dịch vụ ở infra/services/<tên>.json, chỉ ở phần chung của cả hệ.
 // Mỗi tờ ra một nút dịch vụ kèm cổng local và bản đang ghim.
 const { ID } = require('../kit');
 

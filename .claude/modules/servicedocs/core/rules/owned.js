@@ -14,13 +14,13 @@ const { deny } = require('../../../core/ports/events');
 const UNIT = '@unit';
 const OWNED = [
   { re: /^@unit\/[^/]+\/docs\/modules\/[^/]+\/(1-design|2-spec|3-impl)\.md$/i,
-    how: 'Ba tầng design/spec/impl chỉ ghi qua công cụ MCP bsn-docs: design_record và design_update (tầng 1), spec_fill (tầng 2), impl_link (tầng 3); truyền service="<tên service>".' }, // tên logic
+    how: 'Ba tầng design/spec/impl chỉ ghi qua công cụ MCP của harness: design_record và design_update (tầng 1), spec_fill (tầng 2), impl_link (tầng 3); truyền service="<tên service>".' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/_generated(\/|$)/i,
     how: 'docs/_generated/ do công cụ sinh: chạy `node .claude/modules/core/cli/cli.js --service <tên> check` (traceability) hoặc `... code` (code-map).' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/service\.yaml$/i,
-    how: 'docs/service.yaml là nguồn có cấu trúc của dịch vụ, chỉ ghi qua công cụ MCP bsn-docs: service_doc_set (meta, business, architecture, progress) và problem_record; truyền service="<tên service>".' }, // tên logic
+    how: 'docs/service.yaml là nguồn có cấu trúc của dịch vụ, chỉ ghi qua công cụ MCP của harness: service_doc_set (meta, business, architecture, progress) và problem_record; truyền service="<tên service>".' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/diagrams(\/|$)/i,
-    how: 'docs/diagrams/ chứa bản khai báo sơ đồ, chỉ ghi qua công cụ MCP bsn-docs: diagram_validate (kiểm, xem trước) rồi diagram_save; xóa bằng `node .claude/modules/core/cli/cli.js --service <tên> diagram-remove <id>`.' }, // tên logic
+    how: 'docs/diagrams/ chứa bản khai báo sơ đồ, chỉ ghi qua công cụ MCP của harness: diagram_validate (kiểm, xem trước) rồi diagram_save; xóa bằng `node .claude/modules/core/cli/cli.js --service <tên> diagram-remove <id>`.' }, // tên logic
   { re: /^@unit\/[^/]+\/docs\/context(\/|$)/i,
     how: 'docs/context/ chứa phần agent viết cho kho ngữ nghĩa (từ vựng, quan hệ bổ sung, giải thích và kết quả soát của sơ đồ tự sinh), chỉ ghi qua công cụ MCP bsn-docs: context_term, context_relate, diagram_explain, diagram_review; truyền service="<tên service>".' }, // tên logic
   { re: /^docs\/portal\/(?!history(\/|$))/i,
@@ -32,7 +32,7 @@ const MENTIONS_OWNED = /docs[\\/]+modules[\\/]+[^\s'"]+[\\/]+(1-design|2-spec|3-
 // (diagram_validate, diagram_save); công cụ sinh Mermaid lúc dựng trang. Chỉ xét tệp tài liệu (md, html, yaml, txt), không xét mã.
 const DOC_EXT = /\.(md|markdown|html?|ya?ml|txt)$/i;
 const MERMAID = /class\s*=\s*["']?[^"'>]*\bmermaid\b|```\s*mermaid\b|^[ \t]*(?:flowchart|graph)[ \t]+(?:TB|TD|BT|LR|RL)\b|^[ \t]*(?:sequenceDiagram|stateDiagram(?:-v2)?|classDiagram|erDiagram)[ \t]*$/im;
-const MERMAID_HOW = 'Không tự viết cú pháp Mermaid vào tệp. Khai sơ đồ bằng dữ liệu qua công cụ MCP bsn-docs: diagram_validate (kiểm, xem trước) rồi diagram_save (service="<tên>"); công cụ tự sinh Mermaid khi dựng trang.';
+const MERMAID_HOW = 'Không tự viết cú pháp Mermaid vào tệp. Khai sơ đồ bằng dữ liệu qua công cụ MCP của harness: diagram_validate (kiểm, xem trước) rồi diagram_save (service="<tên>"); công cụ tự sinh Mermaid khi dựng trang.';
 const writesMermaid = (file, text) => DOC_EXT.test(String(file)) && MERMAID.test(String(text || ''));
 
 // Đích của lệnh XÓA/DỜI có thể là thư mục chứa tệp sở hữu (rm -rf svc/docs/modules/core): cũng bị chặn.

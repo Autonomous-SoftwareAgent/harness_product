@@ -196,7 +196,7 @@ function checkInner() {
       const p = path.join(mod.dir, file);
       const key = path.relative(BSN_DIR, p).split(path.sep).join('/');
       if (journaled.has(key) && store.fileSha(p) !== journaled.get(key)) {
-        warnings.push(`[${name}] ${file} đã đổi ngoài công cụ kể từ lần ghi cuối của bsn-docs (sửa tay? tầng này chỉ ghi qua design_record/spec_fill/impl_link)`);
+        warnings.push(`[${name}] ${file} đã đổi ngoài công cụ kể từ lần ghi cuối của công cụ harness (sửa tay? tầng này chỉ ghi qua design_record/spec_fill/impl_link)`);
       }
     }
     const created = syncModule(mod);

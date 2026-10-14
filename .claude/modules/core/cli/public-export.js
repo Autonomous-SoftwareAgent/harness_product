@@ -170,11 +170,13 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 
 Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và điều gì chưa kiểm: [RELEASES.md](RELEASES.md), mỗi bản một mục.
 
+**Đang ở bản cũ và muốn biết lên bản mới phải làm gì**: đọc [UPGRADING.md](UPGRADING.md): bảng mỗi bản cần làm gì, những thứ bị bỏ hoặc đổi tên, hành vi nào sẽ khác. Tệp đó sinh tự động, bạn không phải đọc git diff.
+
 ## Hướng dẫn cho người vận hành và người mở rộng
 Cách làm hằng ngày với harness, thêm skill dùng chung cho cả dự án hay skill riêng cho từng repo, khối mở rộng, máy chủ MCP ngoài: thư mục [\`.claude/modules/core/guides/\`](.claude/modules/core/guides/README.md) (cũng có trong mọi dự án đã cài).
 
 ## Nâng cấp, và chuyển từ bản cũ
-- Đọc phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong \`.claude/modules/\` được thay; \`.claude/project/\`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
+- Đọc [UPGRADING.md](UPGRADING.md) (việc phải làm từ bản bạn đang cài lên bản mới) và phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong \`.claude/modules/\` được thay; \`.claude/project/\`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
 - Dự án đang dùng bản cũ (mọi thứ trong \`.claude/plugin/\`): cùng lệnh \`install\`. Lệnh chuyển cấu hình (\`project.json\`, bảng đơn vị, bảng skill, công tắc, bộ sinh riêng, luật mở rộng) sang \`.claude/project/\`, giữ sổ phiên, cất \`.claude/plugin/\` cũ để quay lại, và nêu các tệp cổng duyệt bạn từng sửa.
 
 ## Bố cục
@@ -314,7 +316,11 @@ function run(root, dest, opts = {}) {
   const noteErrs = notes ? require('../core/release/notes').check(notes, coreManifest.version) : ['bản đã commit không có tệp sổ phát hành'];
   if (noteErrs.length) out.push(`LỖI: sổ phát hành (${notesRel}) chưa đạt (${noteErrs.length}):`, ...noteErrs.map((e) => `  ${e}`));
   // Phần chênh so với bản liền trước, sinh từ git: mốc là nhãn `product/<số bản trước>` của repo nguồn (đặt lúc phát hành bản đó).
-  const prevVersion = notes ? ((require('../core/release/notes').parse(notes)[1] || {}).version || '') : '';
+  // Bản liền trước là bản gần nhất trong sổ MÀ repo có nhãn (bản chưa từng đóng gói thì không có nhãn: người dùng không có nó, nên không lấy làm mốc);
+  // không bản nào có nhãn thì lấy bản liền kề trong sổ để nói rõ thiếu nhãn nào.
+  const earlier = notes ? require('../core/release/notes').parse(notes).slice(1) : [];
+  const tagged = earlier.find((r) => git(root, ['rev-parse', '-q', '--verify', `refs/tags/product/${r.version}`]).status === 0);
+  const prevVersion = (tagged || earlier[0] || {}).version || '';
   const prevTag = prevVersion ? `product/${prevVersion}` : '';
   if (prevTag && git(root, ['rev-parse', '-q', '--verify', `refs/tags/${prevTag}`]).status === 0) {
     const shipped = (rel) => { if (!rel.startsWith(HOME)) return false; const inner = rel.slice(HOME.length); return SHIP.includes(inner.split('/')[0]) && inner.includes('/') && !EXCLUDE.some((re) => re.test(inner)); };
@@ -326,6 +332,7 @@ function run(root, dest, opts = {}) {
   } else if (prevVersion) out.push(`Ghi chú: repo nguồn không có nhãn ${prevTag} nên gói không có CHANGED.md (danh sách tệp và tên xuất đã đổi so với bản trước). Đặt nhãn đó ở commit đã đóng gói bản ${prevVersion}.`);
   // TỜ THAY ĐỔI cho máy đọc (core/releases/<số bản>.json): bản đang đóng gói phải có, đủ trường, và khi có mốc của bản trước thì MỌI tệp
   // đã đổi phải thuộc một mục của tờ (không có thay đổi nào không lời giải thích). Lệnh nâng cấp và agent ở dự án đã cài đọc tờ này.
+  const allSheets = [];
   {
     const sheets = require('../core/release/change-sheet');
     const inner = (rel) => rel.slice(HOME.length);
@@ -338,11 +345,14 @@ function run(root, dest, opts = {}) {
       const v = path.basename(rel, '.json');
       let obj; try { obj = JSON.parse(committed(root, rel).toString('utf8')); } catch (e) { out.push(`LỖI: tờ thay đổi ${rel} không đọc được: ${e.message}`); continue; }
       const cur = v === coreManifest.version;
+      allSheets.push(obj);
       const errs = sheets.check(obj, { version: v, changed: cur ? changedForSheet : null, packageFiles: cur ? packageFiles : null });
       if (errs.length) out.push(`LỖI: tờ thay đổi ${rel} chưa đạt (${errs.length}):`, ...errs.map((e) => `  ${e}`));
     }
     if (prevVersion && !changedForSheet) out.push(`Ghi chú: không có nhãn ${prevTag} nên CHƯA đối chiếu được tờ thay đổi của bản ${coreManifest.version} với các tệp thật sự đã đổi.`);
   }
+  // BÁO CÁO NÂNG CẤP cho người dùng gói: mỗi bản cần làm gì, cái gì bị bỏ, hành vi nào đổi. Sinh từ sổ phát hành và các tờ thay đổi, không viết tay.
+  if (notes) put('UPGRADING.md', require('../core/release/upgrading').render({ notes: require('../core/release/notes').parse(notes), sheets: allSheets, current: coreManifest.version }));
   put('.gitattributes', '* -text\n'); // giữ nguyên từng byte: dấu vân tay tính trên nội dung tệp
 
   // 6. Dấu vân tay cổng duyệt và dấu từng tệp của sản phẩm (bộ cài dùng để biết tệp nào người dùng đã sửa).

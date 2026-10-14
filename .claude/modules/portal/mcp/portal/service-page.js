@@ -197,7 +197,7 @@ function page({ title, body, ctx, current }) {
 <main>
 ${body}
 </main>
-<footer class="foot">Trang của dịch vụ, sinh từ bản đã commit của repo dịch vụ. Không sửa tay; sửa nguồn (bsn-docs) rồi commit.</footer>
+<footer class="foot">Trang của dịch vụ, sinh từ bản đã commit của repo dịch vụ. Không sửa tay; sửa nguồn (công cụ harness) rồi commit.</footer>
 ${ctx.mermaid ? '<script src="../assets/mermaid.min.js"></script>\n' : ''}<script src="../assets/portal.js"></script>
 </body>
 </html>

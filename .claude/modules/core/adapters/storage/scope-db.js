@@ -118,7 +118,7 @@ function statusText(root, sid) {
     if (a.invalid) return `${head}Kế hoạch đã duyệt KHÔNG theo khuôn (${a.errors.join('; ')}): mọi lần sửa trong dịch vụ sẽ bị chặn cho tới khi trình lại theo khuôn và được duyệt:\n${EXAMPLE}`;
     const reg = [...registered(db, a.plan.id)].sort();
     const todo = a.plan.services.filter((s) => !reg.includes(s));
-    return `${head}Kế hoạch #${a.plan.id} (duyệt ${new Date(a.plan.at).toISOString().slice(0, 16).replace('T', ' ')} UTC). Lý do: ${a.plan.reason || '(trống)'}. ` +
+    return `${head}Kế hoạch #${a.plan.id} (duyệt ${new Date(a.plan.at).toISOString().slice(0, 16).replace('T', ' ')} UTC). Việc: ${a.plan.reason || '(trống)'}. ` +
       `Dịch vụ trong kế hoạch: ${a.plan.services.join(', ') || 'không (chỉ phần dùng chung)'}. Đã đăng ký: ${reg.join(', ') || 'chưa'}.` +
       (todo.length ? ` CHƯA đăng ký: ${todo.join(', ')} (gọi công cụ scope_register).` : '') +
       codeRange(db, a.plan.id).map((r) => ` Mã của ${r.service}: từ ${r.base ? r.base.slice(0, 12) : '(chưa có commit lúc đăng ký)'}, ${r.commits.length ? `${r.commits.length} commit theo kế hoạch (mới nhất ${r.commits[r.commits.length - 1].slice(0, 12)})` : 'chưa có commit theo kế hoạch'}.`).join('');

@@ -40,7 +40,7 @@ function load() {
   try {
     doc = yaml.parse(core.readText(p));
   } catch (e) {
-    throw new Error(`${core.rel('docs/service.yaml')} của ${serviceName()} không đọc được (${e.message}). Tệp chỉ ghi qua công cụ bsn-docs; khôi phục bằng git hoặc bản sao lưu.`);
+    throw new Error(`${core.rel('docs/service.yaml')} của ${serviceName()} không đọc được (${e.message}). Tệp chỉ ghi qua công cụ MCP của harness; khôi phục bằng git hoặc bản sao lưu.`);
   }
   return doc;
 }

@@ -1,0 +1,133 @@
+{
+  "version": "2.3.0",
+  "date": "2026-10-14",
+  "summary": "Kế hoạch trình duyệt ít tốn token hơn: bỏ công cụ plan_draft, khuôn còn năm mục và cổng bỏ qua lỗi nhẹ, thiếu mục thì chỉ viết thêm đúng mục đó; mỗi lời gọi công cụ MCP nhanh hơn khoảng 0,7 giây; gói có UPGRADING.md cho người đang ở bản cũ.",
+  "changes": [
+    {
+      "id": "bo-cong-cu-plan-draft",
+      "kind": "removed",
+      "block": "core",
+      "title": "Công cụ plan_draft và lưới ép dùng nó bị bỏ",
+      "before": "Công cụ plan_draft dựng khối kế hoạch đúng khuôn; agent điền tham số rồi dán lại khối, nên tốn output gấp đôi. Khóa plan.draft (mặc định off từ 2.2.0) bật lưới cuối lượt giữ lượt một lần khi tin kế hoạch không dán khối do công cụ dựng. Khóa plan.strict (2.2.0) đòi đủ sáu mục.",
+      "after": "Không còn công cụ plan_draft (bộ công cụ lõi còn scope_register, scope_status, session_transfer), không còn lưới cuối lượt, không còn khóa plan.draft và plan.strict. Agent viết thẳng khối kế hoạch (skill plan).",
+      "files": [
+        "core/mcp/mcp-tools.js",
+        "core/gate/gate-rule.js",
+        "core/gate/gate-hook.js",
+        "core/gate/gate-state.js",
+        "core/gate/messages-en.js",
+        "core/skills/plan.md",
+        "core/skills/services.md",
+        "core/cli/skill-rules.js",
+        "core/guides/01-van-hanh.md",
+        "core/FORMAT.md"
+      ],
+      "surface": {
+        "config": ["plan.draft", "plan.strict"],
+        "tools": ["plan_draft"],
+        "skills": ["plan", "services"]
+      },
+      "migrations": ["khoa-ke-hoach-cu"],
+      "impact": "Skill hay tài liệu của dự án còn bảo agent gọi plan_draft thì cập nhật: gọi sẽ báo không có công cụ. Hai khóa cấu hình cũ được lệnh nâng cấp tự gỡ (để lại cũng không hại). Bảng skill ở .claude/rules tự sinh lại ở phiên kế tiếp.",
+      "verified": "Test: bộ công cụ lõi còn ba công cụ; lưới không còn; không lỗi khi cấu hình còn khóa cũ; bảng skill không nhắc plan_draft.",
+      "unverified": "Dự án có skill riêng nhắc plan_draft thì chưa có phép dò nào báo."
+    },
+    {
+      "id": "khuon-nam-muc-hai-muc-loi",
+      "kind": "changed",
+      "block": "core",
+      "title": "Khuôn kế hoạch năm mục, bỏ mục \"Lý do\", hai mức lỗi",
+      "before": "Sáu mục (Dịch vụ, Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro) đúng tên; từ 2.2.0 chỉ mục Dịch vụ bắt buộc và các mục khác thiếu thì chỉ cảnh báo (khóa plan.strict để đòi đủ).",
+      "after": "Năm mục bắt buộc: Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro; \"Lý do\" không còn là mục (dòng thừa vô hại). Lỗi nhẹ cho qua im lặng: thiếu dấu, hoa thường, gạch đầu dòng hay số thứ tự hay không có, in đậm, thứ tự mục, cấp tiêu đề hay tiêu đề in đậm, dấu gạch ngang thay dấu hai chấm, khoảng trắng. Lỗi nghiêm trọng làm lời đồng ý chưa mở cổng: thiếu tiêu đề, thiếu hoặc để trống một mục, tên đơn vị ở mục Dịch vụ không đọc được. Sổ phạm vi và lời nhắc dùng dòng đầu của \"Làm gì\" thay cho lý do.",
+      "files": [
+        "core/gate/plan-format.js",
+        "core/gate/gate-core.js",
+        "core/gate/gate-rule.js",
+        "core/adapters/storage/scope-db.js"
+      ],
+      "surface": { "config": ["plan.labels", "plan.extra"] },
+      "impact": "Khuôn khai riêng của dự án (plan.labels, plan.extra, plan.heading) vẫn dùng được; tên gọi khác của mục \"Lý do\" bị bỏ qua. Cột reason của sổ phiên từ nay ghi dòng đầu của \"Làm gì\" cho kế hoạch mới; kế hoạch cũ giữ nguyên.",
+      "verified": "Test khuôn: chín ca lỗi nhẹ cho qua, bốn loại lỗi nghiêm trọng bị chặn với danh sách mục cần bù; mục thêm của dự án và đơn vị vẫn bắt buộc.",
+      "unverified": "Chưa đo mức giảm token thật trên phiên của agent."
+    },
+    {
+      "id": "bu-dung-muc-thieu",
+      "kind": "added",
+      "block": "core",
+      "title": "Kế hoạch thiếu mục thì chỉ viết thêm đúng mục đó, không viết lại cả kế hoạch",
+      "before": "Kế hoạch thiếu mục thì lời đồng ý của người dùng không mở cổng và agent phải trình lại cả kế hoạch.",
+      "after": "Người dùng đồng ý mà kế hoạch có tiêu đề nhưng thiếu hoặc trống mục: cổng ghi lại kế hoạch và các mục cần bù (trạng thái repair trong tệp trạng thái của cổng), lời nhắc nêu đúng các mục đó. Lượt sau agent chỉ viết các dòng đó, hệ thống ghép vào kế hoạch cũ thành bản đầy đủ đang chờ duyệt, người dùng đồng ý lần nữa trên bản đó. Agent viết lại cả kế hoạch vẫn được. Việc bù hết hạn sau vài tin của người dùng.",
+      "files": [
+        "core/gate/gate-core.js",
+        "core/gate/gate-state.js",
+        "core/gate/gate-rule.js",
+        "core/gate/messages-en.js",
+        "core/gate/plan-format.js"
+      ],
+      "surface": {},
+      "impact": "Tệp trạng thái cổng của phiên có thêm trường repair (tự thêm, bản cũ đọc được). Không phải làm gì.",
+      "verified": "Test luồng: duyệt khi thiếu mục, nêu đúng mục, bù đúng mục, ghép, đồng ý lần hai mở cổng; viết lại cả kế hoạch; đổi ý; không tiêu đề; hết hạn; ghép thay mục hỏng, giữ mục tốt, chèn trước tiêu đề kế tiếp.",
+      "unverified": "Chưa thử bằng phiên Claude CLI thật ở dự án khác: agent có thật sự chỉ viết các dòng thiếu hay không."
+    },
+    {
+      "id": "quet-don-vi-mot-lan",
+      "kind": "changed",
+      "block": "core",
+      "title": "Dựng bộ công cụ MCP quét danh sách đơn vị một lần",
+      "before": "tools() gọi quét danh sách đơn vị trên đĩa bên trong vòng lặp qua từng công cụ (25 lần) ở mọi lời gọi list và call, tốn khoảng 0,9 giây.",
+      "after": "Quét một lần khi công cụ đầu tiên cần, dùng lại cho các công cụ còn lại. Mô tả tham số service giữ y nguyên từng ký tự; mỗi lời gọi vẫn chạy trong một tiến trình mới.",
+      "files": ["core/mcp/mcp-tools.js"],
+      "surface": {},
+      "impact": "Không phải làm gì. Phiên đang mở hưởng ngay vì mã công cụ nạp lại mỗi lời gọi.",
+      "verified": "Test đếm số lần quét; mô tả tham số service đủ danh sách; đo mỗi lời gọi từ 750-900 ms xuống 70-220 ms; kiểm đủ Windows giảm khoảng 230 giây.",
+      "unverified": "Mức tiết kiệm trên dự án nhiều đơn vị hơn hoặc đĩa chậm hơn."
+    },
+    {
+      "id": "loi-nhac-ten-may-chu",
+      "kind": "changed",
+      "block": "core",
+      "title": "Lời nhắc và lời chặn nêu đúng tên máy chủ (không còn gọi bsn-docs)",
+      "before": "Một số lời nhắc và lời chặn hiển thị cho agent nói \"công cụ MCP bsn-docs\" hay \"scope_register của bsn-docs\", tên máy chủ cũ trước khi MCP tách theo khối.",
+      "after": "Các lời đó nói \"công cụ MCP của harness\" (scope_register: \"máy chủ harness\"); bản dịch tiếng Anh đổi theo. Phần tương thích với tên cũ trong mã (luật vẫn nhận mcp__bsn-docs__ cho phiên đang mở) giữ nguyên.",
+      "files": [
+        "core/core/rules/scope.js",
+        "core/core/rules/lib/docs-tracking.js",
+        "servicedocs/core/rules/owned.js",
+        "servicedocs/mcp/docs/core.js",
+        "servicedocs/mcp/docs/service-doc.js",
+        "portal/mcp/portal/service-page.js"
+      ],
+      "surface": {},
+      "impact": "Không phải làm gì. Chữ cuối trang của cổng HTML (chân trang của từng dịch vụ) đổi sau lần dựng cổng kế tiếp.",
+      "verified": "Test dịch tiếng Anh của lời nhắc phạm vi; ảnh chụp hành vi hai nền; không còn câu cũ ở nơi sinh chữ ngoài phần tương thích.",
+      "unverified": "Lời của các luật chặn ghi tay tài liệu (owned.js) chưa thử bằng phiên Claude CLI thật."
+    },
+    {
+      "id": "bao-cao-nang-cap",
+      "kind": "added",
+      "block": "core",
+      "title": "Gói có UPGRADING.md: mỗi bản cần làm gì, cái gì bị bỏ",
+      "before": "Người ở bản cũ phải đọc từng mục của RELEASES.md rồi tự gộp việc phải làm, hoặc đọc git diff.",
+      "after": "Lệnh đóng gói sinh UPGRADING.md ở gốc gói từ sổ phát hành và các tờ thay đổi: bảng mỗi bản (ngày, mức việc phải làm, tóm tắt), danh sách thứ bị bỏ hoặc đổi tên, và chi tiết từng bản (việc phải làm, hành vi đổi, điều chưa kiểm). README trỏ tới.",
+      "files": [
+        "core/core/release/upgrading.js",
+        "core/cli/public-export.js"
+      ],
+      "surface": {},
+      "impact": "Không phải làm gì; chỉ là tài liệu đi kèm gói.",
+      "verified": "Test đóng gói: có UPGRADING.md, mỗi bản trong sổ có một dòng, bản bỏ công cụ hiện ở phần bị bỏ, bản có bước chuyển cấu hình hiện mức tương ứng.",
+      "unverified": "Các bản trước khi có tờ máy đọc chỉ có dòng trỏ về RELEASES.md."
+    }
+  ],
+  "migrations": [
+    {
+      "id": "khoa-ke-hoach-cu",
+      "file": ".claude/project/gate.config.json",
+      "ops": [
+        { "op": "remove", "path": ["plan", "draft"] },
+        { "op": "remove", "path": ["plan", "strict"] }
+      ]
+    }
+  ],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

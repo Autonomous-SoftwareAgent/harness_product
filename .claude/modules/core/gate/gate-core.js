@@ -17,7 +17,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 const paths = require('./gate-paths');
 const { analyzeBash } = require('./bash-targets');
-const { parsePlan } = require('./plan-format');
+const { parsePlan, mergeAddendum } = require('./plan-format');
 
 const ALLOW = { decision: 'allow' };
 const deny = (reason, code) => ({ decision: 'deny', reason, code });
@@ -27,7 +27,7 @@ const MAX_ASSISTANT_CHARS = 4000;
 const MAX_PLAN_CHARS = 20000; // trần cho riêng khối kế hoạch theo khuôn
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 
-const initialState = () => ({ open: false, lastAssistant: '', approved: null, pending: '', pendingAge: 0 });
+const initialState = () => ({ open: false, lastAssistant: '', approved: null, pending: '', pendingAge: 0, repair: null });
 // Kế hoạch chờ duyệt bị bỏ sau ngần này tin nhắn của người dùng mà không tin nào là lời duyệt: lời "ok" quá muộn không mở lại một kế hoạch đã trôi xa.
 const MAX_PENDING_AGE = 4;
 
@@ -44,7 +44,12 @@ function onStop(state, lastAssistantMessage) {
   }
   const kept = text.slice(0, MAX_ASSISTANT_CHARS);
   // Tin này là một kế hoạch đúng khuôn: nó thành kế hoạch đang chờ (thay kế hoạch chờ cũ). Tin khác (trả lời một câu hỏi, báo cáo) không xóa kế hoạch đang chờ.
-  if (parsePlan(kept).ok) return { ...state, lastAssistant: kept, pending: kept, pendingAge: 0 };
+  if (parsePlan(kept).ok) return { ...state, lastAssistant: kept, pending: kept, pendingAge: 0, repair: null };
+  // Cổng đang chờ model bù mục thiếu: tin này có đủ các mục đó thì ghép vào kế hoạch cũ; bản ghép thành kế hoạch đang chờ, người dùng duyệt lại bản đầy đủ.
+  if (state.repair) {
+    const merged = mergeAddendum(state.repair.base, kept, state.repair.fix);
+    if (merged) return { ...state, lastAssistant: kept, pending: merged, pendingAge: 0, repair: null };
+  }
   return { ...state, lastAssistant: kept };
 }
 
@@ -84,20 +89,30 @@ function onPrompt(state, verdict, now = Date.now(), opts = {}) {
         }
         return state;
       }
-      if (opts.requireFormat && !parsePlan(target).ok) return state;
-      return { ...state, open: true, approved: { sha: sha(target), plan: target, at: now }, pending: '', pendingAge: 0 };
-    case 'question':
-      // Hỏi thêm: kế hoạch đang chờ vẫn chờ, nhưng già đi một nấc.
-      return state.pending ? aged : state;
+      if (opts.requireFormat) {
+        const pp = parsePlan(target);
+        if (!pp.ok) {
+          // Kế hoạch có tiêu đề mà thiếu hoặc trống một số mục: nhớ kế hoạch và các mục cần bù, để lượt sau model chỉ viết thêm đúng các mục đó.
+          // Lỗi không sửa theo từng mục được (không có tiêu đề) thì không nhớ gì: model phải trình lại kế hoạch.
+          return { ...state, repair: pp.headingOk && pp.fix.length ? { base: target, fix: pp.fix, age: 0 } : null };
+        }
+      }
+      return { ...state, open: true, approved: { sha: sha(target), plan: target, at: now }, pending: '', pendingAge: 0, repair: null };
+    case 'question': {
+      // Hỏi thêm: kế hoạch đang chờ vẫn chờ, nhưng già đi một nấc; việc chờ bù mục cũng già đi.
+      const repair = state.repair && state.repair.age + 1 < MAX_PENDING_AGE ? { ...state.repair, age: state.repair.age + 1 } : null;
+      const base = state.pending ? aged : state;
+      return state.repair ? { ...base, repair } : base;
+    }
     case 'error':
       return state;
     case 'new_task':
       // Việc khác, hoặc một câu hỏi không liên quan: đóng cổng. Kế hoạch đang chờ CHƯA bị bỏ (người dùng có thể hỏi chen rồi quay lại duyệt), chỉ già đi.
-      return { ...aged, open: false, approved: null };
+      return { ...aged, open: false, approved: null, repair: null };
     case 'revise':
     default:
       // Đòi sửa hoặc từ chối: kế hoạch đang chờ không còn giá trị.
-      return { ...state, open: false, approved: null, pending: '', pendingAge: 0 };
+      return { ...state, open: false, approved: null, pending: '', pendingAge: 0, repair: null };
   }
 }
 

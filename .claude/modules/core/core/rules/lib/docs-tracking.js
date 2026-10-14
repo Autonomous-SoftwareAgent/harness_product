@@ -62,9 +62,9 @@ async function wrapUp(event, service, { workspace: ws, store, jobs }) {
     problems.push([
       `Code was changed this session (${files}) but ${statusRel} was not updated afterwards.`,
       `Update ${statusRel} (status table, goals, blocked items, add a log row). Also, if applicable:`,
-      '- DECISIONS.md for project-wide decisions; module decisions go through the bsn-docs tool design_record.',
-      '- spec/impl via bsn-docs (spec_fill, impl_link) so the module docs match the code.',
-      `- ${ws.unitRel(svc.name, 'docs/service.yaml')} via bsn-docs (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (docs/portal) is rebuilt from it automatically.`,
+      '- DECISIONS.md for project-wide decisions; module decisions go through the harness docs tool design_record.',
+      '- spec/impl via the harness docs tools (spec_fill, impl_link) so the module docs match the code.',
+      `- ${ws.unitRel(svc.name, 'docs/service.yaml')} via the harness docs tools (service_doc_set, problem_record) if the business view, architecture, progress or open problems changed; the human-facing HTML portal (docs/portal) is rebuilt from it automatically.`,
     ].join('\n'));
   }
 
@@ -72,7 +72,7 @@ async function wrapUp(event, service, { workspace: ws, store, jobs }) {
   await jobs.refreshCodeMap(svc.name); // làm mới code-map từ code (bộ sinh riêng của service); lỗi ở đây không chặn việc kết thúc
   // Trang cho người đọc (cổng docs/portal) KHÔNG làm mới ở đây: cổng chỉ hiện bản đã commit, nên nó dựng lại lúc dịch vụ commit (git hook post-commit).
   if (r.failed) {
-    problems.push(`docs check failed. Fix with the bsn-docs tools (spec_fill / impl_link / design_update, pass service="${svc.name}"), then re-check with docs_check:\n${r.text}`);
+    problems.push(`docs check failed. Fix with the harness docs tools (spec_fill / impl_link / design_update, pass service="${svc.name}"), then re-check with docs_check:\n${r.text}`);
   }
 
   if (!problems.length) {

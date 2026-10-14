@@ -37,7 +37,7 @@ function build(root) {
   const body = [
     '# Skill của dự án: việc gì thì mở skill nào',
     '',
-    'Mỗi việc có MỘT skill ghi cách làm. Mở bằng công cụ Skill trước khi làm; hook chặn lời gọi ghi khi phiên chưa mở skill cần thiết. Kế hoạch trình duyệt: theo skill `plan` (khối cần dòng "Dịch vụ"); công cụ `plan_draft` dựng khối là tùy chọn.',
+    'Mỗi việc có MỘT skill ghi cách làm. Mở bằng công cụ Skill trước khi làm; hook chặn lời gọi ghi khi phiên chưa mở skill cần thiết. Kế hoạch trình duyệt: theo skill `plan` (đủ năm mục; lỗi nhẹ cổng bỏ qua, thiếu mục thì chỉ viết thêm đúng mục đó).',
     '',
     ...rows,
     '',

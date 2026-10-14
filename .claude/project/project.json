@@ -41,8 +41,7 @@
       "diagram_get",
       "context_explore",
       "scope_register",
-      "scope_status",
-      "plan_draft"
+      "scope_status"
     ],
     "files": []
   },

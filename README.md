@@ -14,11 +14,13 @@ Cần Node 22.5 trở lên (dùng SQLite có sẵn của Node) và git.
 
 Bản này có gì, nâng cấp phải làm gì, đã kiểm bằng gì và điều gì chưa kiểm: [RELEASES.md](RELEASES.md), mỗi bản một mục.
 
+**Đang ở bản cũ và muốn biết lên bản mới phải làm gì**: đọc [UPGRADING.md](UPGRADING.md): bảng mỗi bản cần làm gì, những thứ bị bỏ hoặc đổi tên, hành vi nào sẽ khác. Tệp đó sinh tự động, bạn không phải đọc git diff.
+
 ## Hướng dẫn cho người vận hành và người mở rộng
 Cách làm hằng ngày với harness, thêm skill dùng chung cho cả dự án hay skill riêng cho từng repo, khối mở rộng, máy chủ MCP ngoài: thư mục [`.claude/modules/core/guides/`](.claude/modules/core/guides/README.md) (cũng có trong mọi dự án đã cài).
 
 ## Nâng cấp, và chuyển từ bản cũ
-- Đọc phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong `.claude/modules/` được thay; `.claude/project/`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
+- Đọc [UPGRADING.md](UPGRADING.md) (việc phải làm từ bản bạn đang cài lên bản mới) và phần "Nâng cấp" của bản mới trong [RELEASES.md](RELEASES.md), tải bản mới rồi chạy lại bước 2 và 3 với bản mới. Mã trong `.claude/modules/` được thay; `.claude/project/`, skill bạn đã sửa, sổ phiên và phần settings của bạn giữ nguyên. Tệp mã bạn từng sửa tay được nêu tên (bản cũ nằm trong chỗ cất).
 - Dự án đang dùng bản cũ (mọi thứ trong `.claude/plugin/`): cùng lệnh `install`. Lệnh chuyển cấu hình (`project.json`, bảng đơn vị, bảng skill, công tắc, bộ sinh riêng, luật mở rộng) sang `.claude/project/`, giữ sổ phiên, cất `.claude/plugin/` cũ để quay lại, và nêu các tệp cổng duyệt bạn từng sửa.
 
 ## Bố cục

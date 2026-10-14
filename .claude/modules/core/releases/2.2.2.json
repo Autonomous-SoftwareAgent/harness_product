@@ -1,0 +1,27 @@
+{
+  "version": "2.2.2",
+  "date": "2026-10-14",
+  "summary": "Mỗi lời gọi công cụ MCP của harness nhanh hơn khoảng 0,6 đến 0,7 giây: danh sách đơn vị chỉ quét một lần mỗi lần dựng bộ công cụ.",
+  "changes": [
+    {
+      "id": "quet-don-vi-mot-lan",
+      "kind": "changed",
+      "block": "core",
+      "title": "Dựng bộ công cụ MCP quét danh sách đơn vị một lần",
+      "before": "tools() gọi quét danh sách đơn vị trên đĩa bên trong vòng lặp qua từng công cụ (25 lần) ở mọi lời gọi list và call, tốn khoảng 0,9 giây.",
+      "after": "Quét một lần khi công cụ đầu tiên cần, dùng lại cho các công cụ còn lại. Mô tả tham số service giữ y nguyên từng ký tự; mỗi lời gọi vẫn chạy trong một tiến trình mới.",
+      "files": [
+        "core/mcp/mcp-tools.js"
+      ],
+      "surface": {},
+      "impact": "Không phải làm gì. Phiên đang mở hưởng ngay vì mã công cụ nạp lại mỗi lời gọi.",
+      "verified": "Test đếm số lần quét (một lần cho list và tools), mô tả tham số service đủ danh sách; ảnh chụp hành vi không đổi; đo mỗi lời gọi từ 750-900 ms xuống 70-220 ms.",
+      "unverified": "Mức tiết kiệm trên dự án nhiều đơn vị hơn hoặc đĩa chậm hơn."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

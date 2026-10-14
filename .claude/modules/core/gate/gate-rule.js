@@ -24,7 +24,7 @@
 //   now()                                                          giờ hiện tại (ms)
 // Quyết định: null (không nói gì) hoặc { verdict: 'note' | 'deny' | 'ask', reason }.
 const core = require('./gate-core');
-const { parsePlan, hasHeading, usesDraft } = require('./plan-format');
+const { parsePlan } = require('./plan-format');
 
 const note = (reason) => ({ verdict: 'note', reason });
 
@@ -39,19 +39,19 @@ const CTX_OPEN =
 
 // Cổng mở theo kế hoạch ĐANG CHỜ (không phải tin cuối của model): nêu lại kế hoạch nào vừa được mở, để người dùng và phiên thấy ngay nếu hiểu nhầm.
 const ctxOpenHeld = (parsed) =>
-  `GATE: người dùng đã đồng ý KẾ HOẠCH ĐANG CHỜ (bản bạn trình trước câu trả lời vừa rồi), dịch vụ: ${parsed.services.join(', ') || 'không'}; lý do: ${String(parsed.reason || '').slice(0, 160)}. ` +
+  `GATE: người dùng đã đồng ý KẾ HOẠCH ĐANG CHỜ (bản bạn trình trước câu trả lời vừa rồi), dịch vụ: ${parsed.services.join(', ') || 'không'}; việc: ${String(parsed.reason || '').slice(0, 160)}. ` +
   'Được sửa tệp, nhưng chỉ đúng phạm vi kế hoạch đó. Câu đầu của lượt này hãy nói rõ bạn đang làm theo kế hoạch nào; nếu người dùng không có ý duyệt kế hoạch đó thì họ sẽ dừng bạn.';
 
+// Kế hoạch có tiêu đề mà thiếu hoặc trống một số mục: model chỉ viết thêm đúng các mục đó, không viết lại cả kế hoạch.
+const ctxRepair = (fix) =>
+  `GATE: người dùng đã đồng ý, nhưng kế hoạch bạn trình còn thiếu: ${fix.join(', ')}. Cổng CHƯA mở và mọi lần sửa tệp vẫn bị chặn. ` +
+  `Đừng viết lại kế hoạch: chỉ viết thêm ${fix.length > 1 ? 'các dòng' : 'dòng'} ${fix.map((l) => `"- ${l}: ..."`).join(', ')} (mỗi mục một dòng), hệ thống tự ghép vào kế hoạch cũ; rồi chờ người dùng đồng ý lần nữa.`;
+// Kế hoạch không đọc được hẳn (không có tiêu đề): phải trình lại.
 const ctxBadPlan = (errors) =>
   `GATE: người dùng đã đồng ý, nhưng kế hoạch bạn trình KHÔNG theo khuôn chuẩn (${errors.join('; ')}), nên cổng CHƯA mở và mọi lần sửa tệp vẫn bị chặn. ` +
-  'Trình lại kế hoạch có tiêu đề "## Kế hoạch" và dòng "- Dịch vụ: <tên đơn vị cách nhau dấu phẩy, hoặc: không>" (các mục Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro nên có, thiếu thì chỉ cảnh báo), rồi chờ người dùng đồng ý lần nữa.';
+  'Trình lại kế hoạch có tiêu đề "## Kế hoạch" và đủ năm mục Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro (mỗi mục một dòng "- <mục>: ..."), rồi chờ người dùng đồng ý lần nữa.';
 const CTX_FORMAT =
-  ' Kế hoạch cần tiêu đề "## Kế hoạch" và dòng "- Dịch vụ: <tên đơn vị, hoặc: không>"; nên có thêm Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro (thiếu thì chỉ cảnh báo). Được duyệt thì gọi scope_register rồi mới sửa.';
-
-// Tin kế hoạch không dán khối do plan_draft dựng: giữ lượt MỘT lần (lượt nói tiếp do chính lần giữ này gây ra thì cho qua, không bao giờ kẹt).
-const CTX_NOT_DRAFTED =
-  'GATE: kế hoạch bạn vừa viết KHÔNG do công cụ plan_draft dựng (hoặc đã bị sửa chữ), nên khuôn có thể sai. ' +
-  'Gọi công cụ plan_draft với nội dung kế hoạch, rồi dán NGUYÊN khối nó trả về vào tin trả lời và dừng chờ người dùng duyệt.';
+  ' Kế hoạch cần tiêu đề "## Kế hoạch" và đủ năm mục Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro (mỗi mục một dòng "- <mục>: ..."); lỗi nhẹ về dấu hay cách viết thì bỏ qua, thiếu mục thì chỉ cần viết thêm đúng mục đó. Được duyệt thì gọi scope_register rồi mới sửa.';
 
 const CTX_PEER_OPEN =
   'GATE: tin vừa rồi do phiên Claude khác gửi, không phải người dùng, nên không tính là lời duyệt và không đổi trạng thái cổng. ' +
@@ -81,16 +81,17 @@ function userPrompt(event, cfg, p) {
   const r = !state.lastAssistant || msg.length > cfg.maxPromptChars
     ? { verdict: 'new_task', via: 'rule', ms: 0 } // chưa có kế hoạch nào để duyệt, hoặc tin dài (một yêu cầu, không phải câu đồng ý)
     : p.judge(msg, plan, q.held ? { reply: state.lastAssistant } : null);
-  const parsed = plan ? parsePlan(plan) : { ok: false, errors: [] };
+  const parsed = plan ? parsePlan(plan) : { ok: false, errors: [], fix: [], headingOk: false };
   const badFormat = requireFormat && r.verdict === 'approve' && !state.open && Boolean(state.lastAssistant) && !parsed.ok;
   const next = core.onPrompt(state, r.verdict, p.now(), { requireFormat });
   const changed = next.open !== state.open || (next.approved && next.approved.sha) !== (state.approved && state.approved.sha)
-    || (next.pending || '') !== (state.pending || '') || (next.pendingAge || 0) !== (state.pendingAge || 0);
+    || (next.pending || '') !== (state.pending || '') || (next.pendingAge || 0) !== (state.pendingAge || 0)
+    || JSON.stringify(next.repair || null) !== JSON.stringify(state.repair || null);
   if (changed) p.state.save(sid, next);
   // Nhân chứng thứ hai: mỗi lần mở/đóng cổng ghi vào nhật ký kèm băm kế hoạch đã duyệt (không ghi nội dung tin nhắn).
   // Cổng đang mở mà kế hoạch được duyệt đổi (kế hoạch mới đúng khuôn thay kế hoạch cũ): cũng là một lần mở, để nhân chứng trong nhật ký khớp băm mới.
   const replaced = state.open && next.open && state.approved && next.approved && next.approved.sha !== state.approved.sha;
-  if (!state.open && next.open) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: q.held ? `${r.via}-held` : r.via, ...(parsed.warnings && parsed.warnings.length ? { warn: parsed.warnings.join('; ') } : {}) });
+  if (!state.open && next.open) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: q.held ? `${r.via}-held` : r.via });
   else if (replaced) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: `${r.via}-replan` });
   else if (state.open && !next.open) p.log({ sid, event: 'gate-close', reason: r.verdict });
   p.log({ sid, event: 'prompt', verdict: badFormat ? 'approve-bad-format' : r.verdict, via: r.via, ms: r.ms, len: msg.length, open: next.open });
@@ -103,18 +104,13 @@ function userPrompt(event, cfg, p) {
   }
   const closedCtx = requireFormat ? `${CTX_CLOSED}${CTX_FORMAT}` : CTX_CLOSED;
   const opened = (!state.open && next.open) || replaced;
-  return note(badFormat ? ctxBadPlan(parsed.errors) : next.open ? (r.verdict === 'approve' ? (q.held && opened ? ctxOpenHeld(parsed) : CTX_OPEN) : '') : (r.verdict === 'error' ? CTX_UNSURE : closedCtx));
+  return note(badFormat ? (next.repair ? ctxRepair(next.repair.fix) : ctxBadPlan(parsed.errors)) : next.open ? (r.verdict === 'approve' ? (q.held && opened ? ctxOpenHeld(parsed) : CTX_OPEN) : '') : (r.verdict === 'error' ? CTX_UNSURE : closedCtx));
 }
 
 // Hết lượt: lưu tin nhắn cuối của model làm ngữ cảnh cho lượt sau. Không bao giờ nói gì với phiên.
 function turnEnd(event, cfg, p) {
   const sid = sidOf(event);
   const state = p.state.load(sid);
-  // Lưới của plan_draft: tin có tiêu đề kế hoạch mà không dán nguyên khối công cụ đã dựng thì giữ lượt một lần.
-  if (!event.again && p.drafts && p.drafts.mode() === 'block' && p.scopeMode() === 'enforce' && hasHeading(event.reply) && !usesDraft(event.reply, p.drafts.load(sid))) {
-    p.log({ sid, event: 'stop', len: String(event.reply || '').length, held: 'not-drafted' });
-    return { verdict: 'block', reason: CTX_NOT_DRAFTED };
-  }
   // Phiên vừa trình một kế hoạch đúng khuôn, rồi một hook cuối lượt khác (ví dụ lời nhắc cập nhật tài liệu) bắt nó nói thêm một tin KHÔNG phải
   // kế hoạch: giữ kế hoạch làm ngữ cảnh, nếu không lời đồng ý của người dùng sẽ rơi vào tin nhắc đó và cổng không mở (gặp 2026-10-09).
   // Chỉ áp cho lượt nói tiếp do hook cuối lượt gây ra (again), không áp cho lượt trả lời bình thường.
@@ -174,6 +170,6 @@ function sessionStart(event, cfg, p) {
 const HANDLERS = { 'user-prompt': userPrompt, 'turn-end': turnEnd, 'before-action': beforeAction, 'session-start': sessionStart };
 
 // Lời của cổng duyệt, để test kiểm bản dịch tiếng Anh (messages-en.js) phủ đủ.
-const TEXT = { CTX_NOT_DRAFTED, CTX_CLOSED, CTX_UNSURE, CTX_OPEN, CTX_PEER_OPEN, CTX_PEER_CLOSED, ctxOpenHeld, ctxBadPlan };
+const TEXT = { CTX_CLOSED, CTX_UNSURE, CTX_OPEN, CTX_PEER_OPEN, CTX_PEER_CLOSED, ctxOpenHeld, ctxBadPlan, ctxRepair };
 
 module.exports = { userPrompt, turnEnd, beforeAction, sessionStart, checkWitness, HANDLERS, TEXT };

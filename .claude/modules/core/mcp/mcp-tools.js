@@ -19,41 +19,13 @@ const strs = (description) => ({ type: 'array', items: { type: 'string' }, descr
 const CORE_TOOLS = [
   {
     name: 'scope_register',
-    description: 'ĐĂNG KÝ dịch vụ mà phiên sẽ sửa theo kế hoạch người dùng VỪA DUYỆT. Thứ tự bắt buộc: trình kế hoạch theo khuôn (## Kế hoạch, sáu mục: Dịch vụ, Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro) -> người dùng duyệt -> gọi công cụ này -> mới sửa tệp. Chỉ đăng ký được dịch vụ có trong mục "Dịch vụ" của kế hoạch đã duyệt; sửa dịch vụ chưa đăng ký bị hook chặn. Phần dùng chung (docs/system, docs/handoff) không cần đăng ký.',
+    description: 'ĐĂNG KÝ dịch vụ mà phiên sẽ sửa theo kế hoạch người dùng VỪA DUYỆT. Thứ tự bắt buộc: trình kế hoạch theo khuôn (## Kế hoạch, năm mục: Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro) -> người dùng duyệt -> gọi công cụ này -> mới sửa tệp. Chỉ đăng ký được dịch vụ có trong mục "Dịch vụ" của kế hoạch đã duyệt; sửa dịch vụ chưa đăng ký bị hook chặn. Phần dùng chung (docs/system, docs/handoff) không cần đăng ký.',
     inputSchema: { type: 'object', required: ['services'], properties: { services: strs('Tên các dịch vụ cần đăng ký, ví dụ ["billing"]. Đơn vị khai riêng trong cấu hình dự án cũng đăng ký như vậy.') } },
     noService: true,
     run: (a) => {
       const r = require('../hooks/scope-lib').register(ROOT, process.env.CLAUDE_CODE_SESSION_ID, a.services);
       if (!r.ok) throw new Error(r.text);
       return r.text;
-    },
-  },
-  {
-    name: 'plan_draft',
-    description: 'DỰNG kế hoạch trình người dùng đúng khuôn của cổng duyệt. GỌI công cụ này thay vì tự viết khối "## Kế hoạch": bạn chỉ điền nội dung các trường, công cụ dựng khối chuẩn (tên mục, tiêu đề, mục bắt buộc thêm của dự án) và trả về. ' +
-      'Sai nội dung (mục trống, đơn vị không có thật, thiếu mục bắt buộc thêm) thì từ chối ngay kèm lý do. Được thì DÁN NGUYÊN khối trả về vào tin trả lời (lời giải thích viết tự do ở trên hoặc dưới khối), rồi DỪNG chờ người dùng duyệt. Cuối lượt hệ thống kiểm tin kế hoạch có dán đúng khối này không. Chỉ đọc, không đổi tệp nào của dự án. Cách dùng: skill plan.',
-    inputSchema: {
-      type: 'object',
-      required: ['services', 'reason', 'work', 'files', 'skip', 'risks'],
-      properties: {
-        services: strs('Mục "Dịch vụ": tên các đơn vị sẽ sửa, ví dụ ["harness"]; chỉ đụng phần dùng chung thì truyền []'),
-        reason: { description: 'Mục "Lý do": vì sao cần làm việc này (chuỗi, hoặc danh sách chuỗi nối bằng dấu chấm phẩy)' },
-        work: { description: 'Mục "Làm gì": các việc sẽ làm' },
-        files: { description: 'Mục "Sửa tệp": các tệp và thư mục sẽ sửa' },
-        skip: { description: 'Mục "Không làm": điều cố ý không làm' },
-        risks: { description: 'Mục "Rủi ro": điều có thể sai, và cách xử lý' },
-        extra: { type: 'object', description: 'Các mục bắt buộc thêm mà dự án hay đơn vị đòi (tên mục: nội dung); thiếu thì công cụ nói rõ mục nào' },
-      },
-    },
-    noService: true,
-    run: (a) => {
-      const F = require('../gate/plan-format');
-      const known = [...new Set([...engine.listAllServices(), ...Object.keys(P.extraUnits(ROOT))])].sort();
-      const r = F.draftPlan(a, F.loadOptions(ROOT), known);
-      if (!r.ok) throw new Error(`Chưa dựng được kế hoạch: ${r.errors.join('; ')}. Sửa các trường đó rồi gọi lại plan_draft.`);
-      const sid = process.env.CLAUDE_CODE_SESSION_ID;
-      if (sid) { try { require('../gate/gate-state').saveDraft(ROOT, sid, r.block); } catch { /* không ghi được: lưới cuối lượt sẽ nhắc một lần */ } }
-      return 'Kế hoạch đúng khuôn. Dán NGUYÊN khối dưới đây vào tin trả lời (không đổi chữ nào), rồi DỪNG chờ người dùng duyệt:\n\n' + r.block;
     },
   },
   {
@@ -136,10 +108,13 @@ function tools(block) {
   const extra = Object.keys(P.extraUnits(ROOT))[0];
   const what = [where && `thư mục dưới ${where}`, extra && `một đơn vị ngoài như ${extra}`].filter(Boolean).join(', hoặc ') || `đơn vị khai trong ${require('node:path').relative(ROOT, P.projectConfigPath(ROOT)).split(require('node:path').sep).join('/')}`;
   const dflt = cfg.defaultUnit ? `Bỏ trống = ${cfg.defaultUnit}.` : 'Bắt buộc truyền.';
+  // Danh sách đơn vị chỉ quét đĩa MỘT lần cho mỗi lần dựng (quét trong vòng lặp từng tốn khoảng 0,9 giây cho mỗi lời gọi công cụ).
+  let names = null;
+  const unitNames = () => (names === null ? (names = engine.listAllServices().join(', ') || '(chưa có)') : names);
   for (const t of out) {
     if (t.noService) continue; // công cụ của cả hệ: tự khai tham số service (nếu có), không ép về một dịch vụ
     t.inputSchema.properties = t.inputSchema.properties || {};
-    t.inputSchema.properties.service = { type: 'string', description: `Tên service (${what}), có thể là: ${engine.listAllServices().join(', ') || '(chưa có)'}. ${dflt}` };
+    t.inputSchema.properties.service = { type: 'string', description: `Tên service (${what}), có thể là: ${unitNames()}. ${dflt}` };
   }
   return block ? out.filter((t) => t.block === block) : out;
 }

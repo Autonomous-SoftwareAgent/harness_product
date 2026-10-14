@@ -6,6 +6,59 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.3.0 (2026-10-14)
+
+Kế hoạch trình duyệt tốn ít token hơn và ít bị viết lại. Bản này BỎ một công cụ (`plan_draft`) và hai khóa cấu hình; đọc phần "Nâng cấp".
+
+### Có gì mới
+- **Thiếu mục thì chỉ viết thêm đúng mục đó.** Người dùng đồng ý mà kế hoạch có tiêu đề nhưng thiếu hoặc để trống một số mục: cổng nêu đúng các mục đó, agent chỉ viết thêm các dòng ấy, hệ thống ghép vào kế hoạch cũ và chờ người dùng đồng ý lần nữa trên bản đầy đủ. Agent viết lại cả kế hoạch vẫn được.
+- **`UPGRADING.md` ở gốc gói**: bảng mỗi bản cần làm gì, danh sách thứ bị bỏ hoặc đổi tên, hành vi nào sẽ khác, điều chưa kiểm. Sinh tự động; người ở bản cũ đọc một tệp là biết cần làm gì, không phải đọc git diff.
+- **Mỗi lời gọi công cụ MCP nhanh hơn khoảng 0,7 giây** (danh sách đơn vị chỉ quét đĩa một lần mỗi lần dựng bộ công cụ, trước đây 25 lần). Kiểm đủ ở Windows giảm khoảng 230 giây.
+
+### Hành vi đổi
+- **Công cụ `plan_draft` bị bỏ**, cùng lưới cuối lượt giữ lượt khi agent không dùng nó. Công cụ này làm agent tốn output gấp đôi (điền tham số rồi dán lại khối). Agent viết thẳng khối kế hoạch (skill `plan`).
+- **Khuôn kế hoạch còn năm mục bắt buộc**: Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro. Mục "Lý do" bỏ khỏi khuôn (đã có đoạn tổng hợp yêu cầu ngay trước kế hoạch); lời nhắc và sổ phiên dùng dòng đầu của "Làm gì" thay cho lý do.
+- **Hai mức lỗi.** Lỗi nhẹ cho qua im lặng: thiếu dấu, hoa thường, gạch đầu dòng hay số thứ tự hay không có, in đậm, thứ tự mục, cấp tiêu đề, dấu gạch ngang thay dấu hai chấm, khoảng trắng. Lỗi nghiêm trọng thì lời đồng ý chưa mở cổng: thiếu tiêu đề, thiếu hoặc để trống một mục, tên đơn vị ở mục Dịch vụ không đọc được.
+- So với 2.2.0 (chỉ "Dịch vụ" bắt buộc, mục khác thiếu thì cảnh báo), kế hoạch thiếu "Rủi ro" hay "Không làm" nay phải bù trước khi cổng mở; bù chỉ tốn vài dòng.
+- Lời nhắc và lời chặn hiển thị cho agent nói "công cụ MCP của harness" thay vì "bsn-docs" (tên máy chủ cũ trước khi MCP tách theo khối). Luật vẫn nhận tên cũ cho phiên đang mở.
+
+### Nâng cấp
+- Từ 2.2.x hoặc 2.1.x: nâng cấp như mọi lần. Lệnh nâng cấp tự gỡ hai khóa `plan.draft` và `plan.strict` khỏi `.claude/project/gate.config.json` (để lại cũng không hại).
+- **Việc bạn cần làm tay nếu có:** skill hay tài liệu riêng của dự án còn bảo agent gọi `plan_draft` thì sửa lại: công cụ không còn, gọi sẽ báo lỗi. Bảng skill ở `.claude/rules/harness-skills.md` tự sinh lại ở phiên kế tiếp.
+- Phiên Claude Code đang mở: gõ `/mcp` để bộ công cụ cập nhật (bớt `plan_draft`).
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test khuôn: chín ca lỗi nhẹ cho qua, bốn loại lỗi nghiêm trọng bị chặn kèm đúng danh sách mục cần bù; luồng bù đủ, bù thiếu, viết lại cả kế hoạch, đổi ý, không tiêu đề, hết hạn; ghép thay mục hỏng và giữ mục tốt.
+- Test đóng gói: `UPGRADING.md` có một dòng cho mỗi bản, bản bỏ công cụ hiện ở phần bị bỏ.
+
+### Chưa kiểm và giới hạn
+- Chưa thử bằng phiên Claude CLI thật ở dự án khác: agent có thật sự chỉ viết các dòng thiếu hay không chưa kiểm.
+- Chưa đo mức giảm token thật trên phiên của agent.
+- Nới dấu phân cách có thể nhận nhầm một dòng văn xuôi bắt đầu bằng "Rủi ro - ..." là mục (chỉ trong khối kế hoạch).
+- `UPGRADING.md` chỉ phân loại mức việc phải làm cho các bản có tờ thay đổi máy đọc; các bản trước đó trỏ về `RELEASES.md`.
+
+## 2.2.2 (2026-10-14)
+
+Bản nhỏ: mỗi lời gọi công cụ MCP của harness nhanh hơn khoảng 0,6 đến 0,7 giây.
+
+### Có gì mới
+- Hàm dựng danh sách công cụ MCP (`tools()`) trước đây quét danh sách đơn vị trên đĩa một lần cho mỗi công cụ (25 lần) ở mọi lời gọi `list` và `call`. Nay quét một lần. Đo trên một dự án 5 đơn vị: mỗi lời gọi công cụ từ khoảng 750 đến 900 ms xuống 70 đến 220 ms (dự án nhiều đơn vị hơn sẽ thấy khác biệt lớn hơn).
+
+### Hành vi đổi
+- Không có. Mô tả của các công cụ giữ y nguyên từng ký tự; mỗi lời gọi vẫn chạy trong một tiến trình mới nên mã mới vẫn có hiệu lực ngay.
+
+### Nâng cấp
+- Từ 2.2.x: nâng cấp như mọi lần. Không có bước chuyển cấu hình, không có việc làm tay.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi, phải không đổi một byte) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test đếm số lần quét danh sách đơn vị khi dựng bộ công cụ (đúng một lần, cho cả `list` và `tools`) và mô tả tham số `service` vẫn đủ danh sách.
+
+### Chưa kiểm và giới hạn
+- Mức tiết kiệm thật phụ thuộc số đơn vị và tốc độ đĩa; số trên là đo ở một máy Windows.
+- Phần cố định còn lại của mỗi lời gọi (khởi động tiến trình, đọc cấu hình) chưa đụng tới.
+
 ## 2.2.1 (2026-10-14)
 
 Bản nhỏ: bảng skill ở `.claude/rules` tự theo skill đang cài khi mở phiên, và sửa một câu còn sót ở 2.2.0.

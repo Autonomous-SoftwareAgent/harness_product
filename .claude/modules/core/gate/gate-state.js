@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { initialState } = require('./gate-core');
-const { gateStatePath } = require('./gate-paths');
+const { gateStatePath, sessionFile } = require('./gate-paths');
 
 const statePath = gateStatePath;
 
@@ -40,4 +40,24 @@ function saveState(root, sessionId, state) {
   fs.renameSync(tmp, file);
 }
 
-module.exports = { statePath, loadState, saveState, stateMtime };
+// Các khối kế hoạch do công cụ plan_draft dựng trong phiên (giữ 5 khối gần nhất), để cuối lượt đối chiếu tin kế hoạch có dán nguyên khối đó không.
+const draftPath = (root, sessionId) => sessionFile(root, 'plandraft', sessionId);
+const MAX_DRAFTS = 5;
+
+function loadDrafts(root, sessionId) {
+  try {
+    const v = JSON.parse(fs.readFileSync(draftPath(root, sessionId), 'utf8'));
+    return Array.isArray(v.blocks) ? v.blocks.filter((b) => typeof b === 'string').slice(-MAX_DRAFTS) : [];
+  } catch { return []; }
+}
+
+function saveDraft(root, sessionId, block) {
+  const file = draftPath(root, sessionId);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const blocks = [...loadDrafts(root, sessionId).filter((b) => b !== block), block].slice(-MAX_DRAFTS);
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify({ blocks }));
+  fs.renameSync(tmp, file);
+}
+
+module.exports = { statePath, loadState, saveState, stateMtime, draftPath, loadDrafts, saveDraft };

@@ -6,6 +6,37 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.1.0 (2026-10-14)
+
+Agent lập kế hoạch bằng công cụ thay vì tự gõ, để kế hoạch không thể sai khuôn và không tốn một lượt của bạn vì lỗi định dạng.
+
+### Có gì mới
+- **Công cụ `plan_draft`** (máy chủ `harness`, công cụ thứ 25 của bộ): agent điền nội dung (`services`, `reason`, `work`, `files`, `skip`, `risks`, và `extra` cho mục bắt buộc thêm của dự án hay đơn vị), công cụ dựng khối `## Kế hoạch` đúng khuôn từ cùng nguồn khuôn với cổng duyệt. Mục trống, đơn vị không có thật, thiếu mục bắt buộc thêm bị từ chối ngay kèm lý do. Công cụ chỉ đọc, nhớ khối đã dựng theo phiên.
+- **Lưới cuối lượt**: khi luật phạm vi ở chế độ `enforce`, tin kế hoạch không chứa nguyên khối do `plan_draft` dựng thì hook cuối lượt giữ lượt đúng một lần và nhắc gọi công cụ. Lượt nói tiếp sau lần giữ thì cho qua, nên không kẹt. Khóa `plan.draft` trong `gate.config.json`: `block` (mặc định) hoặc `off`.
+- **Skill `plan`** (ngắn) nói cách lập kế hoạch bằng công cụ; skill `services` bỏ phần khuôn và trỏ tới nó.
+- **Bảng skill sinh tự động**: `setup` viết `.claude/rules/harness-skills.md` từ tên và mô tả các skill đang cài; Claude Code nạp tệp này từ đầu phiên. Muốn đổi bảng thì sửa skill rồi chạy lại `setup`.
+
+### Hành vi đổi
+- Hook cuối lượt trước đây không bao giờ nói gì với phiên; nay có thể giữ lượt một lần khi agent tự gõ kế hoạch (mặc định bật). Đặt `"plan": { "draft": "off" }` trong `gate.config.json` để giữ cách cũ.
+- `setup` viết thêm một tệp ở `.claude/rules/`; `setup --check` và `doctor` báo lệch khi tệp thiếu hay cũ.
+- Bộ MCP có 25 công cụ (trước là 24).
+
+### Nâng cấp
+- Từ 2.0.x: nâng cấp như mọi lần (`upgrade`, agent báo cáo, bạn duyệt). Bước cài chạy `setup` nên có ngay tệp rules. Phiên đang mở gõ `/mcp` một lần để thấy `plan_draft`. Bảng skill ghi tay trong `CLAUDE.md` của dự án có thể thay bằng một dòng trỏ tới tệp rules. Không có bước chuyển cấu hình.
+
+### Đã kiểm
+- Bộ test của phần đổi trên bản đã commit, cả hai nền: test công cụ và lưới cuối lượt (12 ca), máy chủ lõi (gọi `plan_draft` qua máy chủ thật, bảng skill ở `.claude/rules` do `setup` sinh, sửa tay thì báo lệch), cổng duyệt, tờ thay đổi, đóng gói và cài (15 test ở Windows, 14 qua và 1 bỏ qua ở Linux trong Docker). Một lần chạy trước đó hỏng 10 test đóng gói vì tờ thay đổi 2.1.0 sai lược đồ; đã sửa và chạy lại qua.
+- Ảnh chụp hành vi chụp lại ở cả hai nền (Windows và Linux trong Docker), 321 bước, thêm hai bước gọi `plan_draft` (từ chối đơn vị không có thật, và đúng khuôn).
+- Thử phá 8 ca mới (lưới giữ mãi, không đối chiếu khối, bỏ qua khóa tắt, nhận đơn vị lạ, bỏ mục thêm, bộ chuyển không ra dạng chặn của Stop, không nhớ khối, `setup` không sinh bảng skill): bắt 8/8. Hai ca đầu tiên lọt vì thiếu test; đã thêm hai test rồi bắt được.
+- Một phiên `claude` CLI thật ở thư mục thử đọc đúng một tệp trong `.claude/rules/` (không dùng công cụ). Trong phiên làm việc thật của harness, lưới cuối lượt đã giữ đúng một tin kế hoạch do agent tự gõ, và agent sau đó dựng khối bằng công cụ.
+- Bộ test đầy đủ hai nền trên bản đã commit CHƯA chạy lại sau lần sửa tờ thay đổi; chỉ chạy phần liên quan (xem trên).
+
+### Chưa kiểm và giới hạn
+- Chưa đo trong phiên thật xem agent có luôn gọi `plan_draft` và dán nguyên khối hay không; lưới cuối lượt chỉ bắt được lỗi sau khi tin kế hoạch đã sinh xong (tin kế hoạch là chữ thường nên không hook nào chặn được trước khi sinh).
+- Lưới không đối chiếu kế hoạch viết lại sau lần giữ; lần giữ thứ hai không có.
+- Tệp rules thêm khoảng 2 KB chữ vào mọi phiên; chưa đo ảnh hưởng tới việc chọn skill.
+- Skill hay `CLAUDE.md` đã sửa tay ở dự án đã cài được giữ nguyên; muốn dùng bản mới thì chép từ `.claude/modules/core/skills/`.
+
 ## 2.0.1 (2026-10-14)
 
 Bản chỉ thêm tài liệu: bộ hướng dẫn cho người vận hành và người mở rộng harness. Không đổi hành vi nào của mã.

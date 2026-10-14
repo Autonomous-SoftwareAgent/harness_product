@@ -37,7 +37,7 @@ function run(root) {
     ok(`bố cục ${P.isModular(root) ? 'khối (.claude/modules/)' : 'cũ (.claude/modules/)'}; khối đang bật: ${em.enabled.map((m) => `${m.name} ${m.version || ''}`.trim()).join(', ')}${cfg.preset ? `; bộ khuôn ${cfg.preset}` : ''}; ngôn ngữ ${cfg.lang}`);
     try {
       const s = require('./setup').run(root, { check: true });
-      if (!s.ok) err(`settings.json hoặc .mcp.json lệch với các khối đang bật (hook của khối tắt vẫn chạy, hoặc hook của khối bật bị thiếu). Chạy: node ${P.codeRel(root, 'cli/cli.js')} setup`);
+      if (!s.ok) err(`settings.json, .mcp.json hoặc bảng skill ở .claude/rules lệch với các khối và skill đang cài (hook của khối tắt vẫn chạy, hook của khối bật bị thiếu, hoặc bảng skill cũ). Chạy: node ${P.codeRel(root, 'cli/cli.js')} setup`);
     } catch (e) { warn(`không so được settings.json với tệp tự khai: ${e.message}`); }
   }
   try {

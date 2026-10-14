@@ -10,7 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const HOOK_EVENT = { 'before-action': 'PreToolUse', 'session-start': 'SessionStart', 'user-prompt': 'UserPromptSubmit' };
+const HOOK_EVENT = { 'before-action': 'PreToolUse', 'session-start': 'SessionStart', 'user-prompt': 'UserPromptSubmit', 'turn-end': 'Stop' };
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
 
 // Đọc dữ liệu hook từ stdin. Không phải JSON thì coi như sự kiện rỗng (cổng đóng vẫn là mặc định an toàn).
@@ -45,6 +45,7 @@ function fromDecision(kind, d, lang = 'vi') {
   if (!d) return '';
   const hookEventName = HOOK_EVENT[kind];
   const reason = lang === 'en' ? require('./messages-en').translate(d.reason) : d.reason;
+  if (d.verdict === 'block') return JSON.stringify({ decision: 'block', reason });
   if (d.verdict === 'note') return JSON.stringify({ hookSpecificOutput: { hookEventName, additionalContext: reason } });
   return JSON.stringify({ hookSpecificOutput: { hookEventName, permissionDecision: d.verdict, permissionDecisionReason: reason } });
 }

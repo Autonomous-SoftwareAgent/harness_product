@@ -29,6 +29,34 @@ const CORE_TOOLS = [
     },
   },
   {
+    name: 'plan_draft',
+    description: 'DỰNG kế hoạch trình người dùng đúng khuôn của cổng duyệt. GỌI công cụ này thay vì tự viết khối "## Kế hoạch": bạn chỉ điền nội dung các trường, công cụ dựng khối chuẩn (tên mục, tiêu đề, mục bắt buộc thêm của dự án) và trả về. ' +
+      'Sai nội dung (mục trống, đơn vị không có thật, thiếu mục bắt buộc thêm) thì từ chối ngay kèm lý do. Được thì DÁN NGUYÊN khối trả về vào tin trả lời (lời giải thích viết tự do ở trên hoặc dưới khối), rồi DỪNG chờ người dùng duyệt. Cuối lượt hệ thống kiểm tin kế hoạch có dán đúng khối này không. Chỉ đọc, không đổi tệp nào của dự án. Cách dùng: skill plan.',
+    inputSchema: {
+      type: 'object',
+      required: ['services', 'reason', 'work', 'files', 'skip', 'risks'],
+      properties: {
+        services: strs('Mục "Dịch vụ": tên các đơn vị sẽ sửa, ví dụ ["harness"]; chỉ đụng phần dùng chung thì truyền []'),
+        reason: { description: 'Mục "Lý do": vì sao cần làm việc này (chuỗi, hoặc danh sách chuỗi nối bằng dấu chấm phẩy)' },
+        work: { description: 'Mục "Làm gì": các việc sẽ làm' },
+        files: { description: 'Mục "Sửa tệp": các tệp và thư mục sẽ sửa' },
+        skip: { description: 'Mục "Không làm": điều cố ý không làm' },
+        risks: { description: 'Mục "Rủi ro": điều có thể sai, và cách xử lý' },
+        extra: { type: 'object', description: 'Các mục bắt buộc thêm mà dự án hay đơn vị đòi (tên mục: nội dung); thiếu thì công cụ nói rõ mục nào' },
+      },
+    },
+    noService: true,
+    run: (a) => {
+      const F = require('../gate/plan-format');
+      const known = [...new Set([...engine.listAllServices(), ...Object.keys(P.extraUnits(ROOT))])].sort();
+      const r = F.draftPlan(a, F.loadOptions(ROOT), known);
+      if (!r.ok) throw new Error(`Chưa dựng được kế hoạch: ${r.errors.join('; ')}. Sửa các trường đó rồi gọi lại plan_draft.`);
+      const sid = process.env.CLAUDE_CODE_SESSION_ID;
+      if (sid) { try { require('../gate/gate-state').saveDraft(ROOT, sid, r.block); } catch { /* không ghi được: lưới cuối lượt sẽ nhắc một lần */ } }
+      return 'Kế hoạch đúng khuôn. Dán NGUYÊN khối dưới đây vào tin trả lời (không đổi chữ nào), rồi DỪNG chờ người dùng duyệt:\n\n' + r.block;
+    },
+  },
+  {
     name: 'scope_status',
     description: 'Xem phạm vi của phiên này: kế hoạch nào đang được duyệt, kế hoạch nêu dịch vụ nào, đã đăng ký dịch vụ nào, còn thiếu gì. Chỉ đọc.',
     inputSchema: { type: 'object', properties: {} },

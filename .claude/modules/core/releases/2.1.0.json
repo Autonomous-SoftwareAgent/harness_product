@@ -1,0 +1,48 @@
+{
+  "version": "2.1.0",
+  "date": "2026-10-14",
+  "summary": "Agent lập kế hoạch bằng công cụ plan_draft thay vì tự gõ khối, nên kế hoạch không thể sai khuôn; thêm skill plan, lưới cuối lượt bắt kế hoạch gõ tay, và bảng skill sinh tự động ở .claude/rules.",
+  "changes": [
+    {
+      "id": "cong-cu-plan-draft",
+      "kind": "added",
+      "block": "core",
+      "title": "Công cụ plan_draft dựng kế hoạch đúng khuôn",
+      "before": "Agent tự gõ khối \"## Kế hoạch\". Sai tên mục hay thiếu mục chỉ lộ sau khi người dùng đã duyệt: cổng không mở và agent phải viết lại cả kế hoạch.",
+      "after": "Máy chủ harness có công cụ plan_draft (nhận services, reason, work, files, skip, risks và extra cho mục bắt buộc thêm). Công cụ dựng khối chuẩn từ cùng nguồn khuôn với cổng duyệt, từ chối ngay khi mục trống, đơn vị không có thật hoặc thiếu mục bắt buộc thêm, và nhớ khối đã dựng theo phiên. Số công cụ của bộ MCP từ 24 lên 25.",
+      "files": ["core/gate/plan-format.js", "core/gate/gate-state.js", "core/mcp/mcp-tools.js", "core/module.json"],
+      "surface": { "tools": ["plan_draft"] },
+      "impact": "Phiên đang mở gõ /mcp để thấy công cụ mới. Không phải làm gì thêm: công cụ chỉ đọc, không đổi tệp của dự án. Công cụ nằm trong bảng readonly của bảng nối skill nên không đòi mở skill trước.",
+      "verified": "Test đơn vị cho khối dựng ra (luôn đọc lại được theo khuôn, mục thêm của dự án và của đơn vị, từ chối từng loại lỗi nội dung); gọi qua lớp công cụ thật trả đúng khối.",
+      "unverified": "Chưa đo xem agent trong phiên thật có luôn dán nguyên khối hay không (xem mục lưới)."
+    },
+    {
+      "id": "luoi-cuoi-luot-ke-hoach",
+      "kind": "added",
+      "block": "core",
+      "title": "Lưới cuối lượt: kế hoạch gõ tay bị giữ một lần",
+      "before": "Hook cuối lượt của cổng duyệt chỉ lưu tin cuối làm ngữ cảnh, không bao giờ nói gì với phiên.",
+      "after": "Khi luật phạm vi ở chế độ enforce và tin cuối có tiêu đề kế hoạch nhưng không chứa nguyên khối do plan_draft dựng trong phiên, hook giữ lượt đúng một lần và nhắc gọi công cụ rồi dán khối. Lượt nói tiếp do chính lần giữ gây ra thì cho qua, nên không bao giờ kẹt. Khóa plan.draft trong gate.config.json: block (mặc định) hoặc off.",
+      "files": ["core/gate/gate-rule.js", "core/gate/gate-host.js", "core/gate/gate-hook.js", "core/gate/messages-en.js", "core/FORMAT.md"],
+      "surface": { "config": ["gate.plan.draft"] },
+      "impact": "Mặc định BẬT: dự án đã cài sẽ thấy hook cuối lượt giữ lượt khi agent tự gõ kế hoạch. Muốn giữ cách cũ thì đặt plan.draft là off trong gate.config.json (chỉ người dùng sửa được tệp đó).",
+      "verified": "Test luật với cổng ra giả (giữ một lần, không kẹt, đúng điều kiện áp), bộ chuyển ra đúng dạng decision block của Stop, kho khối theo phiên, khóa cấu hình.",
+      "unverified": "Chưa có số liệu dài ngày về việc lưới giữ nhầm; kế hoạch viết lại sau lần giữ không được đối chiếu lần hai."
+    },
+    {
+      "id": "skill-plan-va-lop-rules",
+      "kind": "added",
+      "block": "core",
+      "title": "Skill plan và bảng skill sinh tự động ở .claude/rules",
+      "before": "Khuôn kế hoạch nằm trong skill services cùng nhiều chuyện khác; bảng việc nào dùng skill nào ghi tay trong CLAUDE.md của dự án.",
+      "after": "Skill plan (ngắn) nói cách lập kế hoạch bằng plan_draft; skill services chỉ trỏ tới nó. setup sinh .claude/rules/harness-skills.md từ tên và mô tả của các skill đang cài; Claude Code nạp tệp này từ đầu phiên. doctor báo khi tệp lệch (qua kiểm của setup).",
+      "files": ["core/skills/plan.md", "core/skills/services.md", "core/cli/skill-rules.js", "core/cli/setup.js", "core/cli/doctor.js", "core/module.json", "core/guides/01-van-hanh.md"],
+      "surface": { "skills": ["plan", "services"], "commands": ["setup"] },
+      "impact": "Chạy setup một lần (nâng cấp làm giúp) để có tệp rules. Skill services đã sửa tay ở dự án được giữ như mọi skill của dự án; bản mới ở core/skills/ để so. Bảng skill trong CLAUDE.md của dự án có thể bỏ, trỏ tới tệp rules.",
+      "verified": "Phiên claude CLI thật ở thư mục thử đọc đúng một tệp trong .claude/rules (không dùng công cụ); setup sinh tệp, chạy lại không đổi gì, setup --check báo lệch khi tệp bị sửa.",
+      "unverified": "Tệp rules nạp thêm chữ vào mọi phiên (khoảng 2 KB với mười hai skill); chưa đo ảnh hưởng tới chất lượng chọn skill."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": ["core/RELEASES.md", "core/module.json"]
+}

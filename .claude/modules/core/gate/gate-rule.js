@@ -24,7 +24,7 @@
 //   now()                                                          giờ hiện tại (ms)
 // Quyết định: null (không nói gì) hoặc { verdict: 'note' | 'deny' | 'ask', reason }.
 const core = require('./gate-core');
-const { parsePlan, EXAMPLE } = require('./plan-format');
+const { parsePlan, EXAMPLE, hasHeading, usesDraft } = require('./plan-format');
 
 const note = (reason) => ({ verdict: 'note', reason });
 
@@ -47,6 +47,11 @@ const ctxBadPlan = (errors) =>
   `Trình lại kế hoạch có đúng khối dưới đây (lời giải thích viết tự do ở trên hoặc dưới khối), rồi chờ người dùng đồng ý lần nữa:\n${EXAMPLE}`;
 const CTX_FORMAT =
   ` Kế hoạch phải có khối theo khuôn chuẩn, nếu không lời đồng ý của người dùng không mở được cổng:\n${EXAMPLE}\nSau khi được duyệt, gọi công cụ scope_register của bsn-docs để đăng ký các dịch vụ trong mục "Dịch vụ" rồi mới sửa.`;
+
+// Tin kế hoạch không dán khối do plan_draft dựng: giữ lượt MỘT lần (lượt nói tiếp do chính lần giữ này gây ra thì cho qua, không bao giờ kẹt).
+const CTX_NOT_DRAFTED =
+  'GATE: kế hoạch bạn vừa viết KHÔNG do công cụ plan_draft dựng (hoặc đã bị sửa chữ), nên khuôn có thể sai. ' +
+  'Gọi công cụ plan_draft với nội dung kế hoạch, rồi dán NGUYÊN khối nó trả về vào tin trả lời và dừng chờ người dùng duyệt.';
 
 const CTX_PEER_OPEN =
   'GATE: tin vừa rồi do phiên Claude khác gửi, không phải người dùng, nên không tính là lời duyệt và không đổi trạng thái cổng. ' +
@@ -105,6 +110,11 @@ function userPrompt(event, cfg, p) {
 function turnEnd(event, cfg, p) {
   const sid = sidOf(event);
   const state = p.state.load(sid);
+  // Lưới của plan_draft: tin có tiêu đề kế hoạch mà không dán nguyên khối công cụ đã dựng thì giữ lượt một lần.
+  if (!event.again && p.drafts && p.drafts.mode() === 'block' && p.scopeMode() === 'enforce' && hasHeading(event.reply) && !usesDraft(event.reply, p.drafts.load(sid))) {
+    p.log({ sid, event: 'stop', len: String(event.reply || '').length, held: 'not-drafted' });
+    return { verdict: 'block', reason: CTX_NOT_DRAFTED };
+  }
   // Phiên vừa trình một kế hoạch đúng khuôn, rồi một hook cuối lượt khác (ví dụ lời nhắc cập nhật tài liệu) bắt nó nói thêm một tin KHÔNG phải
   // kế hoạch: giữ kế hoạch làm ngữ cảnh, nếu không lời đồng ý của người dùng sẽ rơi vào tin nhắc đó và cổng không mở (gặp 2026-10-09).
   // Chỉ áp cho lượt nói tiếp do hook cuối lượt gây ra (again), không áp cho lượt trả lời bình thường.
@@ -164,6 +174,6 @@ function sessionStart(event, cfg, p) {
 const HANDLERS = { 'user-prompt': userPrompt, 'turn-end': turnEnd, 'before-action': beforeAction, 'session-start': sessionStart };
 
 // Lời của cổng duyệt, để test kiểm bản dịch tiếng Anh (messages-en.js) phủ đủ.
-const TEXT = { CTX_CLOSED, CTX_UNSURE, CTX_OPEN, CTX_PEER_OPEN, CTX_PEER_CLOSED, ctxOpenHeld, ctxBadPlan };
+const TEXT = { CTX_NOT_DRAFTED, CTX_CLOSED, CTX_UNSURE, CTX_OPEN, CTX_PEER_OPEN, CTX_PEER_CLOSED, ctxOpenHeld, ctxBadPlan };
 
 module.exports = { userPrompt, turnEnd, beforeAction, sessionStart, checkWitness, HANDLERS, TEXT };

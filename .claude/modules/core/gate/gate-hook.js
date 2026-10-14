@@ -19,7 +19,8 @@ const core = require('./gate-core');
 const paths = require('./gate-paths');
 const host = require('./gate-host');
 const rule = require('./gate-rule');
-const { loadState, saveState, stateMtime } = require('./gate-state');
+const { loadState, saveState, stateMtime, loadDrafts } = require('./gate-state');
+const { draftMode } = require('./plan-format');
 const { classify, findClaude } = require('./gate-classify');
 const { logEvent, lastTransition } = require('./gate-diag');
 const { health } = require('./gate-health');
@@ -55,6 +56,7 @@ function migratedAt() {
 // Các cổng ra của luật, nối với bộ chuyển thật của máy này.
 const ports = (cfg) => ({
   state: { load: (sid) => loadState(ROOT, sid), save: (sid, s) => saveState(ROOT, sid, s), mtime: (sid) => stateMtime(ROOT, sid) },
+  drafts: { load: (sid) => loadDrafts(ROOT, sid), mode: () => draftMode(ROOT) },
   judge: (msg, plan, held) => classify(msg, plan, cfg, held ? { held } : {}),
   log: (entry) => logEvent(ROOT, entry),
   lastTransition: (sid) => lastTransition(ROOT, sid),

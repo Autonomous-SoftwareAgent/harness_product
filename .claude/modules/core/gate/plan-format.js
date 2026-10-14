@@ -153,12 +153,76 @@ function loadOptions(root) {
   }
   return opts;
 }
+// Nhận kế hoạch dạng DỮ LIỆU và trả khối chuẩn đã dựng sẵn (công cụ plan_draft). Người viết chỉ điền nội dung, không gõ tên mục, nên sai khuôn
+// không xảy ra; lỗi nội dung (mục trống, đơn vị không có thật, thiếu mục bắt buộc thêm) trả về ngay, trước khi có tin kế hoạch nào.
+//   input: { services: [tên] | "a, b" | [] | "không", reason, work, files, skip, risks, extra: { <mục thêm>: nội dung } }
+//   known: danh sách tên đơn vị có thật (rỗng hoặc bỏ trống thì chỉ kiểm dạng tên, không kiểm có thật)
+const DRAFT_MAX = 1500;
+const squash = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+function draftPlan(input, options, known) {
+  const opts = options || DEFAULT_OPTIONS;
+  const src = input && typeof input === 'object' ? input : {};
+  const errors = [];
+  const text = (v) => (Array.isArray(v) ? v.map((x) => squash(x)).filter(Boolean).join('; ') : squash(v));
+  const fields = [['Lý do', 'reason'], ['Làm gì', 'work'], ['Sửa tệp', 'files'], ['Không làm', 'skip'], ['Rủi ro', 'risks']];
+  const body = {};
+  for (const [label, name] of fields) {
+    const v = text(src[name]);
+    if (!v) errors.push(`thiếu "${name}" (mục "${label}")`);
+    else if (v.length > DRAFT_MAX) errors.push(`"${name}" dài ${v.length} ký tự, tối đa ${DRAFT_MAX}: viết gọn lại`);
+    else body[label] = v;
+  }
+  if (src.services == null) errors.push('thiếu "services" (mục "Dịch vụ"; không đụng đơn vị nào thì truyền [])');
+  const rawSvc = Array.isArray(src.services) ? src.services : String(src.services == null ? '' : src.services).split(/[,\s]+/);
+  let services = [...new Set(rawSvc.map((x) => String(x).trim()).filter(Boolean))];
+  if (services.length === 1 && NONE_RE.test(services[0])) services = [];
+  const bad = services.filter((x) => !NAME_RE.test(x));
+  if (bad.length) errors.push(`tên đơn vị không đọc được: ${bad.slice(0, 5).join(', ')} (chữ thường, số, gạch ngang)`);
+  const list = Array.isArray(known) ? known : [];
+  const unknown = list.length ? services.filter((x) => NAME_RE.test(x) && !list.includes(x)) : [];
+  if (unknown.length) errors.push(`đơn vị không có thật: ${unknown.join(', ')} (có: ${list.join(', ')})`);
+  const rawExtra = src.extra && typeof src.extra === 'object' && !Array.isArray(src.extra) ? src.extra : {};
+  const need = [...opts.extra];
+  for (const s of services) for (const l of (opts.unitExtra || {})[s] || []) if (!need.some((n) => key(n) === key(l))) need.push(l);
+  const extraLines = [];
+  for (const l of need) {
+    const hit = Object.keys(rawExtra).find((k) => key(k) === key(l));
+    const v = hit ? text(rawExtra[hit]) : '';
+    if (!v) errors.push(`thiếu mục bắt buộc thêm "${l}" (truyền trong "extra")`);
+    else extraLines.push(`- ${l}: ${v}`);
+  }
+  if (errors.length) return { ok: false, errors, block: '', services: [] };
+  const block = [`## ${HEADING}`, `- Dịch vụ: ${services.length ? services.join(', ') : 'không'}`, ...LABELS.slice(1).map((l) => `- ${l}: ${body[l]}`), ...extraLines].join('\n');
+  // Đối chiếu ngược: khối dựng ra phải đọc được theo đúng khuôn mà cổng dùng; lệch là lỗi của công cụ, không phải của người viết.
+  const back = parsePlanWith(block, opts);
+  if (!back.ok) return { ok: false, errors: [`khối dựng ra không đọc được theo khuôn (lỗi của công cụ): ${back.errors.join('; ')}`], block: '', services: [] };
+  return { ok: true, errors: [], block, services };
+}
+
+// Tin có tiêu đề kế hoạch đứng riêng một dòng hay không (không xét nội dung).
+function hasHeading(text, options) {
+  const opts = options || DEFAULT_OPTIONS;
+  const re = new RegExp(`^[ \\t]{0,3}#{1,6}[ \\t]*(?:${[HEADING, ...opts.heading].map(esc).join('|')})[ \\t]*$`, 'im');
+  return re.test(String(text || '').replace(/\r\n/g, '\n'));
+}
+// Tin có dán NGUYÊN khối do draftPlan dựng (so sau khi gộp khoảng trắng) hay không.
+const usesDraft = (reply, blocks) => { const r = squash(reply); return (blocks || []).some((b) => b && r.includes(squash(b))); };
+
+// Chế độ lưới cuối lượt, khóa `plan.draft` của cấu hình cổng duyệt: "block" (mặc định) hoặc "off". Chỉ "off" mới tắt.
+function draftMode(root) {
+  try {
+    const paths = require('./gate-paths');
+    const cfg = JSON.parse(fs.readFileSync(paths.configPath(root || paths.rootFrom(__dirname)), 'utf8'));
+    return cfg && cfg.plan && cfg.plan.draft === 'off' ? 'off' : 'block';
+  } catch { return 'block'; }
+}
+
 let cached = null;
 const currentOptions = () => { if (!cached) { try { cached = loadOptions(); } catch { cached = DEFAULT_OPTIONS; } } return cached; };
 const parsePlan = (text) => parsePlanWith(text, currentOptions());
 
 module.exports = {
-  parsePlan, parsePlanWith, normalizeOptions, loadOptions, example, LABELS, HEADING, NAME_RE,
+  parsePlan, parsePlanWith, normalizeOptions, loadOptions, example, LABELS, HEADING, NAME_RE, draftPlan, hasHeading, usesDraft, draftMode, squash, currentOptions,
   // Khối mẫu của dự án đang chạy (dự án không khai mục thêm thì đúng bằng khối gốc).
   get EXAMPLE() { return example(currentOptions()); },
 };

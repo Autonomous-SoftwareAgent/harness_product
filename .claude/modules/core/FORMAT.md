@@ -17,6 +17,7 @@ Dự án mới chưa có gì trong khuôn thì không chép từ dự án khác:
 | `.claude/project/` | Phần của dự án: `project.json`, công tắc, khối mở rộng `extensions/`, luật kiểu cũ `rules/`, bộ sinh trang riêng `generators/`. Nâng cấp không bao giờ đụng | Agent qua skill `onboard`, người dùng | Có |
 | `.claude/project/project.json` | Cấu hình dự án | Agent qua skill `onboard`, sau khi người dùng duyệt | Có |
 | `.claude/skills/`, `.claude/settings.json` | Skill (chỗ Claude Code đọc); khai hook. Bộ cài (`setup`) viết phần của harness, giữ phần của dự án | Bộ cài, dự án | Có |
+| `.claude/rules/harness-skills.md` | Bảng "việc gì thì mở skill nào", Claude Code nạp ngay từ đầu phiên. `setup` SINH từ các skill đang cài ở `.claude/skills/` (tên và mô tả đầu); không chỉnh tại chỗ, sửa skill rồi chạy lại `setup`. `doctor` báo lệch | Bộ cài | Có |
 | `.mcp.json` | Khai các máy chủ MCP của harness (mỗi khối đang bật một mục, đối số cuối là tên khối) | Harness tự tạo hay tự thêm mục khi mở phiên | Có |
 | `CLAUDE.md` | Luật chung của dự án: quy trình duyệt kế hoạch, một phiên một đơn vị, đọc gì trước khi sửa, việc gì dùng skill nào | Agent (onboard), người dùng duyệt | Có |
 | `docs/handoff/` | Yêu cầu giữa các phiên: một tờ một việc, có dòng `Trạng thái: open` hoặc `done` | Mọi phiên | Khi có việc chéo đơn vị |
@@ -117,6 +118,7 @@ Chỉ người dùng sửa tệp này (hook chặn phiên ghi vào nó).
 | `approveWords` | Câu duyệt của dự án, thêm vào các câu đồng ý ngắn có sẵn ("ok", "duyệt", "làm đi"...). Chỉ khớp khi CẢ tin nhắn đúng bằng một câu đã khai (bỏ dấu câu, không phân biệt hoa thường). Tối đa 20 câu, mỗi câu tối đa 6 từ và 40 ký tự, không có dấu hỏi; câu không hợp lệ bị bỏ qua |
 | `plan.heading` | Tên gọi khác của tiêu đề `## Kế hoạch` |
 | `plan.labels` | Tên gọi khác của sáu mục gốc. Sáu mục vẫn bắt buộc; đây chỉ là cho gọi bằng tên khác |
+| `plan.draft` | Lưới của công cụ `plan_draft`: `block` (mặc định) thì cuối lượt, tin có tiêu đề kế hoạch mà không dán nguyên khối do công cụ dựng bị giữ lại MỘT lần để làm lại bằng công cụ; `off` tắt lưới. Chỉ có hiệu lực khi luật phạm vi ở chế độ `enforce`. Giá trị khác `off` đều tính là `block` |
 | `plan.extra` | Mục bắt buộc THÊM của dự án. Một đơn vị đòi thêm mục cho kế hoạch nêu tên nó bằng khóa `plan.extra` trong `module.json` của khối mở rộng của nó (chỉ có hiệu lực từ bản người dùng đã xác nhận) |
 
 Không khóa nào bớt được một mục gốc, làm một mục thành tùy chọn hay tắt bước duyệt. Khai hỏng thì phần hỏng bị bỏ, khuôn gốc giữ nguyên.

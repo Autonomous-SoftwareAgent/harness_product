@@ -14,6 +14,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../gate/gate-paths');
+const SKILL_RULES = require('./skill-rules');
 
 const { DEFAULT_MATCHER } = require('../core/extensions/contract');
 const EVENTS = ['PreToolUse', 'PostToolUse', 'Stop', 'UserPromptSubmit', 'SessionStart'];
@@ -141,13 +142,15 @@ function run(root, { check = false, dryRun = false } = {}) {
   const outs = [
     { file: settingsFile, rel: '.claude/settings.json', now: fs.existsSync(settingsFile) ? fs.readFileSync(settingsFile, 'utf8') : '', next: text(buildSettings(root, curS)) },
     { file: mcpFile, rel: '.mcp.json', now: fs.existsSync(mcpFile) ? fs.readFileSync(mcpFile, 'utf8') : '', next: text(buildMcp(root, curM)) },
+    // Lớp rules: bảng chỉ đường tới skill, sinh từ các skill đang cài (cli/skill-rules.js). Không có skill nào thì không tạo tệp.
+    ...(fs.existsSync(path.join(root, '.claude', 'skills')) ? [{ file: path.join(root, SKILL_RULES.FILE), rel: SKILL_RULES.FILE, now: fs.existsSync(path.join(root, SKILL_RULES.FILE)) ? fs.readFileSync(path.join(root, SKILL_RULES.FILE), 'utf8') : '', next: SKILL_RULES.build(root) }] : []),
   ];
   const changed = outs.filter((o) => o.now.replace(/\r\n/g, '\n') !== o.next);
   const lines = [];
   for (const p of problems) lines.push(`CẢNH BÁO: ${p}`);
   const on = P.enabledModules(root).enabled.map((m) => m.name);
   lines.push(`Khối đang bật: ${on.join(', ')}.`);
-  if (!changed.length) { lines.push('settings.json và .mcp.json đã đúng với các khối đang bật; không đổi gì.'); return { ok: true, changed: [], text: lines.join('\n') }; }
+  if (!changed.length) { lines.push('settings.json, .mcp.json và bảng skill ở .claude/rules đã đúng với các khối đang bật; không đổi gì.'); return { ok: true, changed: [], text: lines.join('\n') }; }
   if (check) { lines.push(`LỆCH: ${changed.map((o) => o.rel).join(', ')} chưa đúng với các khối đang bật. Chạy: node ${P.codeRel(root, 'cli/cli.js')} setup`); return { ok: false, changed: changed.map((o) => o.rel), text: lines.join('\n') }; }
   if (dryRun) { lines.push(`Sẽ ghi: ${changed.map((o) => o.rel).join(', ')}.`); return { ok: true, changed: changed.map((o) => o.rel), text: lines.join('\n') }; }
   for (const o of changed) { fs.mkdirSync(path.dirname(o.file), { recursive: true }); fs.writeFileSync(o.file, o.next); }

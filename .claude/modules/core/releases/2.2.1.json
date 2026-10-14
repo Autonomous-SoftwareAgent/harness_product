@@ -1,0 +1,43 @@
+{
+  "version": "2.2.1",
+  "date": "2026-10-14",
+  "summary": "Bảng skill ở .claude/rules tự theo .claude/skills/ khi mở phiên (không ghi đè tệp sửa tay); sửa câu về plan_draft còn sót ở 2.2.0.",
+  "changes": [
+    {
+      "id": "bang-skill-tu-dong-bo",
+      "kind": "added",
+      "block": "core",
+      "title": "Hook đầu phiên tự đồng bộ bảng skill ở .claude/rules",
+      "before": "Bảng chỉ được sinh lại khi chạy install, upgrade apply hoặc extension trust; thêm hay sửa skill thì bảng cũ cho tới khi ai đó chạy setup.",
+      "after": "Hook SessionStart (session-brief) gọi skill-rules.sync: tính bảng từ .claude/skills/ và ghi lại khi lệch, im lặng khi đã đúng, một dòng khi vừa cập nhật. Dòng chú thích đầu tệp ghi mã băm phần thân; tệp có người sửa tay hoặc không phải bản do harness sinh thì không bị ghi đè (hook báo một dòng). Ghi nguyên tử bằng tệp tạm rồi đổi tên.",
+      "files": [
+        "core/cli/skill-rules.js",
+        "core/hooks/session-brief.js"
+      ],
+      "surface": {},
+      "impact": "Không phải làm gì. Tệp bảng của bản 2.1.x chưa có mã băm được ghi đè một lần. Hàm công khai mới sync ở skill-rules.js (tên chỉ thêm).",
+      "verified": "Test đồng bộ: tạo mới, thêm skill, bản cũ không mã băm, tệp sửa tay và tệp lạ không bị ghi đè, không có thư mục skill.",
+      "unverified": "Chưa thử bằng phiên Claude CLI thật ở dự án khác. Bảng chỉ xét lại khi mở phiên."
+    },
+    {
+      "id": "cau-plan-draft-trong-bang",
+      "kind": "fixed",
+      "block": "core",
+      "title": "Bảng skill không còn đòi \"luôn lập bằng plan_draft\"",
+      "before": "Bảng sinh ra nói kế hoạch luôn lập bằng công cụ plan_draft, trái với 2.2.0 (plan_draft là tùy chọn).",
+      "after": "Bảng nói kế hoạch theo skill plan (cần dòng \"Dịch vụ\"), plan_draft là tùy chọn.",
+      "files": [
+        "core/cli/skill-rules.js"
+      ],
+      "surface": {},
+      "impact": "Không phải làm gì; bảng tự cập nhật ở phiên kế tiếp.",
+      "verified": "Test bảng không còn chuỗi \"luôn lập bằng\".",
+      "unverified": "Không có phép dò chung cho câu quy tắc đã đổi mà còn bản cũ ở nơi sinh."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

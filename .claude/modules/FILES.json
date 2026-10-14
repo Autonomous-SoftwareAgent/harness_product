@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
+  "version": "2.2.1",
   "files": {
     ".claude/modules/context/cli/commands/context.js": "f3924ec28692ac3d6c8555b70b0d6bf1a24fb83870a959d58bc74dd3b0b3dd18",
     ".claude/modules/context/core/context/auto-diagrams.js": "daaf5a2de906b0fac831f0386cc0c3f36c25f969e7a3509d85e4bf859aa3ced4",
@@ -34,7 +34,7 @@
     ".claude/modules/context/module.json": "230575f14b1e2b1ad0535792a676aea499977818696c6b8c90a228325fb389a9",
     ".claude/modules/core/.gitignore": "4ad2dd72b5b8511335b75e7b4dac1a8c92c576a7735f1e275b58c26ef1a1bef2",
     ".claude/modules/core/FORMAT.md": "74b5afd9c5476571787c6de6e35999a8ad11f3720a81e14ec9e5330d6f31b3b7",
-    ".claude/modules/core/RELEASES.md": "ce7f688a03640592a4fbc7e0bf0085543f4edeae61a2c9b92774fefa4de28e82",
+    ".claude/modules/core/RELEASES.md": "f7e15f1435409e2d4c45ceea2679bf8960fada9d7df26cd8f71e4c28a614db6b",
     ".claude/modules/core/adapters/claude-code/hook.js": "5e0650080168501f004c010dec9255ddea2e7fa336bde557846f257306399dc8",
     ".claude/modules/core/adapters/claude-code/sessions.js": "7c30f84b99df963fcff625d14ecc0af261ec6d83e27d137667fdc37afd024294",
     ".claude/modules/core/adapters/claude-code/settings.js": "c9a6fbf1b66d5b7896561596d32f8e3e6265df4a4e04eab39c0bc21627c51b2e",
@@ -68,7 +68,7 @@
     ".claude/modules/core/cli/public-export.js": "bd9abeb33537f8d8ae6f07edaa4d3c45600ecbba6fab4f2bd0fc79ac65ead8e4",
     ".claude/modules/core/cli/session.js": "9072aef66008fba4007b0b8c115a99808856202091ef17214106e724ebf837c7",
     ".claude/modules/core/cli/setup.js": "91b9246a80c926c6d30db8b615399f07a1af63e10c6ecbce5d52a34363fd5145",
-    ".claude/modules/core/cli/skill-rules.js": "187d2a973d69f8e5f8e082c28d90dac6ff4659e558a3fc7bd4ec4a5244279af7",
+    ".claude/modules/core/cli/skill-rules.js": "f02ef89594b38bcc8cae79d9bbfcc16f54cd7fce2e5b376d715b406c3b7a74fd",
     ".claude/modules/core/cli/transfer.js": "db3221a053983afdb9309414787cbfc801f50c0d3bb4bce419f41733a6d8a96c",
     ".claude/modules/core/cli/upgrade-apply.js": "7100f9e1888a8f0d70fcd650ae861b65c877db1c86a6b91f1ad0cb48aae29b19",
     ".claude/modules/core/cli/upgrade.js": "611f995467246a859b7db14d7311d8b4fc6d9d836ccfe34c765c89a2211e6a5a",
@@ -125,7 +125,7 @@
     ".claude/modules/core/hooks/project-rules.js": "1196309470a49869f5158fa720d065f66d86d9b1786ab5e89c52f7a8f191d4bc",
     ".claude/modules/core/hooks/reload.js": "4dac1f9b24ac8e8947d2bf1208470579de1523cb828b572f9a4118f6f885bde5",
     ".claude/modules/core/hooks/scope-lib.js": "50a138de3bf4ec6f970424faa69d4084257e44cd7d710cb45dadb4fda5e0f404",
-    ".claude/modules/core/hooks/session-brief.js": "ed393fa5ad760d7860e475390a41f31d380ef20cfbabdc94508bf10af2c8be54",
+    ".claude/modules/core/hooks/session-brief.js": "ffa17985fa17ebbb19c187b1e54842bb3d0c145e9ccbf472db66eb83f997f322",
     ".claude/modules/core/hooks/sessions-lib.js": "2f03a943c63417ee17851ed2ef16fb8a1ac9b68fdd2192034e5a61b1fddba9d1",
     ".claude/modules/core/hooks/transfer.js": "3dd6fac0864f4eba148a52955f76663fa55369337f7218527c000b4225b1ebd8",
     ".claude/modules/core/hooks/wire.js": "a9158b7695ff7c5fea220bab6a46fa2713096bd35735105467892a2dc1b65a4c",
@@ -136,7 +136,7 @@
     ".claude/modules/core/mcp/mcp-surface.js": "b21a184f45065c600dd4e309305691f46372a09049f2f1b979fc7a4d8e69cd13",
     ".claude/modules/core/mcp/mcp-tools.js": "572d01dabe48db879e9e5e2b1ccb640ffc42d190c4578f36c6023ef3812440fe",
     ".claude/modules/core/mcp/mcp-worker.js": "19cc3caff4779bf59d598266e2a4786ac4b4e1ec5c6da6b2069742a58e5f9acc",
-    ".claude/modules/core/module.json": "62a03b5c485157ea0b4b83a67a70e8e6bcbca1e1fce509b2f61e8ae07d4456a5",
+    ".claude/modules/core/module.json": "563e48b380dd00eab2079bcea70eb29102d2f4506e272471d4dd123476970c10",
     ".claude/modules/core/ports/events.js": "5912dd68b073b882f1a288a70de8ead5d72289766c23ca4d7516cbe11c3ada63",
     ".claude/modules/core/ports/jobs.js": "4047083804ca40d82036a0398ea6f733321fc56f1867f76dd2530b55ad838948",
     ".claude/modules/core/ports/renderer.js": "038c534b173bd48a52d021e5da2b8dc005187527261e74a97cacc5ac791ce3bf",
@@ -158,6 +158,7 @@
     ".claude/modules/core/releases/2.1.0.json": "69f2deb0bde83fdf2ab48dca3005a1e2fae663171285eae88293c64f8026475c",
     ".claude/modules/core/releases/2.1.1.json": "2e4a67d5aec377c4d9b14a0f5425114f427b64d4a0b5d0ef8b894b5b402ccd47",
     ".claude/modules/core/releases/2.2.0.json": "b704a284109f37a1eec98b9a7816620a0d5d3fac4e97456d3276427075876a51",
+    ".claude/modules/core/releases/2.2.1.json": "cec251536001486e6c0655e670fe310ce2982d26ebc08298bb5b187f18ca1a87",
     ".claude/modules/core/skills/new-service.md": "efa0a7ecf97443abc4103db0b8fee19fe75f5e52fc45820e52747ad9273f3e3f",
     ".claude/modules/core/skills/onboard.md": "f0647608f364c3e246cb951b3edf68282e8a10837e4bf1d51c0323e64dcd0186",
     ".claude/modules/core/skills/plan.md": "6b125e33b0bc242c9e55c43fc2f7b12058775607c39e4e3d4e2d0c47e26030fc",
@@ -211,8 +212,8 @@
     ".claude/modules/servicedocs/mcp/docs/status-archive.js": "b2de4c834f2501f1977911cb312e528441d7194b592b30cb4fc09dd57e849f3a",
     ".claude/modules/servicedocs/mcp/docs/tools.js": "3639c2cad20127759e84ef8ef3b17a8a97aeb0053e5ae8d570ae6094f0ee6a98",
     ".claude/modules/servicedocs/module.json": "107353fc1547b8e03ce084e8e867817784d26f777ee500b00d09c2523a67d726",
-    ".claude/modules/index.json": "82e37de36f7c87efdcb1ef7bbcd04d5745f0cac6e7a2425ef9cc40812b7b4e4b",
-    ".claude/modules/VERSION": "c4a2383a03bdb6739d16a0e24058e4b9c7da4e63d203e0be2f448868cc03c530",
+    ".claude/modules/index.json": "3bed671acc6f3f7eefed62552b5d8314d64b19fc47429456f59750022cd04d8c",
+    ".claude/modules/VERSION": "fe650098093fad42070e8a2cacfb216a6c416af57bd26dd6ff479fef69f8bc71",
     ".claude/skills/services/SKILL.md": "4eb4b7773d0cf0a30b84f7912068baf48f2ec995daf748862f95c82c49004a0f",
     ".claude/skills/plan/SKILL.md": "6b125e33b0bc242c9e55c43fc2f7b12058775607c39e4e3d4e2d0c47e26030fc",
     ".claude/skills/new-service/SKILL.md": "efa0a7ecf97443abc4103db0b8fee19fe75f5e52fc45820e52747ad9273f3e3f",
@@ -231,6 +232,6 @@
     ".claude/modules/context/skills/context.md": "3c9dbed3e401020e312f6f9e0f1fa690ff88a9f2652c6d663b6f86ed9018cdd5",
     ".claude/skills/context/SKILL.md": "3c9dbed3e401020e312f6f9e0f1fa690ff88a9f2652c6d663b6f86ed9018cdd5",
     ".claude/skills/service-page/SKILL.md": "c9f29cc2cd33184ef048155017eeb237a925f42604bbe862e8f22f9b9958cdc8",
-    ".claude/modules/MANIFEST.json": "bedbda7ffb0921f065154341e187ad284fffb556e3128f1ccd7e10d650e372d2"
+    ".claude/modules/MANIFEST.json": "f0bad4fc20dff0c5ce92982fc06f99762cc8bfc37d0c06aa1aead4cbc657b7e5"
   }
 }

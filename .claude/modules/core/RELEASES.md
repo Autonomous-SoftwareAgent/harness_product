@@ -6,6 +6,28 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.2.1 (2026-10-14)
+
+Bản nhỏ: bảng skill ở `.claude/rules` tự theo skill đang cài khi mở phiên, và sửa một câu còn sót ở 2.2.0.
+
+### Có gì mới
+- **Bảng skill tự đồng bộ.** Hook đầu phiên so `.claude/rules/harness-skills.md` với `.claude/skills/` và tự ghi lại khi lệch, nên thêm hay sửa skill không cần chạy `setup` tay. Dòng đầu tệp ghi mã băm của phần thân; tệp có người sửa tay hay không phải bản do harness sinh thì KHÔNG bị ghi đè, hook chỉ nói một dòng. `setup` vẫn sinh lại có chủ ý.
+
+### Hành vi đổi
+- Câu về kế hoạch trong bảng đổi từ "luôn lập bằng `plan_draft`" thành "theo skill `plan`, `plan_draft` là tùy chọn". Bản 2.2.0 còn câu cũ này dù lưới ép dùng đã tắt mặc định.
+- Tệp bảng của bản 2.1.x còn dòng chú thích cũ (không có mã băm) được ghi đè một lần ở phiên đầu sau khi nâng cấp.
+
+### Nâng cấp
+- Từ 2.2.0 hoặc 2.1.x: nâng cấp như mọi lần. Không có bước chuyển cấu hình, không có việc làm tay.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test đồng bộ: tạo mới, thêm skill thì cập nhật, bản cũ không mã băm được cập nhật, tệp sửa tay và tệp lạ không bị ghi đè, không có thư mục skill thì không làm gì.
+
+### Chưa kiểm và giới hạn
+- Chưa thử hook đầu phiên bằng một phiên Claude CLI thật ở dự án khác.
+- Bảng chỉ được xét lại khi mở phiên, không xét giữa phiên.
+
 ## 2.2.0 (2026-10-14)
 
 Kế hoạch trình duyệt ít bị viết lại hơn: cổng dễ tính với khuôn kế hoạch. Dự án nào muốn giữ khuôn chặt như trước đặt một khóa.

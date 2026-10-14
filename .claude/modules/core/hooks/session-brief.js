@@ -12,6 +12,12 @@ const B = require('../core/sessions/brief');
 
 const brief = (root, sid, now = Date.now()) => B.compose(wire.briefFacts(root, sid, now));
 
+// Bảng skill ở .claude/rules tự theo .claude/skills/ khi mở phiên (không ai phải chạy setup tay). Nói một dòng khi vừa cập nhật hay khi
+// không được ghi đè (tệp bị sửa tay); im lặng khi đã đúng. Lỗi gì cũng bỏ qua: việc mở phiên không được hỏng vì bảng này.
+function syncSkillRules(root) {
+  try { const r = require('../cli/skill-rules').sync(root); return r.text ? `${r.text}\n` : ''; } catch { return ''; }
+}
+
 module.exports = {
   brief,
   services: facts.services,
@@ -23,5 +29,5 @@ module.exports = {
 
 if (require.main === module) {
   const { note } = require('../ports/events');
-  require('../adapters/claude-code/hook').serve({ name: 'session-brief', kind: 'session-start', root: wire.ROOT, cwdFallback: wire.ROOT, badInput: 'empty' }, (event) => note(brief(wire.ROOT, event.session || undefined)));
+  require('../adapters/claude-code/hook').serve({ name: 'session-brief', kind: 'session-start', root: wire.ROOT, cwdFallback: wire.ROOT, badInput: 'empty' }, (event) => note(`${syncSkillRules(wire.ROOT)}${brief(wire.ROOT, event.session || undefined)}`));
 }

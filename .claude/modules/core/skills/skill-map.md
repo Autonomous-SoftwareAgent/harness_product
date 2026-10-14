@@ -35,7 +35,7 @@ Hook `guard-skill.js` chặn lời gọi ghi khi phiên chưa mở đủ skill v
    - Tệp: `"files": [{ "pattern": "^db/migrations/", "skills": ["db"], "reads": ["docs/agent/DB.md"] }]`. `pattern` là biểu thức chính quy trên đường dẫn tính từ gốc. `reads` là tài liệu phải đọc thêm, tính trong đơn vị chứa tệp (hoặc từ gốc nếu tệp không thuộc đơn vị nào).
    - Công cụ chỉ đọc mà mẫu `*` vô tình khớp: thêm vào `"readonly"`.
    - Một đơn vị cần đọc tài liệu khác mặc định: `"unitDocs": { "<đơn vị>": [ ... ] }`.
-3. **Công cụ ngoài harness:** thêm tên (hoặc mẫu) vào `matcher` của nhóm PreToolUse đang gọi `guard-skill.js` trong `.claude/settings.json`, nếu không thì hook không bao giờ được gọi cho công cụ đó.
+3. **Công cụ ngoài harness:** thêm tên (hoặc mẫu) vào `matcher` của nhóm PreToolUse đang gọi `guard-skill.js` trong `.claude/settings.json`, nếu không thì hook không bao giờ được gọi cho công cụ đó. Chú ý: `setup` và nâng cấp viết lại phần hook của harness nên matcher thêm tay biến mất; hiện chưa có khóa khai bền (xem `guides/02-skill-toan-cuc.md`, mục "Giới hạn").
 4. **Kiểm:** `node .claude/modules/core/cli/cli.js doctor`.
 
 ## Đã có thì sao, chưa có thì làm gì

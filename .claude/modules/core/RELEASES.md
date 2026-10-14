@@ -6,6 +6,31 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.0.1 (2026-10-14)
+
+Bản chỉ thêm tài liệu: bộ hướng dẫn cho người vận hành và người mở rộng harness. Không đổi hành vi nào của mã.
+
+### Có gì mới
+- **Thư mục `.claude/modules/core/guides/`** (có trong gói và trong mọi dự án đã cài): `README.md` (mục lục theo vai trò, ba chỗ đặt, ai làm việc gì), `01-van-hanh.md` (một phiên làm việc từ đầu đến cuối, khi hook chặn thì làm gì, lệnh hằng ngày, việc chỉ người dùng được làm ở terminal, nâng cấp, quay lại và gỡ, sự cố thường gặp), `02-skill-toan-cuc.md` (viết skill dùng chung ở `.claude/skills/`, bắt buộc mở nó bằng bảng nối `skills` trong `project.json`, cách kiểm, giới hạn, nâng cấp giữ skill của bạn thế nào), `03-skill-theo-repo.md` (phần riêng của từng repo trong `.harness/`: tài liệu bắt buộc đọc, skill gắn theo đường dẫn, skill riêng chỉ được nhắc), `04-mo-rong.md` (khối mở rộng, máy chủ MCP ngoài, bật tắt khối, tiền tố, sửa mã của gói).
+- README của gói có thêm một đoạn trỏ tới thư mục này.
+
+### Hành vi đổi
+- Không có. Chỉ thêm tệp tài liệu và đính chính hai chỗ lời hướng dẫn (`FORMAT.md` và skill `skill-map`) về matcher của hook chặn theo skill: matcher thêm tay cho công cụ ngoài harness bị `setup` và nâng cấp viết lại.
+
+### Nâng cấp
+- Từ 2.0.0: nâng cấp như mọi lần (`upgrade`, agent báo cáo, bạn duyệt). Không có bước chuyển cấu hình, không có việc làm tay.
+
+### Đã kiểm
+- Mọi lệnh và ví dụ cấu hình trong hướng dẫn được chạy thử trong một dự án cài thử từ gói: `doctor`, `new-service`, `extension new`, `extension list`, `extension test`, `mcp add`, `mcp list`, `setup`, `upgrade status`, và hook chặn theo skill với một skill gắn theo đường dẫn của một repo (lời chặn nêu đúng skill và tài liệu còn thiếu).
+- Bộ test phát triển trên Windows, trừ ảnh chụp hành vi và nâng cấp: 503 test, 503 qua; riêng nâng cấp và đóng gói chạy lại trên bản đã commit: 23 qua. Linux (Docker, Node 24): nhóm tài liệu, skill, sổ tính năng, tờ thay đổi, đóng gói, nâng cấp: 49 test, 48 qua, 1 bỏ qua, 0 hỏng. Ảnh chụp hành vi chụp lại hai nền: chỉ đổi số bản trong lời `doctor` và hai dấu băm suy ra từ nó.
+- Cả bộ test hai nền chưa chạy lại một lượt trọn cho bản này (bản chỉ thêm tài liệu); bản 2.0.0 đã chạy trọn.
+
+### Chưa kiểm và giới hạn
+- Hướng dẫn chỉ có tiếng Việt. Chưa có người ngoài đọc và làm theo từ đầu.
+- `extension trust` và `mcp trust` chưa được chạy thử từ đầu đến cuối vì chỉ chạy được ngoài phiên Claude; phần mô tả hai lệnh này lấy từ lời của chính lệnh và từ test.
+- Khai bền công cụ ngoài harness cho hook chặn theo skill: chưa có khóa cấu hình (giới hạn còn mở, hướng dẫn nói rõ).
+- Skill riêng của repo (`<repo>/.harness/skills/`) chỉ được nhắc, chưa được ép: muốn ép thì gắn skill dùng chung theo đường dẫn.
+
 ## 2.0.0 (2026-10-13)
 
 Máy chủ MCP của harness tách theo khối. Trước đây một máy chủ tên `bsn-docs` giữ cả bộ công cụ; nay mỗi khối đang bật có máy chủ riêng, nên một máy chủ hỏng hay chậm không kéo theo công cụ của khối khác. Đây là bản 2.0.0 vì tên đầy đủ của mọi công cụ đổi: kịch bản, quyền hay tài liệu của bạn có ghi `mcp__bsn-docs__...` phải đổi theo.

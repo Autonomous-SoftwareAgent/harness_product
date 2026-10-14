@@ -80,7 +80,7 @@ Bảng dưới viết đường dẫn theo TÊN LOGIC. Ở bố cục gom (`unit
 | `skills.overview` | Skill tổng quát, cần cho mọi việc có yêu cầu |
 | `skills.serviceDocs` | Tài liệu phải đọc (bằng công cụ Read) trước khi sửa một đơn vị, đường dẫn trong đơn vị |
 | `skills.unitDocs` | Thay `serviceDocs` cho riêng một đơn vị |
-| `skills.tools` | Công cụ nào cần skill nào. Khóa là tên công cụ của harness (`design_record`) hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__<máy chủ>__<tên>`); dấu `*` khớp mọi chuỗi; giá trị là một skill hoặc danh sách skill. Công cụ ngoài harness phải có trong matcher của nhóm hook `guard-skill.js` ở `.claude/settings.json` (lệnh `doctor` báo khi thiếu) |
+| `skills.tools` | Công cụ nào cần skill nào. Khóa là tên công cụ của harness (`design_record`) hoặc tên đầy đủ của công cụ bất kỳ (`Bash`, `mcp__<máy chủ>__<tên>`); dấu `*` khớp mọi chuỗi; giá trị là một skill hoặc danh sách skill. Công cụ ngoài harness phải có trong matcher của nhóm hook `guard-skill.js` ở `.claude/settings.json` (lệnh `doctor` báo khi thiếu); hiện chưa có khóa khai thêm bền, và `setup` hay nâng cấp viết lại phần hook của harness nên matcher thêm tay phải thêm lại (xem `guides/02-skill-toan-cuc.md`) |
 | `skills.readonly` | Công cụ chỉ đọc, không bao giờ bị chặn (thắng mẫu `*`) |
 | `skills.files` | Mẫu đường dẫn (biểu thức chính quy, tính từ gốc) cần thêm skill và tài liệu phải đọc. `reads` tính trong đơn vị chứa tệp, hoặc từ gốc nếu tệp không thuộc đơn vị nào. `serviceDocs: false` thì không đòi tài liệu của đơn vị |
 | `policies.rootNeverPush` | Repo gốc không bao giờ được đẩy lên remote |

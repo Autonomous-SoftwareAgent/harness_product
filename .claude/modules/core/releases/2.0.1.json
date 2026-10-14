@@ -1,0 +1,34 @@
+{
+  "version": "2.0.1",
+  "date": "2026-10-14",
+  "summary": "Thêm bộ hướng dẫn cho người vận hành và người mở rộng harness (vận hành hằng ngày, skill dùng chung, phần riêng của từng repo, khối mở rộng); đính chính một chỗ tài liệu nói sai về matcher của hook.",
+  "changes": [
+    {
+      "id": "huong-dan-van-hanh",
+      "kind": "added",
+      "block": "core",
+      "title": "Bộ hướng dẫn cho dev vận hành và mở rộng harness",
+      "after": "Gói có thư mục .claude/modules/core/guides/ (cũng có trong mọi dự án đã cài): README.md (mục lục theo vai trò), 01-van-hanh.md (một phiên làm việc, khi hook chặn, lệnh hằng ngày, việc chỉ người dùng được làm, nâng cấp, quay lại, sự cố), 02-skill-toan-cuc.md (skill dùng chung ở .claude/skills/, bảng nối skills trong project.json, cách kiểm, giới hạn, nâng cấp giữ skill của bạn thế nào), 03-skill-theo-repo.md (phần riêng của từng repo trong .harness/: tài liệu bắt buộc đọc, skill gắn theo đường dẫn, skill riêng chỉ được nhắc), 04-mo-rong.md (khối mở rộng, máy chủ MCP ngoài, bật tắt khối, tiền tố, sửa mã của gói). README của gói trỏ tới thư mục này.",
+      "files": ["core/guides/", "core/cli/public-export.js"],
+      "surface": {},
+      "impact": "Không có gì phải làm; không đổi hành vi nào. Dự án đã cài có thêm thư mục guides/ sau khi nâng cấp.",
+      "verified": "Mọi lệnh và ví dụ cấu hình trong hướng dẫn được chạy thử trong một dự án cài thử từ gói: doctor, new-service, extension new, list và test, mcp add và list, setup, upgrade status, và hook chặn theo skill với một skill gắn theo đường dẫn của repo.",
+      "unverified": "Hướng dẫn chỉ có tiếng Việt. Chưa có người ngoài đọc và làm theo từ đầu; chưa thử bước extension trust và mcp trust vì lệnh đó chỉ chạy ngoài phiên Claude."
+    },
+    {
+      "id": "dinh-chinh-matcher-tai-lieu",
+      "kind": "fixed",
+      "block": "core",
+      "title": "Tài liệu nói rõ matcher thêm tay cho công cụ ngoài harness không bền",
+      "before": "FORMAT.md và skill skill-map bảo thêm tên công cụ ngoài harness vào matcher của hook chặn theo skill trong .claude/settings.json, không nói rằng chỗ đó do bộ cài viết lại.",
+      "after": "Hai tài liệu nói thêm: setup và nâng cấp viết lại phần hook của harness nên matcher thêm tay biến mất (đã kiểm: biến mất sau setup); hiện chưa có khóa cấu hình khai bền, phải thêm lại hoặc dùng luật của khối mở rộng.",
+      "files": ["core/FORMAT.md", "core/skills/skill-map.md"],
+      "surface": {},
+      "impact": "Chỉ là lời hướng dẫn. Dự án đã khai công cụ ngoài trong bảng skill.tools và thêm tay matcher cần biết matcher đó mất sau mỗi lần setup hay nâng cấp; doctor vẫn báo khi thiếu.",
+      "verified": "Thêm tay matcher vào settings.json, chạy setup, matcher không còn.",
+      "unverified": "Chưa có cách khai bền; đây là giới hạn còn mở, không phải điều đã sửa trong mã."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

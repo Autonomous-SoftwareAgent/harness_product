@@ -23,6 +23,8 @@ const gateStatePath = (root, sessionId) => sessionFile(root, 'gate', sessionId);
 const scopeStatePath = (root, sessionId) => sessionFile(root, 'scope', sessionId);
 const docsStatePath = (root, service, sessionId) => sessionFile(root, `docs-${service}`, sessionId);
 const diagLogPath = (root) => path.join(stateDir(root), 'gate-diag.log');
+// Dấu "đã kiểm đủ" của bản đóng gói (test/run-changed.js --release ghi, public-export đọc). Tên bắt đầu bằng gate- nên phiên không ghi tay được.
+const fullCheckPath = (root) => path.join(stateDir(root), 'gate-full-check.json');
 // Sổ phiên (SQLite): phiên nào đã mở skill nào, đọc tài liệu nào của dịch vụ, gọi công cụ nào. Hook ghi; model không được ghi.
 const LEDGER_FILE = 'harness.db';
 const ledgerPath = (root) => path.join(stateDir(root), LEDGER_FILE);
@@ -584,7 +586,7 @@ function exemptDirs(root, input = {}) {
 }
 
 module.exports = {
-  safeId, stateDir, sessionFile, gateStatePath, scopeStatePath, docsStatePath, diagLogPath, ledgerPath, LEDGER_FILE, evalDbPath, EVAL_FILE, dbBackupsDir, skillsMapPath, skillsDir, scopeConfigPath, scopeMode, localDir, bannedListPath,
+  safeId, stateDir, sessionFile, fullCheckPath, gateStatePath, scopeStatePath, docsStatePath, diagLogPath, ledgerPath, LEDGER_FILE, evalDbPath, EVAL_FILE, dbBackupsDir, skillsMapPath, skillsDir, scopeConfigPath, scopeMode, localDir, bannedListPath,
   locksDir, lockPath, docsJournalPath, docsBackupsDir,
   SERVICES_DIR, LEGACY_CONFIG: LEGACY, pluginDir, projectConfigPath, projectConfig, policy, sheetOwner, unitParents, servicesDir, serviceDir, serviceOf, serviceRel, serviceEntries, extraUnits, unitReads, serviceHasRepo, HARNESS_UNIT_DIR,
   unitGenerator, trustedGeneratorDirs, unitSkills,

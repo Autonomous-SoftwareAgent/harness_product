@@ -1,0 +1,48 @@
+{
+  "version": "2.2.0",
+  "date": "2026-10-14",
+  "summary": "Khuôn kế hoạch dễ tính hơn: cổng chỉ đòi tiêu đề và mục \"Dịch vụ\", các mục còn lại thiếu thì chỉ cảnh báo; lưới ép dùng plan_draft tắt mặc định; lời của cổng ngắn hơn. Giảm số lần agent phải viết lại kế hoạch.",
+  "changes": [
+    {
+      "id": "khuon-ke-hoach-de-tinh",
+      "kind": "changed",
+      "block": "core",
+      "title": "Cổng duyệt chỉ đòi tiêu đề kế hoạch và mục \"Dịch vụ\"",
+      "before": "Kế hoạch phải đủ sáu mục (Dịch vụ, Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro) đúng tên; thiếu một mục thì lời duyệt của người dùng không mở cổng và agent phải viết lại cả kế hoạch.",
+      "after": "Chỉ tiêu đề và mục \"Dịch vụ\" là bắt buộc (để đăng ký phạm vi). Năm mục còn lại thiếu hay trống thì cổng vẫn mở, bộ đọc trả thêm trường warnings và nhật ký cổng ghi cảnh báo ở lần mở. Tên mục đọc không phân biệt hoa thường và dấu; gạch đầu dòng, số thứ tự hay không có đều được; in đậm hay không và thứ tự nào cũng được. Mục thêm khai ở plan.extra và của đơn vị vẫn bắt buộc. Khóa mới plan.strict: true đưa về hành vi cũ (đủ sáu mục).",
+      "files": ["core/gate/plan-format.js", "core/gate/gate-rule.js"],
+      "surface": { "config": ["plan.strict"] },
+      "impact": "Không phải làm gì. Dự án muốn giữ hành vi cũ thì đặt \"plan\": { \"strict\": true } trong gate.config.json. Hàm công khai không đổi tên; kết quả parsePlan có thêm trường warnings (chỉ thêm).",
+      "verified": "Test khuôn: thiếu từng mục gốc thì mặc định vẫn qua (có cảnh báo) trừ \"Dịch vụ\", strict thì sai khuôn ở mọi cấu hình; đọc không dấu, không gạch đầu dòng, đánh số, đổi thứ tự; mục thêm vẫn bắt buộc.",
+      "unverified": "Chưa đo mức giảm token thật trên phiên của agent. Kế hoạch thiếu Rủi ro hay Không làm có thể qua mà người dùng không để ý."
+    },
+    {
+      "id": "luoi-plan-draft-tat-mac-dinh",
+      "kind": "changed",
+      "block": "core",
+      "title": "Lưới ép dùng plan_draft tắt mặc định",
+      "before": "Khóa plan.draft mặc định block: cuối lượt, tin kế hoạch không dán khối do plan_draft dựng bị giữ lại một lần để làm lại.",
+      "after": "Mặc định off (không giữ lượt). Đặt \"plan\": { \"draft\": \"block\" } để ép dùng plan_draft như trước. Công cụ plan_draft vẫn có và dùng được.",
+      "files": ["core/gate/plan-format.js", "core/skills/plan.md", "core/skills/services.md", "core/FORMAT.md", "core/guides/01-van-hanh.md"],
+      "surface": { "config": ["plan.draft"], "skills": ["plan", "services"] },
+      "impact": "Dự án đã đặt plan.draft thì giữ nguyên giá trị đó (block hay off). Dự án chưa đặt: lưới tắt, không còn tin viết lại do lưới.",
+      "verified": "Test plan.draft: chỉ giá trị block bật lưới; không có cấu hình hay cấu hình hỏng thì tắt.",
+      "unverified": "Agent ở phiên khác có tự gọi plan_draft hay viết thẳng khối thì chưa đo."
+    },
+    {
+      "id": "loi-cong-ngan-hon",
+      "kind": "changed",
+      "block": "core",
+      "title": "Lời từ chối và lời nhắc kế hoạch của cổng ngắn hơn",
+      "before": "Lời nhắc mỗi lượt cổng đóng và lời từ chối kế hoạch sai khuôn đều dán lại cả khối mẫu sáu mục.",
+      "after": "Hai lời đó chỉ nêu chỗ sai và dòng tối thiểu cần có (tiêu đề và \"Dịch vụ\"), không dán khối mẫu.",
+      "files": ["core/gate/gate-rule.js", "core/gate/messages-en.js"],
+      "surface": {},
+      "impact": "Không phải làm gì. Lời in ra của cổng đổi; bản tiếng Anh đổi theo.",
+      "verified": "Test cổng: lời từ chối dưới 600 ký tự và nêu dòng Dịch vụ; bảng dịch tiếng Anh khớp.",
+      "unverified": "Chưa thử lời mới bằng một phiên Claude CLI thật: agent hiểu thế nào chưa kiểm."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

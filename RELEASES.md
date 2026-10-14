@@ -6,6 +6,53 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.2.0 (2026-10-14)
+
+Kế hoạch trình duyệt ít bị viết lại hơn: cổng dễ tính với khuôn kế hoạch. Dự án nào muốn giữ khuôn chặt như trước đặt một khóa.
+
+### Có gì mới
+- **Khuôn kế hoạch dễ tính.** Cổng chỉ đòi tiêu đề kế hoạch và mục "Dịch vụ" (để đăng ký phạm vi). Năm mục còn lại (Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro) thiếu hay trống thì cổng vẫn mở và chỉ ghi cảnh báo vào nhật ký cổng. Tên mục đọc không phân biệt hoa thường và dấu, có hay không có gạch đầu dòng, thứ tự nào cũng được.
+- **Khóa `plan.strict`** trong cấu hình cổng duyệt: `true` thì đòi đủ sáu mục như bản trước. Mục thêm khai ở `plan.extra` và của đơn vị vẫn bắt buộc ở cả hai chế độ.
+- Lời từ chối kế hoạch và lời nhắc của cổng ngắn hơn (không dán lại khối mẫu).
+
+### Hành vi đổi
+- Kế hoạch thiếu một trong năm mục không bắt buộc, trước đây làm lời duyệt không mở cổng, nay mở cổng.
+- Khóa `plan.draft` mặc định đổi từ `block` sang `off`: tin kế hoạch viết thẳng không còn bị giữ lượt để làm lại bằng công cụ `plan_draft`. Dự án đã đặt giá trị này thì giữ nguyên.
+
+### Nâng cấp
+- Từ 2.1.x: nâng cấp như mọi lần. Không có bước chuyển cấu hình, không có việc làm tay. Muốn giữ hành vi cũ: đặt `"plan": { "strict": true, "draft": "block" }` trong `gate.config.json`.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test khuôn: thiếu từng mục thì mặc định vẫn qua trừ "Dịch vụ", `strict` thì sai khuôn ở mọi cấu hình; đọc không dấu, đánh số, đổi thứ tự; lời từ chối ngắn.
+
+### Chưa kiểm và giới hạn
+- Chưa đo mức giảm token thật trên phiên của agent.
+- Kế hoạch thiếu Rủi ro hay Không làm có thể qua mà người dùng không để ý; chỉ có cảnh báo trong nhật ký cổng.
+- Lời nhắc mới của cổng chưa thử bằng phiên Claude CLI thật.
+
+## 2.1.1 (2026-10-14)
+
+Bản nhỏ cho người đóng gói từ một repo nguồn: lệnh đóng gói có thể đòi dấu "đã kiểm đủ". Người cài ở dự án thường không bị ảnh hưởng.
+
+### Có gì mới
+- **Khóa `requireVerified`** trong `.claude/project/export.json` của repo nguồn: bật thì `public-export` chỉ đóng gói bản đã qua bộ kiểm đủ ở Windows và Linux. Dấu nằm ở `.claude/.state/gate-full-check.json`, gắn với mã băm của bản đóng gói (không tính `MANIFEST.json`, vì tệp đó ghi đường dẫn thư mục đích). Kết quả lệnh có thêm trường `digest`.
+- Hàm công khai `fullCheckPath` ở `core/gate/gate-paths.js` (tên chỉ thêm).
+
+### Hành vi đổi
+- Không có khi không bật khóa (mặc định tắt). Khi bật: thiếu dấu, dấu của bản khác hay thiếu một nền thì lệnh từ chối. Khẩn cấp: `BSN_RELEASE_UNVERIFIED=1` bỏ qua và in cảnh báo.
+
+### Nâng cấp
+- Từ 2.1.0: nâng cấp như mọi lần. Không có bước chuyển cấu hình, không có việc làm tay.
+
+### Đã kiểm
+- Chạy đủ (`run-changed.js --release`, gồm ảnh chụp hành vi): Windows 535/535 qua (925 giây); Linux (Docker) 529/535 qua, 6 bỏ qua (439 giây). Dấu đã kiểm đủ ghi cho bản đóng gói `ff3aa4c38ee6`.
+- Lần chạy đầu bắt được một chỗ sót (test kiến trúc: hai tệp mới của bộ test chưa có trong bản đồ bố cục); đã sửa rồi chạy lại cho qua.
+
+### Chưa kiểm và giới hạn
+- Dấu chỉ chặn việc quên chạy bộ kiểm, không chặn người cố ý ghi dấu giả.
+- Chưa dùng ở một repo nguồn khác ngoài repo hiện tại.
+
 ## 2.1.0 (2026-10-14)
 
 Agent lập kế hoạch bằng công cụ thay vì tự gõ, để kế hoạch không thể sai khuôn và không tốn một lượt của bạn vì lỗi định dạng.

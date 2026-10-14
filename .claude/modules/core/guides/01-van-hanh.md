@@ -13,7 +13,7 @@
    - Không làm: ...
    - Rủi ro: ...
    ```
-   Thiếu mục hay sai tên mục thì lời đồng ý của bạn không mở cổng, và hook nói rõ thiếu gì. Agent không tự gõ khối này: nó gọi công cụ `plan_draft` (skill `plan`), công cụ dựng khối đúng khuôn rồi agent dán nguyên khối. Agent bỏ qua công cụ thì cuối lượt hook giữ lượt một lần và bắt làm lại; tắt lưới đó bằng `"plan": { "draft": "off" }` trong `gate.config.json`.
+   Cổng chỉ đòi tiêu đề kế hoạch và mục "Dịch vụ"; thiếu hai thứ đó thì lời đồng ý của bạn không mở cổng và hook nói rõ thiếu gì. Năm mục còn lại thiếu thì cổng vẫn mở và chỉ ghi cảnh báo; muốn đòi đủ sáu mục đặt `"plan": { "strict": true }` trong `gate.config.json`. Công cụ `plan_draft` (skill `plan`) dựng khối đúng khuôn là tùy chọn; muốn ép agent dùng thì đặt `"plan": { "draft": "block" }`.
 4. **Bạn duyệt bằng lời thường** ("ok", "duyệt", "làm đi"). Câu dài hơn thì một model phán xem đó có phải lời duyệt không. "Ok nhưng đổi X" hay một việc mới thì cổng đóng lại, agent sửa kế hoạch và trình lại. Tin do phiên Claude khác gửi không bao giờ tính là lời duyệt.
 5. **Agent đăng ký phạm vi** bằng công cụ `scope_register` với đúng các đơn vị trong kế hoạch. Đơn vị không có trong kế hoạch bị từ chối.
 6. **Agent làm.** Trước lần sửa đầu tiên trong một đơn vị, nó phải mở skill tổng quát và đọc `CLAUDE.md` cùng `STATUS.md` của đơn vị đó (và các tài liệu khác dự án bắt buộc, xem [03-skill-theo-repo.md](03-skill-theo-repo.md)). Ghi tài liệu có cấu trúc (ba tầng, `service.yaml`, sơ đồ, từ vựng) chỉ qua công cụ MCP của harness.

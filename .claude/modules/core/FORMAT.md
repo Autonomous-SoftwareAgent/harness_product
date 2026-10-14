@@ -118,7 +118,8 @@ Chỉ người dùng sửa tệp này (hook chặn phiên ghi vào nó).
 | `approveWords` | Câu duyệt của dự án, thêm vào các câu đồng ý ngắn có sẵn ("ok", "duyệt", "làm đi"...). Chỉ khớp khi CẢ tin nhắn đúng bằng một câu đã khai (bỏ dấu câu, không phân biệt hoa thường). Tối đa 20 câu, mỗi câu tối đa 6 từ và 40 ký tự, không có dấu hỏi; câu không hợp lệ bị bỏ qua |
 | `plan.heading` | Tên gọi khác của tiêu đề `## Kế hoạch` |
 | `plan.labels` | Tên gọi khác của sáu mục gốc. Sáu mục vẫn bắt buộc; đây chỉ là cho gọi bằng tên khác |
-| `plan.draft` | Lưới của công cụ `plan_draft`: `block` (mặc định) thì cuối lượt, tin có tiêu đề kế hoạch mà không dán nguyên khối do công cụ dựng bị giữ lại MỘT lần để làm lại bằng công cụ; `off` tắt lưới. Chỉ có hiệu lực khi luật phạm vi ở chế độ `enforce`. Giá trị khác `off` đều tính là `block` |
+| `plan.draft` | Lưới của công cụ `plan_draft`: `off` (mặc định) không giữ lượt; `block` thì cuối lượt, tin có tiêu đề kế hoạch mà không dán nguyên khối do công cụ dựng bị giữ lại MỘT lần để làm lại bằng công cụ. Chỉ có hiệu lực khi luật phạm vi ở chế độ `enforce`. Giá trị khác `block` đều tính là `off` |
+| `plan.strict` | `true` thì kế hoạch phải đủ cả sáu mục (thiếu hay trống là sai khuôn, cổng không mở). Mặc định (`false`): chỉ mục "Dịch vụ" bắt buộc, năm mục còn lại thiếu hay trống chỉ là cảnh báo ghi vào nhật ký cổng. Tên mục đọc không phân biệt hoa thường và dấu, gạch đầu dòng hay số thứ tự đều được. Mục thêm khai ở `plan.extra` và của đơn vị vẫn bắt buộc ở cả hai chế độ |
 | `plan.extra` | Mục bắt buộc THÊM của dự án. Một đơn vị đòi thêm mục cho kế hoạch nêu tên nó bằng khóa `plan.extra` trong `module.json` của khối mở rộng của nó (chỉ có hiệu lực từ bản người dùng đã xác nhận) |
 
 Không khóa nào bớt được một mục gốc, làm một mục thành tùy chọn hay tắt bước duyệt. Khai hỏng thì phần hỏng bị bỏ, khuôn gốc giữ nguyên.

@@ -23,12 +23,12 @@ Skill này là bản chỉ đường, không phải nội dung của đơn vị 
 2. **Xem có ai đang làm cùng đơn vị không:** `node .claude/modules/core/cli/session.js for <đơn-vị>`. Có phiên khác vừa sửa thì báo người dùng trước khi sửa.
 3. **Đọc cửa vào của đơn vị** bằng công cụ Read, theo mục "Đọc gì khi nào". Các tệp khai trong `skills.serviceDocs` (mặc định `CLAUDE.md` và `docs/agent/STATUS.md`) là bắt buộc; hook chặn lần sửa đầu tiên nếu chưa đọc.
 4. **Tìm hiểu việc cần làm** bằng `context_explore` trước khi Grep (skill `context`).
-5. **Trình kế hoạch bằng `plan_draft`** (skill `plan`) và chờ duyệt. Được duyệt thì gọi `scope_register`.
+5. **Trình kế hoạch** (skill `plan`: cần tiêu đề và dòng "Dịch vụ") và chờ duyệt. Được duyệt thì gọi `scope_register`.
 6. **Làm**, mở thêm skill của loại việc đó (mục "Việc nào dùng skill nào").
 7. **Kết thúc** theo mục "Cách kiểm".
 
 ## Khuôn kế hoạch
-Lập kế hoạch bằng công cụ `plan_draft` (skill `plan`): công cụ dựng khối đúng khuôn, bạn dán nguyên khối và dừng chờ duyệt. Được duyệt thì gọi `scope_register` với các đơn vị trong mục "Dịch vụ"; sửa đơn vị chưa đăng ký hoặc ngoài kế hoạch bị CHẶN. Xem phạm vi: `scope_status`.
+Trình kế hoạch theo skill `plan` (khối `## Kế hoạch` có dòng "Dịch vụ"; công cụ `plan_draft` dựng khối là tùy chọn) rồi dừng chờ duyệt. Được duyệt thì gọi `scope_register` với các đơn vị trong mục "Dịch vụ"; sửa đơn vị chưa đăng ký hoặc ngoài kế hoạch bị CHẶN. Xem phạm vi: `scope_status`.
 
 ## Đọc gì khi nào
 | Thứ tự | Tệp (trong đơn vị) | Trả lời câu hỏi | Bắt buộc |

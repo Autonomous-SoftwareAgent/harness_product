@@ -24,7 +24,7 @@
 //   now()                                                          giờ hiện tại (ms)
 // Quyết định: null (không nói gì) hoặc { verdict: 'note' | 'deny' | 'ask', reason }.
 const core = require('./gate-core');
-const { parsePlan, EXAMPLE, hasHeading, usesDraft } = require('./plan-format');
+const { parsePlan, hasHeading, usesDraft } = require('./plan-format');
 
 const note = (reason) => ({ verdict: 'note', reason });
 
@@ -44,9 +44,9 @@ const ctxOpenHeld = (parsed) =>
 
 const ctxBadPlan = (errors) =>
   `GATE: người dùng đã đồng ý, nhưng kế hoạch bạn trình KHÔNG theo khuôn chuẩn (${errors.join('; ')}), nên cổng CHƯA mở và mọi lần sửa tệp vẫn bị chặn. ` +
-  `Trình lại kế hoạch có đúng khối dưới đây (lời giải thích viết tự do ở trên hoặc dưới khối), rồi chờ người dùng đồng ý lần nữa:\n${EXAMPLE}`;
+  'Trình lại kế hoạch có tiêu đề "## Kế hoạch" và dòng "- Dịch vụ: <tên đơn vị cách nhau dấu phẩy, hoặc: không>" (các mục Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro nên có, thiếu thì chỉ cảnh báo), rồi chờ người dùng đồng ý lần nữa.';
 const CTX_FORMAT =
-  ` Kế hoạch phải có khối theo khuôn chuẩn, nếu không lời đồng ý của người dùng không mở được cổng:\n${EXAMPLE}\nSau khi được duyệt, gọi công cụ scope_register của bsn-docs để đăng ký các dịch vụ trong mục "Dịch vụ" rồi mới sửa.`;
+  ' Kế hoạch cần tiêu đề "## Kế hoạch" và dòng "- Dịch vụ: <tên đơn vị, hoặc: không>"; nên có thêm Lý do, Làm gì, Sửa tệp, Không làm, Rủi ro (thiếu thì chỉ cảnh báo). Được duyệt thì gọi scope_register rồi mới sửa.';
 
 // Tin kế hoạch không dán khối do plan_draft dựng: giữ lượt MỘT lần (lượt nói tiếp do chính lần giữ này gây ra thì cho qua, không bao giờ kẹt).
 const CTX_NOT_DRAFTED =
@@ -90,7 +90,7 @@ function userPrompt(event, cfg, p) {
   // Nhân chứng thứ hai: mỗi lần mở/đóng cổng ghi vào nhật ký kèm băm kế hoạch đã duyệt (không ghi nội dung tin nhắn).
   // Cổng đang mở mà kế hoạch được duyệt đổi (kế hoạch mới đúng khuôn thay kế hoạch cũ): cũng là một lần mở, để nhân chứng trong nhật ký khớp băm mới.
   const replaced = state.open && next.open && state.approved && next.approved && next.approved.sha !== state.approved.sha;
-  if (!state.open && next.open) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: q.held ? `${r.via}-held` : r.via });
+  if (!state.open && next.open) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: q.held ? `${r.via}-held` : r.via, ...(parsed.warnings && parsed.warnings.length ? { warn: parsed.warnings.join('; ') } : {}) });
   else if (replaced) p.log({ sid, event: 'gate-open', sha: next.approved.sha, via: `${r.via}-replan` });
   else if (state.open && !next.open) p.log({ sid, event: 'gate-close', reason: r.verdict });
   p.log({ sid, event: 'prompt', verdict: badFormat ? 'approve-bad-format' : r.verdict, via: r.via, ms: r.ms, len: msg.length, open: next.open });

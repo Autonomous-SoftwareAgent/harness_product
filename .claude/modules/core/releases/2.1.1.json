@@ -1,0 +1,22 @@
+{
+  "version": "2.1.1",
+  "date": "2026-10-14",
+  "summary": "Lệnh đóng gói có thể đòi dấu \"đã kiểm đủ\" trước khi đóng gói (khóa requireVerified), để bản phát hành luôn qua bộ kiểm đủ ở cả hai nền; mặc định tắt.",
+  "changes": [
+    {
+      "id": "dong-goi-doi-dau-kiem-du",
+      "kind": "added",
+      "block": "core",
+      "title": "Lệnh đóng gói đòi dấu \"đã kiểm đủ\" khi dự án bật requireVerified",
+      "before": "public-export đóng gói bất kỳ bản đã commit nào, không biết bộ kiểm đã chạy đủ chưa.",
+      "after": "Khóa requireVerified: true trong .claude/project/export.json làm public-export từ chối đóng gói khi thiếu dấu \"đã kiểm đủ\", dấu của bản đóng gói khác, hoặc dấu chưa có đủ Windows (win32) và Linux. Dấu nằm ở .claude/.state/gate-full-check.json, gắn với mã băm của bản đóng gói (không tính MANIFEST.json). Khẩn cấp: BSN_RELEASE_UNVERIFIED=1 bỏ qua và in cảnh báo. Kết quả của lệnh có thêm trường digest. Không bật khóa thì không đổi gì.",
+      "files": ["core/cli/public-export.js", "core/gate/gate-paths.js"],
+      "surface": { "config": ["export.requireVerified"], "commands": ["public-export"] },
+      "impact": "Không phải làm gì: mặc định tắt. Dự án nguồn của gói (người dùng lệnh public-export) muốn bật thì thêm khóa vào export.json. Hàm công khai mới fullCheckPath ở gate-paths.js; tên chỉ thêm.",
+      "verified": "Test đóng gói: thiếu dấu thì từ chối, dấu khớp cả hai nền thì đóng gói, thiếu một nền hay bản đã đổi thì từ chối, biến khẩn cấp cho qua kèm cảnh báo, dự án không bật khóa thì không đổi; mã băm giống nhau khi đóng gói ra hai thư mục khác nhau.",
+      "unverified": "Dấu chỉ chặn quên, không chặn người cố ý ghi dấu giả."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": ["core/module.json", "core/RELEASES.md"]
+}

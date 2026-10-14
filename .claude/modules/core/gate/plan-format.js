@@ -67,7 +67,7 @@ function normalizeOptions(raw) {
   const rawLabels = src.labels && typeof src.labels === 'object' && !Array.isArray(src.labels) ? src.labels : {};
   for (const l of LABELS) labels[l] = list(rawLabels[l], MAX.alias);
   const extra = list(src.extra, MAX.extra);
-  return { heading, labels, extra, unitExtra: {} };
+  return { heading, labels, extra, unitExtra: {}, strict: src.strict === true };
 }
 const DEFAULT_OPTIONS = normalizeOptions(null);
 
@@ -78,7 +78,9 @@ function example(opts = DEFAULT_OPTIONS) {
 }
 
 // Dòng mở một mục: "- Dịch vụ: ..." hoặc "- **Dịch vụ:** ..." hoặc "- **Dịch vụ**: ...", đứng ở lề (tối đa 3 dấu cách).
-const labelRe = (names) => new RegExp(`^[ \\t]{0,3}[-*][ \\t]+(?:\\*\\*)?(?:${names.map(esc).join('|')})(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*(.*)$`, 'i');
+// Bỏ dấu từng ký tự (giữ nguyên độ dài chuỗi) để so tên mục không phân biệt dấu; đầu dòng là gạch đầu dòng hay số thứ tự đều được, hoặc không có.
+const plain = (s) => Array.from(String(s)).map((c) => (c === 'đ' ? 'd' : c === 'Đ' ? 'D' : c.normalize('NFD')[0])).join('');
+const labelRe = (names) => new RegExp(`^[ \\t]{0,3}(?:[-*+]|\\d+[.)])?[ \\t]*(?:\\*\\*)?(?:${names.map((n) => esc(plain(n))).join('|')})(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*(.*)$`, 'i');
 const oneLine = (s, max) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, max);
 
 // Trả { ok, errors: [chuỗi], services: [tên], reason, scope, block, extra: { mục: nội dung } }. services rỗng nghĩa là kế hoạch chỉ đụng phần dùng chung.
@@ -101,15 +103,24 @@ function parsePlanWith(text, options) {
   const found = {};
   let cur = null;
   for (const line of lines) {
-    const hit = fields.map((f) => [f.name, f.re.exec(line)]).find(([, m]) => m);
-    if (hit) { cur = hit[0]; if (!(cur in found)) found[cur] = hit[1][1]; else cur = null; continue; }
+    const flat = plain(line);
+    const hit = fields.map((f) => [f.name, f.re.exec(flat)]).find(([, m]) => m);
+    if (hit) { cur = hit[0]; if (!(cur in found)) found[cur] = line.slice(flat.length - hit[1][1].length); else cur = null; continue; }
     if (cur) found[cur] += `\n${line}`;
   }
+  // Cổng chỉ cần mục "Dịch vụ" (để đăng ký phạm vi); năm mục còn lại thiếu hay trống chỉ là cảnh báo, trừ khi cấu hình đặt plan.strict.
   const errors = [];
+  const warnings = [];
+  const hardLabels = opts.strict ? LABELS : ['Dịch vụ'];
   const missing = LABELS.filter((l) => !(l in found));
-  if (missing.length) errors.push(`thiếu mục: ${missing.join(', ')}`);
   const empty = LABELS.filter((l) => l in found && !oneLine(found[l], 10));
-  if (empty.length) errors.push(`mục để trống: ${empty.join(', ')}`);
+  const report = (list, msg) => {
+    const h = list.filter((l) => hardLabels.includes(l)); const w = list.filter((l) => !hardLabels.includes(l));
+    if (h.length) errors.push(`${msg}: ${h.join(', ')}`);
+    if (w.length) warnings.push(`${msg}: ${w.join(', ')}`);
+  };
+  report(missing, 'thiếu mục');
+  report(empty, 'mục để trống');
   let services = [];
   if ('Dịch vụ' in found) {
     // Lấy dòng đầu của mục, bỏ phần chú thích trong ngoặc và dấu định dạng.
@@ -130,7 +141,7 @@ function parsePlanWith(text, options) {
   if (emptyExtra.length) errors.push(`mục bắt buộc thêm để trống: ${emptyExtra.map(show).join(', ')}`);
   const block = `${head[0].trim()}\n${body.trim()}`;
   const extra = Object.fromEntries(need.filter((n) => n.label in found).map((n) => [n.label, oneLine(found[n.label], 500)]));
-  return { ok: errors.length === 0, errors, services: errors.length ? [] : services, reason: oneLine(found['Lý do'], 300), scope: oneLine(found['Sửa tệp'], 500), block, extra };
+  return { ok: errors.length === 0, errors, warnings, services: errors.length ? [] : services, reason: oneLine(found['Lý do'], 300), scope: oneLine(found['Sửa tệp'], 500), block, extra };
 }
 
 // Khuôn của dự án đang chạy: khóa `plan` trong cấu hình cổng duyệt, cộng mục thêm của từng đơn vị lấy từ BẢN ĐÃ XÁC NHẬN của khối mở rộng
@@ -208,13 +219,13 @@ function hasHeading(text, options) {
 // Tin có dán NGUYÊN khối do draftPlan dựng (so sau khi gộp khoảng trắng) hay không.
 const usesDraft = (reply, blocks) => { const r = squash(reply); return (blocks || []).some((b) => b && r.includes(squash(b))); };
 
-// Chế độ lưới cuối lượt, khóa `plan.draft` của cấu hình cổng duyệt: "block" (mặc định) hoặc "off". Chỉ "off" mới tắt.
+// Chế độ lưới cuối lượt, khóa `plan.draft` của cấu hình cổng duyệt: "off" (mặc định, không giữ lượt) hoặc "block" (giữ lượt một lần khi kế hoạch không do plan_draft dựng).
 function draftMode(root) {
   try {
     const paths = require('./gate-paths');
     const cfg = JSON.parse(fs.readFileSync(paths.configPath(root || paths.rootFrom(__dirname)), 'utf8'));
-    return cfg && cfg.plan && cfg.plan.draft === 'off' ? 'off' : 'block';
-  } catch { return 'block'; }
+    return cfg && cfg.plan && cfg.plan.draft === 'block' ? 'block' : 'off';
+  } catch { return 'off'; }
 }
 
 let cached = null;

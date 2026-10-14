@@ -57,6 +57,7 @@ function exportConfig(root, tracked) {
     rewrite: (raw.rewrite || []).map(([re, to]) => [new RegExp(re, 'g'), to]),
     internal: (raw.internal || []).map((x) => new RegExp(x.re, x.flags || '')),
     dropPermissions: raw.dropPermissions ? new RegExp(raw.dropPermissions) : null,
+    requireVerified: raw.requireVerified === true,
   };
 }
 
@@ -225,7 +226,19 @@ function changedSince(root, prevRef, ref = 'HEAD') {
   return out.sort((p, q) => (p.path < q.path ? -1 : 1));
 }
 
-function run(root, dest) {
+// Bản đóng gói đã qua bộ kiểm đủ chưa: dấu ở .claude/.state (do test/run-changed.js --release ghi) phải cùng mã băm và có đủ hai nền.
+function verifiedProblem(root, digest) {
+  let stamp = null;
+  try { stamp = JSON.parse(fs.readFileSync(require('../gate/gate-paths').fullCheckPath(root), 'utf8')); } catch { /* chưa có */ }
+  const how = 'Chạy: node .claude/modules/test/run-changed.js --release (cần Docker; commit hết trước). Khẩn cấp thì đặt BSN_RELEASE_UNVERIFIED=1, và nói rõ với người dùng là đã bỏ qua.';
+  if (!stamp) return `bản đóng gói chưa qua bộ kiểm đủ (không có dấu). ${how}`;
+  if (stamp.digest !== digest) return `bản đóng gói đã đổi từ lần kiểm đủ gần nhất (dấu ${String(stamp.digest).slice(0, 12)}, bản này ${digest.slice(0, 12)}). ${how}`;
+  const missing = ['win32', 'linux'].filter((p) => !(stamp.passed && stamp.passed[p]));
+  if (missing.length) return `bộ kiểm đủ chưa qua ở: ${missing.join(', ')}. ${how}`;
+  return '';
+}
+
+function run(root, dest, opts = {}) {
   const out = [];
   if (fs.existsSync(dest) && fs.readdirSync(dest).length) return { ok: false, text: `Thư mục đích ${dest} không trống: chọn thư mục mới (lệnh không ghi đè).` };
   const ls = git(root, ['ls-tree', '-r', '--name-only', '-z', 'HEAD', '--', '.claude'], { encoding: 'utf8' });
@@ -338,6 +351,9 @@ function run(root, dest) {
   else files.push('.claude/modules/MANIFEST.json');
   const stamps = {};
   for (const f of files.filter((x) => x.startsWith('.claude/modules/') || x.startsWith('.claude/skills/'))) stamps[f] = sha(fs.readFileSync(path.join(dest, ...f.split('/'))));
+  // Mã băm của cả bản đóng gói: dấu "đã kiểm đủ" gắn với nó, nên commit chỉ sửa tài liệu không làm dấu cũ đi.
+  // MANIFEST.json phụ thuộc thư mục đích (dấu vân tay cổng duyệt ghi đường dẫn), nên không tính vào mã băm; các tệp cổng duyệt đã có dấu riêng ở đây.
+  const digest = sha(Buffer.from(JSON.stringify(Object.entries(stamps).filter(([f]) => f !== '.claude/modules/MANIFEST.json').sort(([a], [b]) => (a < b ? -1 : 1)))));
   put('.claude/modules/FILES.json', `${JSON.stringify({ version: coreManifest.version, files: stamps }, null, 2)}\n`);
   if (broken.length) out.push(`LỖI: lệnh nhập trỏ tới tệp không vào gói (${broken.length}):`, ...broken.map((b) => `  ${b}`));
 
@@ -375,7 +391,12 @@ function run(root, dest) {
   if (hits.length) out.push(`DÒ KHÔNG SẠCH (${hits.length} chỗ):`, ...hits.slice(0, 80).map((h) => `  ${h}`), ...(hits.length > 80 ? [`  ... còn ${hits.length - 80}`] : []));
   else out.push(`Dò sạch: từ cấm${banned ? '' : ' (máy không có danh sách: KHÔNG dò)'}, nội dung docs/, bí mật, đường dẫn máy, dấu vết của dự án nguồn và mã quyết định nội bộ trong mọi tệp chữ.`);
   out.push('Danh sách tệp cho phép (đối chiếu sau khi đẩy):', ...files.sort().map((f) => `  ${f}`));
-  return { ok: !hits.length && !out.some((l) => l.startsWith('LỖI')), text: out.join('\n'), files: files.sort(), hits, broken, unknown: [...unknownPaths], debt };
+  // Dự án bật khóa requireVerified (export.json) thì chỉ đóng gói bản đã qua bộ kiểm đủ ở cả hai nền (test/run-changed.js --release).
+  if (xc.requireVerified && !opts.skipVerified && process.env.BSN_RELEASE_UNVERIFIED !== '1') {
+    const v = verifiedProblem(root, digest);
+    if (v) out.push(`LỖI: ${v}`);
+  } else if (xc.requireVerified && !opts.skipVerified) out.push('CẢNH BÁO: BSN_RELEASE_UNVERIFIED=1: bỏ qua việc kiểm dấu "đã kiểm đủ" của bản đóng gói.');
+  return { ok: !hits.length && !out.some((l) => l.startsWith('LỖI')), text: out.join('\n'), files: files.sort(), hits, broken, unknown: [...unknownPaths], debt, digest };
 }
 
 module.exports = { run, changedSince, EXCLUDE, SHIP, KNOWN, stripDecisions, exportConfig, productProject, productSettings, rewriteRequires, rewritePaths, placer };

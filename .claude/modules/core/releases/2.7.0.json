@@ -1,0 +1,33 @@
+{
+  "version": "2.7.0",
+  "date": "2026-10-15",
+  "summary": "Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được; dòng Dịch vụ không còn làm lời duyệt trượt vì chữ giải thích.",
+  "changes": [
+    {
+      "id": "khuon-ke-hoach-thoang",
+      "kind": "changed",
+      "block": "core",
+      "title": "Cổng đọc kế hoạch theo nội dung, không theo hình thức: đủ năm mục là qua",
+      "before": "Cổng đòi tiêu đề là đúng một dòng chỉ có chữ \"Kế hoạch\", tên mục đúng từng chữ ở đầu dòng, và MỌI chữ ở dòng \"Dịch vụ\" phải là tên đơn vị. Kế hoạch viết \"## Kế hoạch (v2)\", \"Rủi ro / giả định:\", \"Đơn vị:\", tiếng Anh, bảng, nhãn in đậm không dấu hai chấm, hoặc dòng Dịch vụ có câu giải thích sau ngoặc đều bị coi là sai: lời \"duyệt\" của người dùng không mở cổng, agent phải viết lại và người dùng duyệt lần hai (đã đo 25 trên 29 cách viết tự nhiên bị chặn).",
+      "after": "Chỉ cần bắt đủ năm trường (Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro), cách viết tùy ý. Tiêu đề: dòng có dấu thăng hoặc in đậm bắt đầu bằng \"Kế hoạch\" hoặc \"Plan\" kèm chữ gì cũng được; không có tiêu đề mà đủ năm mục vẫn đọc được. Tên mục: có sẵn nhiều tên gần nghĩa (Đơn vị, Việc làm, Tệp sẽ sửa, Ngoài phạm vi, Service, What, Files, Out of scope, Risks...), cho kèm chú thích ngắn trước dấu phân cách, nhận gạch đầu dòng, số thứ tự, in đậm, nhãn dạng tiêu đề, dòng bảng, nội dung ở dòng sau. Dòng Dịch vụ: đọc tên đơn vị từ ĐẦU dòng (chữ thường hoặc hoa), nối bằng dấu phẩy, \"và\", \"&\"; phần sau ngoặc, dấu chấm phẩy, gạch dài, dấu chấm hết câu là chú thích, bỏ qua; \"không\", \"không có\", \"n/a\", \"chung\" nghĩa là chỉ đụng phần dùng chung. Chỉ còn hai trường hợp cổng chưa mở: thiếu hoặc trống mục (vẫn chỉ viết bù đúng mục đó), và đầu dòng Dịch vụ không đọc ra tên đơn vị nào. Lời nhắc cho agent đổi chữ: \"cổng CHƯA đọc ra đủ năm mục\" thay cho \"KHÔNG theo khuôn chuẩn\".",
+      "files": [
+        "core/gate/plan-format.js",
+        "core/gate/gate-rule.js",
+        "core/gate/messages-en.js",
+        "core/skills/plan.md",
+        "core/FORMAT.md",
+        "core/guides/01-van-hanh.md"
+      ],
+      "surface": { "config": ["plan.heading", "plan.labels"], "skills": ["plan"] },
+      "migrations": [],
+      "impact": "Không phải làm gì. Khai báo plan.heading, plan.labels, plan.extra của dự án vẫn dùng được; tên gọi khác khai thêm được cộng vào các tên có sẵn. Skill hay tài liệu riêng của dự án có kiểm chữ \"KHÔNG theo khuôn chuẩn\" trong lời nhắc của cổng thì đổi sang \"CHƯA đọc ra đủ năm mục\". Phiên đang mở hưởng ngay vì cổng đọc mã mới ở mỗi lời người dùng.",
+      "verified": "Test: 41 cách viết tự nhiên (kể cả đúng dòng Dịch vụ làm lời duyệt trượt) đều đọc ra đủ năm trường và đúng đơn vị; vẫn chặn khi thiếu mục, mục trống, không tiêu đề mà không đủ mục, đầu dòng Dịch vụ không có tên; câu văn thường và dòng thụt sâu không bị nhận nhầm; đoạn bổ sung ghép được vào kế hoạch viết kiểu khác; dấu vân tay cổng duyệt khớp.",
+      "unverified": "Chưa thử bằng phiên Claude CLI thật ở dự án khác. Cụm chữ thường cách nhau bằng khoảng trắng ở dòng Dịch vụ (ví dụ \"api trang login\") được đọc thành nhiều tên; tên không có thật sẽ bị scope_register từ chối nhưng vẫn nằm trong danh sách đơn vị của kế hoạch. Lời người dùng dài hơn 600 ký tự vẫn luôn bị coi là việc mới (maxPromptChars), chưa đổi."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

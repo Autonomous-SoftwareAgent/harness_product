@@ -209,6 +209,7 @@
   "releases/2.4.0.json": "core",
   "releases/2.5.0.json": "core",
   "releases/2.6.0.json": "core",
+  "releases/2.7.0.json": "core",
   "tools/banned-scan.js": "core",
   "tools/install-git-hooks.js": "core",
   "tools/new-service.js": "core",

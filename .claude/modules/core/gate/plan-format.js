@@ -30,7 +30,6 @@ const path = require('node:path');
 const LABELS = ['Dịch vụ', 'Làm gì', 'Sửa tệp', 'Không làm', 'Rủi ro'];
 const HEADING = 'Kế hoạch';
 const NAME_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const NONE_RE = /^(không|khong|none)$/i;
 const MAX = { heading: 5, alias: 5, extra: 10, chars: 40 };
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -81,19 +80,45 @@ function example(opts = DEFAULT_OPTIONS) {
 
 // So tên không phân biệt dấu: bỏ dấu từng ký tự (giữ nguyên độ dài chuỗi, ký tự ngoài mặt phẳng cơ bản giữ nguyên) để vị trí khớp với chuỗi gốc.
 const plain = (s) => Array.from(String(s)).map((c) => (c.length > 1 ? c : c === 'đ' ? 'd' : c === 'Đ' ? 'D' : c.normalize('NFD')[0])).join('');
-const names = (list) => list.map((n) => esc(plain(n))).join('|');
-// Dòng mở một mục: gạch đầu dòng, số thứ tự hay không có gì; tên mục in đậm hay không; dấu hai chấm hoặc gạch ngang.
-const labelRe = (list) => new RegExp(`^[ \\t]{0,3}(?:[-*+]|\\d+[.)])?[ \\t]*(?:\\*\\*)?(?:${names(list)})(?:\\*\\*)?[ \\t]*(?::|[-–—])(?:\\*\\*)?[ \\t]*(.*)$`, 'i');
-// Dòng tiêu đề: có hay không dấu thăng (cấp nào cũng được), in đậm hay không, dấu hai chấm cuối nếu có; cả dòng chỉ có tên tiêu đề.
-const headRe = (opts) => new RegExp(`^[ \\t]{0,3}(?:#{1,6}[ \\t]*)?(?:\\*\\*)?(?:${names([HEADING, ...opts.heading])})(?:\\*\\*)?[ \\t]*:?[ \\t]*(?:\\*\\*)?[ \\t]*$`, 'i');
+// Tên gọi khác CÓ SẴN của các mục và của tiêu đề (cách người ta hay viết): không cần khai gì, ai viết kiểu nào cũng được miễn đủ năm thông tin.
+const SYNONYMS = {
+  'Dịch vụ': ['Đơn vị', 'Service', 'Services', 'Unit', 'Units'],
+  'Làm gì': ['Việc làm', 'Việc sẽ làm', 'What'],
+  'Sửa tệp': ['Tệp sửa', 'Tệp sẽ sửa', 'Tệp thay đổi', 'Sửa file', 'Files changed', 'Files', 'File', 'Tệp'],
+  'Không làm': ['Ngoài phạm vi', 'Không bao gồm', 'Không đụng', 'Out of scope', 'Not doing', 'Non-goals'],
+  'Rủi ro': ['Risks', 'Risk'],
+};
+const HEADING_SYNONYMS = ['Plan'];
+// Dài trước, ngắn sau: "Tệp sửa" phải thử trước "Tệp".
+const names = (list) => [...list].sort((a, b) => b.length - a.length).map((n) => esc(plain(n))).join('|');
+const WORD_END = '(?![a-z0-9_])';
+const BOLD = '(?:\\*\\*|__)';
+// Phần đứng giữa tên mục và dấu phân cách: chú thích trong ngoặc, hoặc vài chữ ("Sửa tệp nào", "Rủi ro / giả định").
+const QUAL = '(?:[ \\t]*\\([^)\\n]{0,40}\\))?(?:[ \\t]*[/&+,][ \\t]*[^:\\n|*()]{1,30}?|[ \\t]+[^:\\n|*()]{1,30}?)?';
+// Dòng mở một mục (regex khớp PHẦN ĐẦU dòng, đến hết dấu phân cách; nội dung là phần còn lại của dòng). Cách viết nào cũng được:
+//   gạch đầu dòng, số thứ tự, tiêu đề (#), dòng bảng (|) hoặc không gì cả; tên mục in đậm hay không; kèm chú thích ngắn;
+//   dấu hai chấm, gạch ngang có khoảng trắng, dấu | của bảng, hoặc tên mục in đậm rồi nội dung liền sau;
+//   hoặc tên mục đứng một mình một dòng (nội dung ở các dòng sau).
+const labelRe = (list) => new RegExp(`^[ \\t]{0,3}(?:\\|[ \\t]*)?(?:[-*+]|\\d+[.)])?[ \\t]*(?:#{1,6}[ \\t]*)?${BOLD}?(?:${names(list)})${WORD_END}(?:${QUAL}[ \\t]*${BOLD}?[ \\t]*:${BOLD}?[ \\t]*|${QUAL}[ \\t]+[-–—][ \\t]+|${QUAL}[ \\t]*\\|[ \\t]*|${BOLD}[ \\t]+(?=\\S)|${BOLD}?[ \\t]*:?[ \\t]*${BOLD}?[ \\t]*$)`, 'i');
+// Dòng tiêu đề: bắt đầu bằng tên tiêu đề, phần sau tùy ý (tối đa 80 ký tự). Có dấu thăng hoặc in đậm thì chấp nhận ngay ("## Kế hoạch (v2)",
+// "## Kế hoạch: đổi cỡ chữ"); không có thì cả dòng chỉ được là tên (kèm dấu hai chấm cuối), để một câu văn thường bắt đầu bằng
+// "Kế hoạch này..." hay "Kế hoạch: tôi sẽ sửa a.js" không bị nhận nhầm.
+function isHeading(flat, opts) {
+  const m = new RegExp(`^[ \\t]{0,3}(#{1,6}[ \\t]*)?(${BOLD})?(?:${names([HEADING, ...HEADING_SYNONYMS, ...opts.heading])})${WORD_END}(.*)$`, 'i').exec(flat);
+  if (!m) return false;
+  const rest = m[3];
+  if (rest.length > 80) return false;
+  return Boolean(m[1] || m[2]) || /^[ \t]*:?[ \t]*$/.test(rest);
+}
 const NEXT_HEADING = /^[ \t]{0,3}#{1,6}[ \t]+\S/;
 const oneLine = (s, max) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, max);
+const firstLine = (s) => String(s || '').split('\n').map((l) => l.trim()).find(Boolean) || '';
 
-// Các mục có thể xuất hiện: năm mục gốc (kèm tên gọi khác), mục thêm của dự án, và mục thêm của mọi đơn vị (đòi hay không thì xét sau,
-// khi đã biết kế hoạch nêu đơn vị nào).
+// Các mục có thể xuất hiện: năm mục gốc (kèm tên gọi khác có sẵn và tên gọi khác do dự án khai), mục thêm của dự án, và mục thêm của mọi đơn vị
+// (đòi hay không thì xét sau, khi đã biết kế hoạch nêu đơn vị nào).
 function fieldsOf(opts) {
   const unitLabels = [...new Set(Object.values(opts.unitExtra || {}).flat())];
-  return [...LABELS.map((l) => [l, [l, ...opts.labels[l]]]), ...[...opts.extra, ...unitLabels.filter((l) => !opts.extra.some((e) => key(e) === key(l)))].map((l) => [l, [l]])]
+  return [...LABELS.map((l) => [l, [l, ...SYNONYMS[l], ...opts.labels[l]]]), ...[...opts.extra, ...unitLabels.filter((l) => !opts.extra.some((e) => key(e) === key(l)))].map((l) => [l, [l]])]
     .map(([name, list]) => ({ name, re: labelRe(list) }));
 }
 
@@ -105,30 +130,69 @@ function scan(lines, opts, { stopAtBlank = false } = {}) {
   for (const line of lines) {
     const flat = plain(line);
     const hit = fields.map((f) => [f.name, f.re.exec(flat)]).find(([, m]) => m);
-    if (hit) { cur = hit[0]; if (!(cur in found)) found[cur] = line.slice(flat.length - hit[1][1].length); else cur = null; continue; }
+    if (hit) {
+      cur = hit[0];
+      if (!(cur in found)) found[cur] = line.slice(hit[1][0].length).replace(/^[ \t]*\|[ \t]*$|[ \t]*\|[ \t]*$/, '');
+      else cur = null;
+      continue;
+    }
     if (cur) { if (stopAtBlank && !line.trim()) { cur = null; continue; } found[cur] += `\n${line}`; }
   }
   return found;
 }
 
-// Tiêu đề kế hoạch và phạm vi khối của nó trong danh sách dòng: { hi, end } hoặc null.
+// Tiêu đề kế hoạch và phạm vi khối của nó trong danh sách dòng: { hi, end, implicit } hoặc null.
+// Có dòng tiêu đề: khối chạy tới tiêu đề markdown kế tiếp KHÔNG phải một dòng mở mục (nhãn dạng "### Dịch vụ" vẫn thuộc khối).
+// Không có tiêu đề nhưng cả năm mục gốc đều có mặt: vẫn đọc được, khối bắt đầu từ dòng mở mục đầu tiên (implicit).
 function locate(lines, opts) {
-  const re = headRe(opts);
-  const hi = lines.findIndex((l) => re.test(plain(l)));
-  if (hi < 0) return null;
-  let end = lines.length;
-  for (let i = hi + 1; i < lines.length; i += 1) if (NEXT_HEADING.test(lines[i])) { end = i; break; }
-  return { hi, end };
+  const fields = fieldsOf(opts);
+  const isLabel = (l) => { const flat = plain(l); return fields.some((f) => f.re.test(flat)); };
+  const hi = lines.findIndex((l) => isHeading(plain(l), opts));
+  if (hi >= 0) {
+    let end = lines.length;
+    for (let i = hi + 1; i < lines.length; i += 1) if (NEXT_HEADING.test(lines[i]) && !isLabel(lines[i])) { end = i; break; }
+    return { hi, end, implicit: false };
+  }
+  const first = lines.findIndex(isLabel);
+  if (first < 0) return null;
+  const found = scan(lines.slice(first), opts);
+  if (!LABELS.every((l) => l in found)) return null;
+  return { hi: first - 1, end: lines.length, implicit: true };
+}
+
+// Mục "Dịch vụ": đọc tên đơn vị từ ĐẦU dòng, phần còn lại là chú thích. Tên cách nhau bằng dấu phẩy, "và", "với", "&", "+", "/";
+// đọc dừng ở dấu hiệu chú thích đầu tiên: ngoặc, dấu chấm phẩy, gạch dài, dấu hai chấm, chấm hết câu. Chữ hoa được hạ thành chữ thường.
+// "không", "không có", "n/a", "chung" (đầu dòng) nghĩa là chỉ đụng phần dùng chung. Trả { services, none, unreadable }: unreadable chỉ khi
+// đầu dòng có chữ mà không đọc ra được tên nào. Tên có thật hay không là việc của scope_register (từ chối tên lạ), không phải của khuôn.
+const NONE_START = /^(?:khong|none|n\/a|na|no|chung)(?![a-z0-9_-])/i;
+function readServices(text) {
+  const first = firstLine(text).replace(/[`*_]/g, '');
+  const seg = plain(first).split(/\(|\[|;|\s[-–—]\s|[–—]|:\s|\.(?:\s|$)/)[0].trim();
+  if (!seg || NONE_START.test(seg) || /^-+$/.test(seg)) return { services: [], none: true, unreadable: false };
+  const clean = (s) => s.trim().replace(/^["'“”‘’]+|["'“”‘’.]+$/g, '');
+  const items = seg.split(/\s*(?:,|&|\+|\/|\bva\b|\bvoi\b|\band\b|\bhoac\b|\bor\b|\bcung\b)\s*/i).map(clean).filter(Boolean);
+  const services = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const it = items[i].toLowerCase();
+    if (NAME_RE.test(it)) { services.push(it); continue; }
+    // Nhiều tên cách nhau bằng khoảng trắng ("api web"): chỉ nhận ở mục đầu, khi MỌI từ đều là tên viết chữ thường. Cụm chữ hoa ("Ten Don Vi")
+    // là một cách gọi chứ không phải danh sách tên: không đoán, đòi viết lại tên.
+    const parts = it.split(/\s+/);
+    if (i === 0 && items[i] === it && parts.length > 1 && parts.length <= 4 && parts.every((p) => NAME_RE.test(p))) { services.push(...parts); continue; }
+    break; // chữ giải thích: dừng đọc
+  }
+  const uniq = [...new Set(services)];
+  return { services: uniq, none: false, unreadable: uniq.length === 0 };
 }
 
 // Trả { ok, errors, fix, headingOk, services, reason, scope, block, extra }.
-//   fix: tên các mục phải viết thêm hoặc sửa (thiếu, để trống, "Dịch vụ" không đọc được, mục bắt buộc thêm); rỗng khi lỗi không sửa theo từng mục được.
+//   fix: tên các mục phải viết thêm hoặc sửa (thiếu, để trống, "Dịch vụ" không đọc ra tên nào, mục bắt buộc thêm); rỗng khi lỗi không sửa theo từng mục được.
 //   reason: dòng đầu của mục "Làm gì" (tóm tắt việc sẽ làm; sổ phạm vi ghi vào cột lý do). services rỗng nghĩa là kế hoạch chỉ đụng phần dùng chung.
 function parsePlanWith(text, options) {
   const opts = options || DEFAULT_OPTIONS;
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const loc = locate(lines, opts);
-  if (!loc) return { ok: false, errors: [`thiếu tiêu đề "## ${HEADING}" (đứng riêng một dòng)`], fix: [], headingOk: false, services: [], reason: '', scope: '', block: '', extra: {} };
+  if (!loc) return { ok: false, errors: [`không thấy kế hoạch: cần một dòng tiêu đề "## ${HEADING}" (phần chữ sau đó tùy ý) rồi đủ năm mục ${LABELS.join(', ')}`], fix: [], headingOk: false, services: [], reason: '', scope: '', block: '', extra: {} };
   const bodyLines = lines.slice(loc.hi + 1, loc.end);
   const found = scan(bodyLines, opts);
   const errors = [];
@@ -138,14 +202,10 @@ function parsePlanWith(text, options) {
   if (missing.length) { errors.push(`thiếu mục: ${missing.join(', ')}`); fix.push(...missing); }
   if (empty.length) { errors.push(`mục để trống: ${empty.join(', ')}`); fix.push(...empty); }
   let services = [];
-  if ('Dịch vụ' in found) {
-    // Lấy dòng đầu của mục, bỏ phần chú thích trong ngoặc và dấu định dạng.
-    const raw = found['Dịch vụ'].split('\n')[0].replace(/\([^)]*\)/g, ' ').replace(/[`*]/g, '').trim().replace(/[.;]+$/, '');
-    if (raw && !NONE_RE.test(raw)) {
-      services = [...new Set(raw.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean))];
-      const bad = services.filter((s) => !NAME_RE.test(s));
-      if (bad.length) { errors.push(`mục "Dịch vụ" phải là tên dịch vụ cách nhau bằng dấu phẩy (chữ thường, số, gạch ngang) hoặc chữ "không"; không đọc được: ${bad.slice(0, 5).join(', ')}`); if (!fix.includes('Dịch vụ')) fix.push('Dịch vụ'); }
-    }
+  if ('Dịch vụ' in found && oneLine(found['Dịch vụ'], 10)) {
+    const r = readServices(found['Dịch vụ']);
+    services = r.services;
+    if (r.unreadable) { errors.push('mục "Dịch vụ" không đọc ra tên đơn vị nào ở đầu dòng: viết tên đơn vị (chữ thường, số, gạch ngang; nhiều tên cách nhau bằng dấu phẩy) hoặc "không"; lời giải thích đặt sau dấu ngoặc hoặc dấu chấm phẩy'); if (!fix.includes('Dịch vụ')) fix.push('Dịch vụ'); }
   }
   // Mục bắt buộc thêm: của dự án (luôn đòi), và của từng đơn vị mà kế hoạch nêu tên.
   const need = [...opts.extra.map((l) => ({ label: l, by: '' }))];
@@ -155,9 +215,9 @@ function parsePlanWith(text, options) {
   if (missingExtra.length) { errors.push(`thiếu mục bắt buộc thêm: ${missingExtra.map(show).join(', ')}`); fix.push(...missingExtra.map((n) => n.label)); }
   const emptyExtra = need.filter((n) => n.label in found && !oneLine(found[n.label], 10));
   if (emptyExtra.length) { errors.push(`mục bắt buộc thêm để trống: ${emptyExtra.map(show).join(', ')}`); fix.push(...emptyExtra.map((n) => n.label)); }
-  const block = `${lines[loc.hi].trim()}\n${bodyLines.join('\n').trim()}`;
+  const block = `${loc.implicit ? `## ${HEADING}` : lines[loc.hi].trim()}\n${bodyLines.join('\n').trim()}`;
   const extra = Object.fromEntries(need.filter((n) => n.label in found).map((n) => [n.label, oneLine(found[n.label], 500)]));
-  return { ok: errors.length === 0, errors, fix: [...new Set(fix)], headingOk: true, services: errors.length ? [] : services, reason: oneLine(String(found['Làm gì'] || '').split('\n')[0], 300), scope: oneLine(found['Sửa tệp'], 500), block, extra };
+  return { ok: errors.length === 0, errors, fix: [...new Set(fix)], headingOk: true, services: errors.length ? [] : services, reason: oneLine(firstLine(found['Làm gì']), 300), scope: oneLine(found['Sửa tệp'], 500), block, extra };
 }
 
 // Ghép phần bổ sung vào kế hoạch cũ: `addendum` là tin ngắn của model chỉ có các dòng của đúng các mục trong `fix`. Các dòng cũ của mục đó

@@ -6,6 +6,33 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.7.0 (2026-10-15)
+
+Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được. Sửa lỗi trải nghiệm khiến người dùng phải duyệt hai lần chỉ vì cách viết. Bản này không bỏ gì và không có bước chuyển cấu hình.
+
+### Có gì mới
+- **Cổng đọc kế hoạch theo nội dung, không theo hình thức.** Tiêu đề kèm chữ gì cũng được (`## Kế hoạch (v2)`, `## Kế hoạch: đổi cỡ chữ`, `**Kế hoạch**`, `## Plan`); không có tiêu đề mà đủ năm mục vẫn đọc được. Tên mục có nhiều tên gần nghĩa có sẵn (Đơn vị, Việc làm, Tệp sẽ sửa, Ngoài phạm vi, Service, What, Files, Out of scope, Risks...), cho kèm chú thích ngắn ("Rủi ro / giả định", "Sửa tệp nào"), nhận gạch đầu dòng, số thứ tự, in đậm, nhãn dạng tiêu đề, dòng bảng và nội dung ở dòng sau.
+- **Dòng "Dịch vụ" đọc tên đơn vị từ đầu dòng.** Nhiều đơn vị nối bằng dấu phẩy, "và", "&"; chữ hoa được hạ thành chữ thường; phần sau ngoặc, dấu chấm phẩy, gạch dài hay dấu chấm hết câu là chú thích; "không", "không có", "n/a", "chung" nghĩa là chỉ đụng phần dùng chung.
+
+### Hành vi đổi
+- Những kế hoạch trước đây bị coi là sai chỉ vì cách viết (đã đo: 25 trên 29 cách viết tự nhiên) nay đọc được; lời "duyệt" mở cổng ngay, không phải duyệt lần hai.
+- Cổng chỉ còn chưa mở khi thật sự thiếu: thiếu hoặc trống một mục (vẫn chỉ viết bù đúng mục đó), hoặc đầu dòng "Dịch vụ" không đọc ra tên đơn vị nào.
+- Lời nhắc cho agent đổi chữ: "cổng CHƯA đọc ra đủ năm mục" thay cho "KHÔNG theo khuôn chuẩn".
+- Không đổi: năm mục vẫn bắt buộc có nội dung; mục thêm của dự án (`plan.extra`) và của đơn vị vẫn bắt buộc; lời người dùng dài hơn `maxPromptChars` (600 ký tự) vẫn luôn là việc mới.
+
+### Nâng cấp
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. `plan.heading`, `plan.labels`, `plan.extra` đã khai vẫn dùng được; tên gọi khác khai thêm được cộng vào các tên có sẵn.
+- Skill hay tài liệu riêng của dự án có kiểm chữ "KHÔNG theo khuôn chuẩn" trong lời nhắc của cổng thì đổi sang "CHƯA đọc ra đủ năm mục".
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test khuôn thoáng: 41 cách viết tự nhiên (kể cả đúng dòng "Dịch vụ" làm lời duyệt trượt) đọc đủ năm trường và đúng đơn vị; vẫn chặn khi thiếu mục, mục trống, không tiêu đề mà không đủ mục, đầu dòng "Dịch vụ" không có tên; câu văn thường và dòng thụt sâu không bị nhận nhầm; đoạn bổ sung ghép được vào kế hoạch viết kiểu khác.
+
+### Chưa kiểm và giới hạn
+- Chưa thử bằng phiên Claude CLI thật ở dự án khác.
+- Cụm chữ thường cách nhau bằng khoảng trắng ở dòng "Dịch vụ" (ví dụ "api trang login") được đọc thành nhiều tên; tên không có thật bị `scope_register` từ chối nhưng vẫn nằm trong danh sách đơn vị của kế hoạch.
+- Lời người dùng dài hơn 600 ký tự vẫn luôn bị coi là việc mới: một lời duyệt kèm đoạn dán dài sẽ không mở cổng.
+
 ## 2.6.0 (2026-10-15)
 
 Dự án đã có `.claude/` do team tự viết: harness kiểm kê, báo trước thứ nào ngừng chạy, giữ nguyên bản của team khi trùng tên, và không cho sửa tay tệp harness sinh. Bản này không bỏ gì và không đổi cấu hình.

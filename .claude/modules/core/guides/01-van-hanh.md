@@ -12,7 +12,7 @@
    - Không làm: ...
    - Rủi ro: ...
    ```
-   Lỗi nhẹ về cách viết (thiếu dấu, hoa thường, gạch đầu dòng, thứ tự, dấu hai chấm) cổng bỏ qua. Lỗi nghiêm trọng thì lời đồng ý của bạn chưa mở cổng: thiếu tiêu đề kế hoạch, thiếu hoặc để trống một mục, tên đơn vị ở mục "Dịch vụ" không đọc được. Thiếu hoặc trống mục thì hook nói đúng mục nào và agent chỉ viết thêm đúng mục đó (không viết lại cả kế hoạch); bạn đọc bản đầy đủ rồi đồng ý lần nữa.
+   Cổng chỉ cần bắt đủ năm thông tin này; cách viết tùy ý (tiêu đề có thể kèm chữ như "Kế hoạch (v2)" hay "Plan", tên mục có thể kèm chú thích hoặc dùng tên gần nghĩa, gạch đầu dòng, in đậm, bảng đều được). Dòng "Dịch vụ" thì tên đơn vị ở đầu dòng, lời giải thích để sau dấu ngoặc hay dấu chấm phẩy. Cổng chỉ chưa mở khi thật sự thiếu: thiếu hoặc để trống một mục (agent chỉ viết thêm đúng mục đó, hệ thống ghép vào kế hoạch cũ, bạn đồng ý lần nữa trên bản đầy đủ), hoặc dòng "Dịch vụ" không đọc ra được tên đơn vị nào.
 4. **Bạn duyệt bằng lời thường** ("ok", "duyệt", "làm đi"). Câu dài hơn thì một model phán xem đó có phải lời duyệt không. "Ok nhưng đổi X" hay một việc mới thì cổng đóng lại, agent sửa kế hoạch và trình lại. Tin do phiên Claude khác gửi không bao giờ tính là lời duyệt.
 5. **Agent đăng ký phạm vi** bằng công cụ `scope_register` với đúng các đơn vị trong kế hoạch. Đơn vị không có trong kế hoạch bị từ chối.
 6. **Agent làm.** Trước lần sửa đầu tiên trong một đơn vị, nó phải mở skill tổng quát và đọc `CLAUDE.md` cùng `STATUS.md` của đơn vị đó (và các tài liệu khác dự án bắt buộc, xem [03-skill-theo-repo.md](03-skill-theo-repo.md)). Ghi tài liệu có cấu trúc (ba tầng, `service.yaml`, sơ đồ, từ vựng) chỉ qua công cụ MCP của harness.

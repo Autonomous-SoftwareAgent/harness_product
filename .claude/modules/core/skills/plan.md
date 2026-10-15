@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Trình kế hoạch trước khi sửa tệp - khối "## Kế hoạch" có đủ năm mục Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro; lỗi nhẹ về cách viết thì cổng bỏ qua, thiếu mục thì chỉ viết thêm đúng mục đó. Dùng trước MỌI việc cần sửa tệp, ở bất cứ đơn vị nào.
+description: Trình kế hoạch trước khi sửa tệp - cần đủ năm thông tin Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro, viết kiểu nào cũng được; thiếu mục thì chỉ viết thêm đúng mục đó. Dùng trước MỌI việc cần sửa tệp, ở bất cứ đơn vị nào.
 ---
 
 # Trình kế hoạch trước khi sửa
@@ -16,7 +16,7 @@ Viết thẳng khối kế hoạch vào tin trả lời, ngắn gọn, rồi d�
 - Biết đơn vị nào sẽ sửa.
 
 ## Các bước
-1. Viết khối này, mỗi mục một dòng, nội dung ngắn:
+1. Viết khối này (mẫu gợi ý; cách viết tùy ý miễn đủ năm mục), mỗi mục ngắn:
 ```
 ## Kế hoạch
 - Dịch vụ: harness          (tên đơn vị cách nhau dấu phẩy; không đụng đơn vị nào thì: không)
@@ -30,13 +30,14 @@ Mục nào thật sự không có gì thì viết "không có" (vài chữ), đ�
 3. Người dùng đổi ý ("ok nhưng đổi X"): trình lại kế hoạch mới, chờ duyệt lại.
 
 ## Cổng đọc kế hoạch thế nào
-- **Lỗi nhẹ thì bỏ qua, không báo:** thiếu dấu tiếng Việt, hoa hay thường, có hay không gạch đầu dòng hay số thứ tự, in đậm hay không, thứ tự các mục, cấp của tiêu đề, dấu `-`, `–`, `—` thay cho dấu hai chấm, khoảng trắng thừa.
-- **Lỗi nghiêm trọng thì cổng chưa mở:** thiếu tiêu đề kế hoạch, thiếu hẳn hoặc để trống một mục, mục "Dịch vụ" có tên không đọc được (ví dụ tên có khoảng trắng).
+- **Chỉ cần có đủ năm thông tin, viết kiểu nào cũng được.** Cổng tìm đủ Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro; không đòi một khuôn chữ cố định. Tiêu đề thế nào cũng được ("## Kế hoạch", "## Kế hoạch (v2)", "**Kế hoạch**", "## Plan"; không có tiêu đề mà đủ năm mục vẫn đọc được). Tên mục có thể kèm chú thích ("Rủi ro / giả định", "Sửa tệp nào") hoặc dùng tên gần nghĩa ("Đơn vị", "Việc làm", "Tệp sẽ sửa", "Ngoài phạm vi", hay tiếng Anh Service, What, Files, Out of scope, Risks). Gạch đầu dòng, số thứ tự, in đậm, bảng, nhãn dạng tiêu đề, nội dung ở dòng sau: đều được.
+- **Dòng "Dịch vụ":** viết tên đơn vị (thư mục, chữ thường) ở ĐẦU dòng, nhiều đơn vị thì cách nhau bằng dấu phẩy hoặc "và"; lời giải thích để sau dấu ngoặc, dấu chấm phẩy hay dấu chấm. Chữ hoa được hạ thành chữ thường. Không đụng đơn vị nào thì viết "không" (hoặc "không có", "n/a", "chung").
+- **Chỉ có hai trường hợp cổng chưa mở:** (1) thiếu hẳn hoặc để trống một mục, hoặc không có tiêu đề mà cũng không đủ năm mục; (2) mục "Dịch vụ" không đọc ra được tên đơn vị nào ở đầu dòng (ví dụ "Ten Don Vi" viết hoa có cách).
 - Thiếu hoặc trống mục: cổng nói đúng mục nào. **Chỉ viết thêm các dòng đó** (ví dụ `- Rủi ro: ...`), đừng viết lại kế hoạch; hệ thống ghép vào kế hoạch cũ và chờ người dùng đồng ý lần nữa trên bản đầy đủ.
-- Thiếu tiêu đề thì phải trình lại cả kế hoạch.
+- Kế hoạch nào cũng có thể do dự án khai thêm mục bắt buộc (`plan.extra`); khi đó thiếu mục đó cũng là thiếu mục.
 
 ## Lỗi hay gặp
-- Viết "Dịch vụ: Ten Don Vi" (có khoảng trắng): cổng không đọc được tên đơn vị. Viết tên thư mục, ví dụ `ten-don-vi`.
+- Viết "Dịch vụ: Ten Don Vi" (cụm chữ hoa có khoảng trắng): cổng không đọc ra tên đơn vị. Viết tên thư mục, ví dụ `ten-don-vi`.
 - Viết lại cả kế hoạch khi chỉ thiếu một mục: tốn token vô ích.
 - Viết dài trong từng mục: ý dài để ở ngoài khối.
 - Sửa tệp ngay sau khi trình kế hoạch: lời trình chưa phải lời duyệt.

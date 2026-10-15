@@ -1,7 +1,7 @@
 {
   "_": "Tệp tự khai của khối. Đường dẫn trong tệp là đường dẫn logic (tính như ở .claude/modules/ của bố cục cũ). Bộ cài (cli/setup.js) sinh phần của harness trong .claude/settings.json và .mcp.json từ các tệp này; `order` giữ thứ tự hook như đã đo.",
   "name": "core",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "api": "0.1",
   "required": true,
   "uses": [],

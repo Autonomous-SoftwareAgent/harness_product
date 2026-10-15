@@ -4,13 +4,14 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 
 ## Cách dùng
 1. Xem bản bạn đang cài: tệp `.claude/modules/VERSION` trong dự án.
-2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.6.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
+2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.7.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
 3. Phần "Bị bỏ hoặc đổi tên" liệt kê những thứ bạn có thể đang dùng mà không còn nữa, kèm cái thay thế.
 4. Cài bản mới: tải gói này về rồi chạy lại lệnh `install` (xem README.md). Dự án đã cài có thể xem từng mục thay đổi gắn với tình trạng dự án bằng `node .claude/modules/core/cli/cli.js upgrade preview`.
 
 ## Bảng các bản
 | Bản | Ngày | Việc phải làm | Tóm tắt |
 |---|---|---|---|
+| 2.7.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được; dòng Dịch vụ không còn làm lời duyệt trượt vì chữ giải thích. |
 | 2.6.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được. |
 | 2.5.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Bộ sinh tệp cho Claude Code từ định nghĩa gốc của đơn vị: skill riêng của repo viết một lần ở .harness/, harness sinh ra .claude/ để Claude Code tự nạp; nền cho các bộ chuyển công cụ khác. |
 | 2.4.0 | 2026-10-14 | không có: nâng cấp như mọi lần | Thêm công cụ db_query: agent tự tra sổ phiên của harness (kế hoạch đã duyệt, dịch vụ đã sửa, skill đã mở, lần bị chặn) bằng một câu SELECT chỉ đọc. |
@@ -36,6 +37,28 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 - **Bản 2.0.0, đổi:** Mỗi khối một máy chủ MCP thay cho một máy chủ giữ cả bộ công cụ. Cấu hình của bạn được lệnh nâng cấp chuyển tự động. Mọi phiên Claude Code đang mở phải gõ /mcp (hoặc mở lại) một lần để thấy tên mới; phiên chưa nối lại vẫn gọi được công cụ qua máy chủ cũ. Mỗi phiên chạy thêm vài tiến trình Node (mỗi máy chủ một tiến trình, tốn thêm bộ nhớ). Kịch bản, tài liệu hay quyền đã ghi tên mcp__bsn-docs__... phải đổi sang tên mới. Khai quyền theo từng công cụ (mcp__bsn-docs__<công cụ>) không tự đổi: bước chuyển chỉ đổi quyền theo cả máy chủ.
 
 ## Chi tiết từng bản (mới ở trên)
+
+### 2.7.0 (2026-10-15)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được; dòng Dịch vụ không còn làm lời duyệt trượt vì chữ giải thích.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. `plan.heading`, `plan.labels`, `plan.extra` đã khai vẫn dùng được; tên gọi khác khai thêm được cộng vào các tên có sẵn.
+- Skill hay tài liệu riêng của dự án có kiểm chữ "KHÔNG theo khuôn chuẩn" trong lời nhắc của cổng thì đổi sang "CHƯA đọc ra đủ năm mục".
+
+**Bạn sẽ thấy khác**
+
+- Những kế hoạch trước đây bị coi là sai chỉ vì cách viết (đã đo: 25 trên 29 cách viết tự nhiên) nay đọc được; lời "duyệt" mở cổng ngay, không phải duyệt lần hai.
+- Cổng chỉ còn chưa mở khi thật sự thiếu: thiếu hoặc trống một mục (vẫn chỉ viết bù đúng mục đó), hoặc đầu dòng "Dịch vụ" không đọc ra tên đơn vị nào.
+- Lời nhắc cho agent đổi chữ: "cổng CHƯA đọc ra đủ năm mục" thay cho "KHÔNG theo khuôn chuẩn".
+- Không đổi: năm mục vẫn bắt buộc có nội dung; mục thêm của dự án (`plan.extra`) và của đơn vị vẫn bắt buộc; lời người dùng dài hơn `maxPromptChars` (600 ký tự) vẫn luôn là việc mới.
+
+**Chưa kiểm và giới hạn**
+
+- Chưa thử bằng phiên Claude CLI thật ở dự án khác.
+- Cụm chữ thường cách nhau bằng khoảng trắng ở dòng "Dịch vụ" (ví dụ "api trang login") được đọc thành nhiều tên; tên không có thật bị `scope_register` từ chối nhưng vẫn nằm trong danh sách đơn vị của kế hoạch.
+- Lời người dùng dài hơn 600 ký tự vẫn luôn bị coi là việc mới: một lời duyệt kèm đoạn dán dài sẽ không mở cổng.
 
 ### 2.6.0 (2026-10-15)
 - **Mức việc phải làm:** không có: nâng cấp như mọi lần.

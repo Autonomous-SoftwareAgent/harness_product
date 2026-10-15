@@ -116,8 +116,8 @@ Chỉ người dùng sửa tệp này (hook chặn phiên ghi vào nó).
 |---|---|
 | `judge` | Ai phán câu trả lời của người dùng khi nó không phải một câu đồng ý ngắn, rõ. `model` (mặc định): hỏi một model. `strict`: không gọi model nào; mọi tin không phải lời duyệt là việc mới (cổng đang mở thì đóng, kế hoạch đang chờ vẫn chờ thêm vài lượt) |
 | `approveWords` | Câu duyệt của dự án, thêm vào các câu đồng ý ngắn có sẵn ("ok", "duyệt", "làm đi"...). Chỉ khớp khi CẢ tin nhắn đúng bằng một câu đã khai (bỏ dấu câu, không phân biệt hoa thường). Tối đa 20 câu, mỗi câu tối đa 6 từ và 40 ký tự, không có dấu hỏi; câu không hợp lệ bị bỏ qua |
-| `plan.heading` | Tên gọi khác của tiêu đề `## Kế hoạch` |
-| `plan.labels` | Tên gọi khác của năm mục gốc. Năm mục vẫn bắt buộc; đây chỉ là cho gọi bằng tên khác |
+| `plan.heading` | Tên gọi khác của tiêu đề `## Kế hoạch`. Đã có sẵn `Plan`; tiêu đề cũng được kèm chữ sau tên (`## Kế hoạch (v2)`), và không có tiêu đề mà đủ năm mục vẫn đọc được |
+| `plan.labels` | Tên gọi khác của năm mục gốc, cộng thêm vào các tên có sẵn (ví dụ Đơn vị, Việc làm, Tệp sẽ sửa, Ngoài phạm vi, Service, What, Files, Out of scope, Risks). Năm mục vẫn bắt buộc; cách viết (gạch đầu dòng, in đậm, bảng, chú thích sau tên mục) tùy ý |
 | `plan.extra` | Mục bắt buộc THÊM của dự án. Một đơn vị đòi thêm mục cho kế hoạch nêu tên nó bằng khóa `plan.extra` trong `module.json` của khối mở rộng của nó (chỉ có hiệu lực từ bản người dùng đã xác nhận) |
 
 Không khóa nào bớt được một mục gốc, làm một mục thành tùy chọn hay tắt bước duyệt. Khai hỏng thì phần hỏng bị bỏ, khuôn gốc giữ nguyên.

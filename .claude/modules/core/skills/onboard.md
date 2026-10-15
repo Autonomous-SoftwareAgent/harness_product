@@ -21,6 +21,7 @@ Harness không biết gì về dự án cho tới khi `.claude/project/project.j
 
 ## Các bước
 1. **Đọc dự án (chỉ đọc).** Liệt kê thư mục cấp một và cấp hai; tìm tệp khai dự án (`package.json`, `pyproject.toml`, `go.mod`, `pom.xml`, `Cargo.toml`...), các thư mục có `.git` riêng, lệnh test, tài liệu đang có (`README.md`, `docs/`, `CLAUDE.md`). Đọc `project.json` nếu đã có.
+   - **Kiểm kê `.claude/` đang có của team** (chỉ đọc): `node .claude/modules/core/cli/cli.js host-inventory` (hoặc công cụ MCP `host_status`). Bảng nói với từng đơn vị: skill và rule của team DÙNG ĐƯỢC khi phiên mở ở gốc dự án (nạp muộn, sau khi chạm tệp trong đơn vị); hook, quyền, lệnh, agent, máy chủ MCP riêng của đơn vị KHÔNG nạp khi mở ở gốc (đã đo). Báo người dùng từng thứ sẽ ngừng chạy TRƯỚC khi họ chuyển cách mở phiên: họ có thể mở phiên ngay trong đơn vị khi cần hook của team, hoặc nhờ chuyển hook thành luật ở `<đơn vị>/.harness/` (khối mở rộng). Không tự gộp hook hay `settings.json` của đơn vị lên gốc.
 2. **Đề xuất cách tổ chức.** Trả lời từng câu, mỗi câu kèm bằng chứng đã thấy:
    - Đơn vị là gì? Thường là mỗi repo git riêng, mỗi ứng dụng hay dịch vụ chạy riêng. Chúng nằm chung trong một thư mục cha (khai `units.parents`) hay rải rác (khai `units.dirs`)?
    - Trước khi sửa một đơn vị phải đọc gì (`skills.serviceDocs`)? Mặc định `CLAUDE.md` và `docs/agent/STATUS.md` của đơn vị.
@@ -47,6 +48,7 @@ Harness không biết gì về dự án cho tới khi `.claude/project/project.j
 | `docs/agent/STATUS.md` | Giữ nguyên | `new-service.js` tạo khung; thêm dòng nhật ký đầu tiên |
 | Tài liệu có cấu trúc | Dùng skill `service-docs`, `diagrams` | Chỉ tạo khi người dùng bật; công cụ tự tạo khung ở lần ghi đầu |
 | `.mcp.json` | Harness tự thêm một mục cho mỗi khối đang bật (`harness`, `harness-docs`, ...) khi mở phiên | Harness tự tạo khi mở phiên |
+| `<đơn vị>/.claude/` của team | Không bao giờ ghi đè hay xóa. Skill, rule của team vẫn dùng được; trùng tên với skill ở `.harness/skills/` thì bản của team thắng. Skill riêng mới viết bằng công cụ `host_define` (harness sinh `.claude/` từ `.harness/`); tệp có dấu `harness-host` do harness sinh, không sửa tay | Không cần tạo: harness chỉ sinh khi có skill ở `.harness/skills/` |
 
 ## Lỗi hay gặp
 - Ghi `project.json` trước khi được duyệt: cổng duyệt chặn, và đó là đúng.

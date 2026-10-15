@@ -36,9 +36,16 @@ function loadWords(root) {
   return words.length ? words : null;
 }
 
+// Tệp có dấu của bộ chuyển công cụ (đọc đầu tệp): đầu ra của harness. Không có tệp hay không có dấu thì false.
+const hostGenerated = (abs) => { try { const fd = fs.openSync(abs, 'r'); try { const b = Buffer.alloc(4096); const n = fs.readSync(fd, b, 0, 4096, 0); return /<!-- harness-host:[a-z][a-z0-9-]* src:/.test(b.toString('utf8', 0, n)); } finally { fs.closeSync(fd); } } catch { return false; } };
 const skillFile = (root, name) => path.join(P.skillsDir(root), name, 'SKILL.md');
-const skillExists = (root, name) => /^[a-z][a-z0-9-]*$/.test(String(name || '')) && fs.existsSync(skillFile(root, name));
-const allSkills = (root) => { try { return fs.readdirSync(P.skillsDir(root)).filter((n) => skillExists(root, n)).sort(); } catch { return []; } };
+// Skill của dự án nằm ở .claude/skills/. Skill riêng của một đơn vị do bộ chuyển công cụ sinh ra ở <đơn vị>/.claude/skills/ (từ định nghĩa gốc
+// <đơn vị>/.harness/skills/) cũng được tính là skill hợp lệ: mở nó bằng công cụ Skill hay đọc trọn SKILL.md thì sổ phiên ghi nhận, và bảng nối
+// skill có thể đòi nó. Chỉ tra ở đơn vị khi không có ở chỗ chung (hiếm), nên không tốn gì cho đường chính.
+const NAME_OK = /^[a-z][a-z0-9-]*$/;
+const unitSkillFile = (root, name) => { try { for (const e of P.serviceEntries(root)) { const f = path.join(e.dir, '.claude', 'skills', name, 'SKILL.md'); if (fs.existsSync(f)) return f; } } catch { /* không liệt kê được đơn vị */ } return null; };
+const skillExists = (root, name) => NAME_OK.test(String(name || '')) && (fs.existsSync(skillFile(root, name)) || unitSkillFile(root, name) !== null);
+const allSkills = (root) => { try { return fs.readdirSync(P.skillsDir(root)).filter((n) => NAME_OK.test(n) && fs.existsSync(skillFile(root, n))).sort(); } catch { return []; } };
 
 // Phần đã đổi của tệp hướng dẫn ở gốc so với bản phiên `sid` đã nạp, rồi ghi bản hiện tại làm bản phiên đã nạp.
 // So theo DÒNG (tệp hướng dẫn là các gạch đầu dòng độc lập): dòng mới có, dòng đã bỏ. Chưa có bản của phiên thì trả null.
@@ -113,6 +120,7 @@ function create(root) {
     unitLogical: (name, real) => unitLogical(P.unitLayout(root, name), real),
     unitLocal: (name) => P.unitLayout(root, name).local,
     unitSkills: (name) => P.unitSkills(root, name),
+    hostGenerated: (abs) => hostGenerated(abs),
     loadedOnce: () => loadedOnce(root),
     externalWrite: (tool) => require('./mcp-servers').writeOwner(root, tool),
     // Máy chủ MCP của harness (mỗi khối một cái): tiền tố tên và tên mọi máy chủ đang khai (kể cả tên cũ, để phiên đang mở còn được chốt).

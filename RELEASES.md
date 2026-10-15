@@ -6,6 +6,88 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.6.0 (2026-10-15)
+
+Dự án đã có `.claude/` do team tự viết: harness kiểm kê, báo trước thứ nào ngừng chạy, giữ nguyên bản của team khi trùng tên, và không cho sửa tay tệp harness sinh. Bản này không bỏ gì và không đổi cấu hình.
+
+### Có gì mới
+- **Kiểm kê `.claude/` của team ở từng đơn vị:** lệnh `node .claude/modules/core/cli/cli.js host-inventory` (thêm `--json` cho máy đọc), công cụ MCP `host_status` (chỉ đọc) và `doctor` nêu skill, rule, lệnh, agent, số hook, quyền, biến môi trường, máy chủ MCP riêng của team. Tệp harness sinh đếm riêng. Skill `onboard` có bước kiểm kê này.
+- **Công cụ MCP `host_define`** (service, name, description, body): tạo hoặc sửa một skill riêng của đơn vị ở `<đơn vị>/.harness/skills/<tên>/SKILL.md` có kiểm tên, mô tả một dòng, nội dung, rồi sinh tệp cho Claude Code. Từ chối tên trùng skill team đã có.
+- **Hook `guard-host`:** chặn Write, Edit và lệnh shell ghi vào tệp có dấu `harness-host` (tệp harness sinh), lời chặn chỉ đúng đường (`host_define` hoặc `host-sync`). Tệp của team không có dấu nên không bị ảnh hưởng.
+
+### Hành vi đổi
+- Skill team viết ở `<đơn vị>/.claude/skills/` là nguồn native: trùng tên với skill ở `.harness/skills/` thì bản của team thắng, harness không sinh bản của nó. Chỗ trùng tên được báo ở `host-sync`, `doctor`, `host_status`; không báo lại ở mỗi phiên mở như 2.5.0.
+- Bảng công cụ của lõi thêm hai công cụ (`host_status`, `host_define`), nên mỗi phiên tốn thêm một ít token. `settings.json` có thêm hook `guard-host` (bộ cài tự sinh).
+
+### Nâng cấp
+- Nâng cấp như mọi lần (`install` hoặc `setup` sinh lại `settings.json`); không có bước chuyển cấu hình.
+- Dự án có bảng nối skill riêng (`skills-map.json`): thêm `host_status` vào `readonly`; muốn đòi skill `services` trước khi tạo skill thì thêm `"host_define": "services"` vào `tools`. Bộ khuôn nhẹ đã có `host_status`.
+- Phiên Claude Code đang mở: gõ `/mcp` để thấy hai công cụ mới; hook mới hiệu lực khi `settings.json` được đọc lại.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test kiểm kê, `host_define`, hook chặn tệp sinh (hook thật qua stdin, kể cả lệnh shell), luật với bộ chuyển giả, bản của team thắng khi trùng tên.
+- Phiên `claude` thật (bản 2.1.299, Windows, một lần, mở ở gốc): skill, rule của đơn vị nạp muộn; hook, quyền (đọc tệp bị deny vẫn được), lệnh, agent, máy chủ MCP riêng của đơn vị không nạp.
+
+### Chưa kiểm và giới hạn
+- Biến môi trường trong `settings.json` của đơn vị khi mở ở gốc chưa đo; chưa thử trên repo thật có `.claude/` của nhóm.
+- Chiều đọc mới có cho skill ở bộ chuyển Claude; chưa dùng để sinh sang công cụ khác (Codex, Opencode). Rule của team chỉ được kiểm kê, chưa vào bộ định nghĩa chung.
+- Lệnh shell ghi mà đích không phân tích được (biến, ghép chuỗi) lách được hook `guard-host`; lần đồng bộ sau vẫn báo tệp bị sửa tay.
+- Chưa thử agent thật có chịu dùng `host_define` thay vì Write hay không.
+
+## 2.5.0 (2026-10-15)
+
+Skill riêng của một repo viết một lần, harness sinh ra phần Claude Code tự nạp. Bản này không bỏ gì và không đổi cấu hình.
+
+### Có gì mới
+- **Bộ sinh tệp cho Claude Code.** Định nghĩa gốc của một đơn vị nằm ở `<đơn vị>/.harness/` (skill ở `.harness/skills/<tên>/SKILL.md`, tệp cửa vào ở `.harness/CLAUDE.md`). Harness sinh `<đơn vị>/.claude/skills/<tên>/SKILL.md` và `<đơn vị>/.claude/rules/harness.md` (một dòng nhắc đọc cửa vào) để Claude Code tự nạp. Sinh ở đầu mỗi phiên (im lặng khi đã đúng) hoặc chạy tay `node .claude/modules/core/cli/cli.js host-sync` (`--check` chỉ báo).
+- **Hợp đồng bộ chuyển công cụ** (`ports/host-adapter.js`) kèm bảng năng lực của công cụ (skill, rule, hook, MCP, lệnh nạp ở đâu). Bộ chuyển thứ hai cho công cụ khác thêm sau mà không sửa lõi; hiện chỉ có bộ chuyển Claude.
+- `doctor` báo đơn vị thiếu hoặc lệch tệp sinh.
+
+### Hành vi đổi
+- Skill sinh ở đơn vị được tính là skill hợp lệ: mở bằng công cụ Skill hay đọc trọn `SKILL.md` thì sổ phiên ghi nhận, và bảng nối skill (`skills-map.json`) có thể đòi nó. Trước đây skill chỉ nằm ở `.harness/skills/` thì không được tính.
+- Tệp sinh có dòng dấu `harness-host:claude` sau frontmatter. Tệp bị sửa tay hoặc tệp cùng tên của nhóm (không có dấu) không bao giờ bị ghi đè; bỏ định nghĩa gốc thì bản sinh còn nguyên bị xóa. Tệp sinh được thêm vào `.git/info/exclude` của repo đơn vị.
+
+### Nâng cấp
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. Dự án chưa có skill ở `<đơn vị>/.harness/skills/` thì không có tệp nào được sinh.
+- Dự án đã có skill ở đó: lần mở phiên kế tiếp harness sinh bản ở `<đơn vị>/.claude/skills/`. Đặt tên khác tên skill chung của dự án.
+- Repo đơn vị đã có `.claude/rules/harness.md` của nhóm: harness không đụng vào và báo.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test bộ sinh: hợp đồng, sinh skill và tệp nhắc, chạy lại không đổi, đổi định nghĩa gốc, bản sửa tay và tệp của nhóm không bị ghi đè, bản mồ côi bị xóa, `--check` không ghi, skill sinh được nhận là hợp lệ, lệnh `host-sync`.
+- Phiên `claude` thật (bản 2.1.299, Windows): skill sinh hiện sau khi chạm tệp trong đơn vị và gọi được bằng công cụ Skill; tệp nhắc nạp sau khi chạm tệp.
+
+### Chưa kiểm và giới hạn
+- Chỉ đo một lần, một model, trên Windows; chưa thử trên repo thật đã có `.claude/` của nhóm.
+- Chưa có bộ chuyển cho công cụ khác (Codex, Opencode), nên hợp đồng chưa được thử với công cụ thứ hai.
+- Hook và máy chủ MCP ở thư mục con không nạp, nên không sinh `settings.json` hay `.mcp.json` ở đơn vị; luật và công cụ riêng của đơn vị vẫn đi qua khối mở rộng.
+
+## 2.4.0 (2026-10-14)
+
+Agent tự tra sổ phiên của harness bằng một công cụ mới. Bản này không bỏ gì và không đổi cấu hình.
+
+### Có gì mới
+- **Công cụ `db_query`**: chạy MỘT câu `SELECT` (hoặc `WITH ... SELECT`) trên sổ phiên (`harness.db`) để agent tự trả lời "phiên này đã được duyệt kế hoạch nào, đã sửa dịch vụ nào, đã mở skill nào, đã bị luật nào chặn". Gọi không có câu SQL thì trả danh sách bảng và cột. Tự thêm `LIMIT` (mặc định 50, tối đa 200).
+
+### Hành vi đổi
+- Bộ công cụ của lõi thêm một công cụ (`db_query`), nên bảng công cụ của mỗi phiên dài thêm một dòng.
+- Công cụ chỉ đọc: sổ mở ở chế độ chỉ đọc của SQLite, mọi câu có lệnh ghi, `PRAGMA`, `ATTACH` hay nhiều câu một lúc bị từ chối. Sổ chỉ có tên công cụ, tên dịch vụ và lý do một dòng; không có tham số lời gọi hay nội dung tệp.
+
+### Nâng cấp
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình.
+- Dự án có bảng nối skill riêng (`skills-map.json`) và muốn `db_query` không bị chặn vì chưa mở skill: thêm `db_query` vào danh sách `readonly` của bảng đó (bộ khuôn mặc định đã có).
+- Phiên Claude Code đang mở: gõ `/mcp` để thấy công cụ mới.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test công cụ: đọc dữ liệu, tự thêm và kẹp `LIMIT`, tám cách ghi bị từ chối mà sổ không đổi, dấu chấm phẩy trong chuỗi chữ, chưa có sổ thì báo rõ; thử trên sổ thật.
+
+### Chưa kiểm và giới hạn
+- Chưa thử bằng phiên Claude CLI thật xem agent có tự viết đúng câu SQL ngay lần đầu hay không.
+- Bộ cấp phép của SQLite cần bản Node có `setAuthorizer`; bản Node không có thì hai lớp còn lại (chế độ chỉ đọc, kiểm câu lệnh) vẫn giữ.
+- Chỉ tra được sổ phiên; sổ đo (`eval.db`) không mở.
+
 ## 2.3.0 (2026-10-14)
 
 Kế hoạch trình duyệt tốn ít token hơn và ít bị viết lại. Bản này BỎ một công cụ (`plan_draft`) và hai khóa cấu hình; đọc phần "Nâng cấp".

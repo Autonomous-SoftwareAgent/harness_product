@@ -1,0 +1,39 @@
+{
+  "version": "2.5.0",
+  "date": "2026-10-15",
+  "summary": "Bộ sinh tệp cho Claude Code từ định nghĩa gốc của đơn vị: skill riêng của repo viết một lần ở .harness/, harness sinh ra .claude/ để Claude Code tự nạp; nền cho các bộ chuyển công cụ khác.",
+  "changes": [
+    {
+      "id": "bo-sinh-claude-tu-dinh-nghia-goc",
+      "kind": "added",
+      "block": "core",
+      "title": "Bộ chuyển công cụ: sinh <đơn vị>/.claude/ từ <đơn vị>/.harness/",
+      "before": "Skill riêng của một repo ở <đơn vị>/.harness/skills/ chỉ được nhắc tên ở lần sửa đầu và agent phải tự đọc; Claude Code không liệt kê chúng, sổ phiên không đếm việc mở chúng, bảng nối skill không đòi được chúng.",
+      "after": "Định nghĩa gốc viết một lần ở <đơn vị>/.harness/ (skill, tệp cửa vào). Một hợp đồng bộ chuyển (ports/host-adapter.js) và bộ chuyển Claude (adapters/hosts/claude.js) sinh <đơn vị>/.claude/skills/<tên>/SKILL.md và <đơn vị>/.claude/rules/harness.md (một dòng nhắc đọc cửa vào) để Claude Code tự nạp (muộn, sau khi phiên chạm tệp trong đơn vị). Mỗi tệp sinh có dòng dấu băm sau frontmatter: tệp bị sửa tay hoặc tệp của nhóm cùng tên không bị ghi đè, định nghĩa gốc bỏ thì bản sinh còn nguyên bị xóa, tệp sinh được thêm vào .git/info/exclude của repo đơn vị. Chạy ở đầu mỗi phiên (im lặng khi đã đúng) hoặc bằng lệnh host-sync (--check chỉ báo). doctor báo đơn vị thiếu hoặc lệch tệp sinh. Skill sinh ở đơn vị được tính là skill hợp lệ cho hook chặn theo skill và sổ phiên.",
+      "files": [
+        "core/ports/host-adapter.js",
+        "core/adapters/hosts/claude.js",
+        "core/adapters/hosts/sync.js",
+        "core/cli/cli.js",
+        "core/cli/doctor.js",
+        "core/hooks/session-brief.js",
+        "core/adapters/project/workspace.js",
+        "core/core/rules/lib/knowledge.js",
+        "core/guides/03-skill-theo-repo.md"
+      ],
+      "surface": {
+        "commands": ["host-sync"],
+        "skills": []
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì. Dự án chưa có skill nào ở <đơn vị>/.harness/skills/ thì không có tệp nào được sinh. Dự án đã có skill ở đó: lần mở phiên kế tiếp harness sinh bản ở <đơn vị>/.claude/skills/ (tên skill nên khác tên skill chung của dự án). Repo đơn vị đã có tệp .claude/rules/harness.md của nhóm thì harness không đụng vào và báo.",
+      "verified": "Test: hợp đồng bộ chuyển; sinh skill và tệp nhắc, frontmatter còn ở đầu tệp; chạy lại không đổi gì; định nghĩa gốc đổi thì ghi đè bản còn nguyên; bản sửa tay và tệp không phải bản sinh không bị ghi đè; bản mồ côi bị xóa còn tệp của nhóm giữ nguyên; --check không ghi; skill sinh được nhận là skill hợp lệ; lệnh host-sync qua cli.js. Phiên claude thật (2.1.299, Windows, haiku): skill sinh hiện sau khi chạm tệp trong đơn vị và gọi được bằng công cụ Skill, tệp nhắc nạp sau khi chạm tệp.",
+      "unverified": "Chỉ đo một lần, một model, trên Windows. Chưa thử trên repo thật đã có .claude/ của nhóm. Chưa có bộ chuyển công cụ thứ hai (Codex, Opencode) nên hợp đồng chưa được thử với công cụ khác. Hook và máy chủ MCP ở thư mục con không nạp (đã đo ở lượt khảo sát trước) nên không sinh settings.json hay .mcp.json."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

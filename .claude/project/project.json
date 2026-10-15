@@ -30,7 +30,8 @@
       "context_term": "context",
       "context_relate": "context",
       "portal_build": "service-page",
-      "session_transfer": "transfer-session"
+      "session_transfer": "transfer-session",
+      "host_define": "services"
     },
     "readonly": [
       "docs_status",
@@ -41,7 +42,9 @@
       "diagram_get",
       "context_explore",
       "scope_register",
-      "scope_status"
+      "scope_status",
+      "db_query",
+      "host_status"
     ],
     "files": []
   },

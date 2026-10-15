@@ -4,13 +4,16 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 
 ## Cách dùng
 1. Xem bản bạn đang cài: tệp `.claude/modules/VERSION` trong dự án.
-2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.3.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
+2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.6.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
 3. Phần "Bị bỏ hoặc đổi tên" liệt kê những thứ bạn có thể đang dùng mà không còn nữa, kèm cái thay thế.
 4. Cài bản mới: tải gói này về rồi chạy lại lệnh `install` (xem README.md). Dự án đã cài có thể xem từng mục thay đổi gắn với tình trạng dự án bằng `node .claude/modules/core/cli/cli.js upgrade preview`.
 
 ## Bảng các bản
 | Bản | Ngày | Việc phải làm | Tóm tắt |
 |---|---|---|---|
+| 2.6.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được. |
+| 2.5.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Bộ sinh tệp cho Claude Code từ định nghĩa gốc của đơn vị: skill riêng của repo viết một lần ở .harness/, harness sinh ra .claude/ để Claude Code tự nạp; nền cho các bộ chuyển công cụ khác. |
+| 2.4.0 | 2026-10-14 | không có: nâng cấp như mọi lần | Thêm công cụ db_query: agent tự tra sổ phiên của harness (kế hoạch đã duyệt, dịch vụ đã sửa, skill đã mở, lần bị chặn) bằng một câu SELECT chỉ đọc. |
 | 2.3.0 | 2026-10-14 | có công cụ, khóa hay tính năng bị bỏ; chuyển cấu hình (lệnh nâng cấp tự làm) | Kế hoạch trình duyệt ít tốn token hơn: bỏ công cụ plan_draft, khuôn còn năm mục và cổng bỏ qua lỗi nhẹ, thiếu mục thì chỉ viết thêm đúng mục đó; mỗi lời gọi công cụ MCP nhanh hơn khoảng 0,7 giây; gói có UPGRADING.md cho người đang ở bản cũ. |
 | 2.2.2 | 2026-10-14 | không có: nâng cấp như mọi lần | Mỗi lời gọi công cụ MCP của harness nhanh hơn khoảng 0,6 đến 0,7 giây: danh sách đơn vị chỉ quét một lần mỗi lần dựng bộ công cụ. |
 | 2.2.1 | 2026-10-14 | không có: nâng cấp như mọi lần | Bảng skill ở .claude/rules tự theo .claude/skills/ khi mở phiên (không ghi đè tệp sửa tay); sửa câu về plan_draft còn sót ở 2.2.0. |
@@ -33,6 +36,70 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 - **Bản 2.0.0, đổi:** Mỗi khối một máy chủ MCP thay cho một máy chủ giữ cả bộ công cụ. Cấu hình của bạn được lệnh nâng cấp chuyển tự động. Mọi phiên Claude Code đang mở phải gõ /mcp (hoặc mở lại) một lần để thấy tên mới; phiên chưa nối lại vẫn gọi được công cụ qua máy chủ cũ. Mỗi phiên chạy thêm vài tiến trình Node (mỗi máy chủ một tiến trình, tốn thêm bộ nhớ). Kịch bản, tài liệu hay quyền đã ghi tên mcp__bsn-docs__... phải đổi sang tên mới. Khai quyền theo từng công cụ (mcp__bsn-docs__<công cụ>) không tự đổi: bước chuyển chỉ đổi quyền theo cả máy chủ.
 
 ## Chi tiết từng bản (mới ở trên)
+
+### 2.6.0 (2026-10-15)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần (`install` hoặc `setup` sinh lại `settings.json`); không có bước chuyển cấu hình.
+- Dự án có bảng nối skill riêng (`skills-map.json`): thêm `host_status` vào `readonly`; muốn đòi skill `services` trước khi tạo skill thì thêm `"host_define": "services"` vào `tools`. Bộ khuôn nhẹ đã có `host_status`.
+- Phiên Claude Code đang mở: gõ `/mcp` để thấy hai công cụ mới; hook mới hiệu lực khi `settings.json` được đọc lại.
+
+**Bạn sẽ thấy khác**
+
+- Skill team viết ở `<đơn vị>/.claude/skills/` là nguồn native: trùng tên với skill ở `.harness/skills/` thì bản của team thắng, harness không sinh bản của nó. Chỗ trùng tên được báo ở `host-sync`, `doctor`, `host_status`; không báo lại ở mỗi phiên mở như 2.5.0.
+- Bảng công cụ của lõi thêm hai công cụ (`host_status`, `host_define`), nên mỗi phiên tốn thêm một ít token. `settings.json` có thêm hook `guard-host` (bộ cài tự sinh).
+
+**Chưa kiểm và giới hạn**
+
+- Biến môi trường trong `settings.json` của đơn vị khi mở ở gốc chưa đo; chưa thử trên repo thật có `.claude/` của nhóm.
+- Chiều đọc mới có cho skill ở bộ chuyển Claude; chưa dùng để sinh sang công cụ khác (Codex, Opencode). Rule của team chỉ được kiểm kê, chưa vào bộ định nghĩa chung.
+- Lệnh shell ghi mà đích không phân tích được (biến, ghép chuỗi) lách được hook `guard-host`; lần đồng bộ sau vẫn báo tệp bị sửa tay.
+- Chưa thử agent thật có chịu dùng `host_define` thay vì Write hay không.
+
+### 2.5.0 (2026-10-15)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Bộ sinh tệp cho Claude Code từ định nghĩa gốc của đơn vị: skill riêng của repo viết một lần ở .harness/, harness sinh ra .claude/ để Claude Code tự nạp; nền cho các bộ chuyển công cụ khác.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. Dự án chưa có skill ở `<đơn vị>/.harness/skills/` thì không có tệp nào được sinh.
+- Dự án đã có skill ở đó: lần mở phiên kế tiếp harness sinh bản ở `<đơn vị>/.claude/skills/`. Đặt tên khác tên skill chung của dự án.
+- Repo đơn vị đã có `.claude/rules/harness.md` của nhóm: harness không đụng vào và báo.
+
+**Bạn sẽ thấy khác**
+
+- Skill sinh ở đơn vị được tính là skill hợp lệ: mở bằng công cụ Skill hay đọc trọn `SKILL.md` thì sổ phiên ghi nhận, và bảng nối skill (`skills-map.json`) có thể đòi nó. Trước đây skill chỉ nằm ở `.harness/skills/` thì không được tính.
+- Tệp sinh có dòng dấu `harness-host:claude` sau frontmatter. Tệp bị sửa tay hoặc tệp cùng tên của nhóm (không có dấu) không bao giờ bị ghi đè; bỏ định nghĩa gốc thì bản sinh còn nguyên bị xóa. Tệp sinh được thêm vào `.git/info/exclude` của repo đơn vị.
+
+**Chưa kiểm và giới hạn**
+
+- Chỉ đo một lần, một model, trên Windows; chưa thử trên repo thật đã có `.claude/` của nhóm.
+- Chưa có bộ chuyển cho công cụ khác (Codex, Opencode), nên hợp đồng chưa được thử với công cụ thứ hai.
+- Hook và máy chủ MCP ở thư mục con không nạp, nên không sinh `settings.json` hay `.mcp.json` ở đơn vị; luật và công cụ riêng của đơn vị vẫn đi qua khối mở rộng.
+
+### 2.4.0 (2026-10-14)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Thêm công cụ db_query: agent tự tra sổ phiên của harness (kế hoạch đã duyệt, dịch vụ đã sửa, skill đã mở, lần bị chặn) bằng một câu SELECT chỉ đọc.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình.
+- Dự án có bảng nối skill riêng (`skills-map.json`) và muốn `db_query` không bị chặn vì chưa mở skill: thêm `db_query` vào danh sách `readonly` của bảng đó (bộ khuôn mặc định đã có).
+- Phiên Claude Code đang mở: gõ `/mcp` để thấy công cụ mới.
+
+**Bạn sẽ thấy khác**
+
+- Bộ công cụ của lõi thêm một công cụ (`db_query`), nên bảng công cụ của mỗi phiên dài thêm một dòng.
+- Công cụ chỉ đọc: sổ mở ở chế độ chỉ đọc của SQLite, mọi câu có lệnh ghi, `PRAGMA`, `ATTACH` hay nhiều câu một lúc bị từ chối. Sổ chỉ có tên công cụ, tên dịch vụ và lý do một dòng; không có tham số lời gọi hay nội dung tệp.
+
+**Chưa kiểm và giới hạn**
+
+- Chưa thử bằng phiên Claude CLI thật xem agent có tự viết đúng câu SQL ngay lần đầu hay không.
+- Bộ cấp phép của SQLite cần bản Node có `setAuthorizer`; bản Node không có thì hai lớp còn lại (chế độ chỉ đọc, kiểm câu lệnh) vẫn giữ.
+- Chỉ tra được sổ phiên; sổ đo (`eval.db`) không mở.
 
 ### 2.3.0 (2026-10-14)
 - **Mức việc phải làm:** có công cụ, khóa hay tính năng bị bỏ; chuyển cấu hình (lệnh nâng cấp tự làm).

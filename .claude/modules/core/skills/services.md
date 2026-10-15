@@ -28,7 +28,7 @@ Skill này là bản chỉ đường, không phải nội dung của đơn vị 
 7. **Kết thúc** theo mục "Cách kiểm".
 
 ## Khuôn kế hoạch
-Trình kế hoạch theo skill `plan` (khối `## Kế hoạch` đủ năm mục Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro; lỗi nhẹ cổng bỏ qua, thiếu mục thì chỉ viết thêm đúng mục đó) rồi dừng chờ duyệt. Được duyệt thì gọi `scope_register` với các đơn vị trong mục "Dịch vụ"; sửa đơn vị chưa đăng ký hoặc ngoài kế hoạch bị CHẶN. Xem phạm vi: `scope_status`.
+Trình kế hoạch theo skill `plan` (khối `## Kế hoạch` đủ năm mục Dịch vụ, Làm gì, Sửa tệp, Không làm, Rủi ro; lỗi nhẹ cổng bỏ qua, thiếu mục thì chỉ viết thêm đúng mục đó) rồi dừng chờ duyệt. Được duyệt thì gọi `scope_register` với các đơn vị trong mục "Dịch vụ"; sửa đơn vị chưa đăng ký hoặc ngoài kế hoạch bị CHẶN. Xem phạm vi: `scope_status`. Tra sổ phiên (kế hoạch, dịch vụ đã sửa, skill đã mở, lần bị chặn): `db_query` (một câu SELECT, chỉ đọc). Skill riêng của đơn vị viết bằng `host_define` (harness sinh `<đơn vị>/.claude/` từ `.harness/`, tệp sinh không sửa tay); xem `.claude/` của team và chỗ lệch bằng `host_status`.
 
 ## Đọc gì khi nào
 | Thứ tự | Tệp (trong đơn vị) | Trả lời câu hỏi | Bắt buộc |

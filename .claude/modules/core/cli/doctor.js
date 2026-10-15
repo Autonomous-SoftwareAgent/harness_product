@@ -101,6 +101,16 @@ function run(root) {
     else ok(`đơn vị ${u.name} (${P.serviceRel(root, u.name)})`);
   }
 
+  // 2b. Tệp sinh cho công cụ từ định nghĩa gốc của đơn vị (<đơn vị>/.harness/ -> <đơn vị>/.claude/)
+  try {
+    const h = require('../adapters/hosts/sync').syncAll(root, { check: true });
+    for (const p of h.problems) warn(`tệp sinh cho công cụ: ${p} Sinh lại: node ${P.codeRel(root, "cli/cli.js")} host-sync`);
+    for (const n of h.notes) warn(`tệp sinh cho công cụ: ${n}`);
+    if (!h.problems.length) ok('tệp sinh cho công cụ khớp định nghĩa gốc của các đơn vị');
+    const hostInv = require('../adapters/hosts/inventory');
+    for (const l of hostInv.lostAtRoot(hostInv.inventory(root))) warn(`.claude/ của team: ${l}. Xem: node ${P.codeRel(root, 'cli/cli.js')} host-inventory`);
+  } catch (e) { warn(`không kiểm được tệp sinh cho công cụ: ${e.message}`); }
+
   // 3. Bảng việc -> skill, sổ phiên, hook của sổ phiên
   if (!map) (fs.existsSync(P.skillsMapPath(root)) && cfg.skillsRaw === null ? err : warn)('chưa có bảng việc -> skill (phần skills của cấu hình): hook chặn theo skill KHÔNG chặn gì.');
   else {

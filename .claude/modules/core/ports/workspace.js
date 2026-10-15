@@ -43,9 +43,10 @@ const VALUES = ['root', 'servicesDirName', 'skillsMapRel', 'skillsDir', 'bannedL
 //   unitLogical(name, real)  chiều ngược, để luật so mẫu theo tên logic ở mọi bố cục: đường dẫn thật trong đơn vị -> tên logic; đường dẫn
 //                            KHÔNG thuộc phần tại chỗ mà trùng tên logic (thư mục docs/ riêng của repo khi ghi chép gom ở .harness/) -> './<đường dẫn>'
 //   unitSkills(name)         tên các skill riêng của đơn vị (<đơn vị>/.harness/skills/<tên>/SKILL.md), đã sắp xếp; không có thì []
+//   hostGenerated(abs)       abs là tệp do bộ chuyển công cụ của harness SINH (có dấu harness-host): đầu ra, không sửa tay; false khi không có tệp hay không có dấu
 //   unitLocal(name)          ghi chép của đơn vị không vào git của nó (đọc từ đĩa, không từ bản đã commit)
 //   sheetOwner(abs)          abs là "tờ của một đơn vị" nằm trong thư mục đơn vị khác (luật unitSheets): tên đơn vị chủ; '' nếu không
-const METHODS = ['norm', 'caseKey', 'inside', 'resolveToken', 'exists', 'serviceOf', 'isService', 'serviceRel', 'serviceDir', 'units', 'scopeMode', 'skillsMapRaw', 'skillsMapExists', 'skillExists', 'allSkills', 'bannedWords', 'entryExists', 'policy', 'sheetOwner', 'projectRel', 'unitRel', 'unitLogical', 'unitLocal', 'unitSkills', 'loadedOnce', 'externalWrite', 'loadedDiff', 'transferPending', 'transferRead'];
+const METHODS = ['norm', 'caseKey', 'inside', 'resolveToken', 'exists', 'serviceOf', 'isService', 'serviceRel', 'serviceDir', 'units', 'scopeMode', 'skillsMapRaw', 'skillsMapExists', 'skillExists', 'allSkills', 'bannedWords', 'entryExists', 'policy', 'sheetOwner', 'projectRel', 'unitRel', 'unitLogical', 'unitLocal', 'unitSkills', 'hostGenerated', 'loadedOnce', 'externalWrite', 'loadedDiff', 'transferPending', 'transferRead'];
 
 // Kiểm một bộ chuyển có đủ những gì cổng yêu cầu; thiếu thì ném lỗi nêu tên thứ thiếu. Trả lại chính bộ chuyển.
 function check(impl) {

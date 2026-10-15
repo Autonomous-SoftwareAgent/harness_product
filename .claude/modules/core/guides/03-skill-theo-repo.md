@@ -28,7 +28,7 @@ Lệnh tạo `<đơn vị>/.harness/CLAUDE.md` (cửa vào duy nhất của đơ
 |---|---|---|
 | **Tài liệu bắt buộc đọc** | `<đơn vị>/.harness/docs/agent/*.md`, khai ở `skills.unitDocs` | **Ép:** sửa tệp trong đơn vị bị chặn cho tới khi phiên đã đọc đủ bằng công cụ Read |
 | **Skill dùng chung gắn theo đường dẫn** | `.claude/skills/<tên>/SKILL.md` + mục trong `skills.files` | **Ép:** sửa tệp có đường dẫn khớp bị chặn cho tới khi phiên đã mở skill |
-| **Skill riêng của repo** | `<đơn vị>/.harness/skills/<tên>/SKILL.md` | **Chỉ nhắc:** lần sửa đầu tiên của phiên trong đơn vị, harness nêu tên các skill này và bảo đọc bằng công cụ Read khi làm đúng loại việc |
+| **Skill riêng của repo** | viết ở `<đơn vị>/.harness/skills/<tên>/SKILL.md`; harness SINH `<đơn vị>/.claude/skills/<tên>/SKILL.md` | **Claude Code tự nạp** (muộn: hiện trong danh sách sau khi phiên chạm tệp trong đơn vị) và sổ phiên đếm khi mở; muốn ép thì khai tên skill ở `skills.files` hay `skills.tools` |
 
 ### Tài liệu bắt buộc đọc (ép được)
 ```json
@@ -46,16 +46,27 @@ Viết skill như ở [02-skill-toan-cuc.md](02-skill-toan-cuc.md), rồi gắn 
 ```json
 { "skills": { "files": [{ "pattern": "^apps/web/", "skills": ["web-ui"], "reads": ["docs/agent/UI.md"] }] } }
 ```
-Đây là cách khuyến nghị khi bạn muốn skill của một repo THỰC SỰ được mở trước khi sửa.
+Cách này và skill riêng của repo (mục dưới) đều ép được; skill riêng của repo thì viết ở `.harness/skills/` và để harness sinh ra.
 
-### Skill riêng của repo (chỉ nhắc)
+### Skill riêng của repo (viết một lần ở `.harness/`, harness sinh ra cho công cụ)
 ```
-apps/web/.harness/skills/them-man-hinh/SKILL.md
+apps/web/.harness/skills/them-man-hinh/SKILL.md      <- viết ở đây (định nghĩa gốc, trung lập với công cụ)
+apps/web/.claude/skills/them-man-hinh/SKILL.md       <- harness tự sinh cho Claude Code (đừng sửa tay)
 ```
-Khuôn `SKILL.md` như skill dùng chung. Giới hạn hiện tại, nói thẳng:
-- Claude Code không tự liệt kê skill ở đây (nó chỉ đọc `.claude/skills/`); agent biết nó có nhờ lời nhắc ở lần sửa đầu và phải tự đọc bằng công cụ Read.
-- Bảng nối `skills` chỉ nhận skill ở `.claude/skills/`: không khai được skill riêng của repo trong `files` hay `tools` (`doctor` báo nhắc skill không có `SKILL.md`). Muốn ép thì dùng một trong hai cách ở trên.
-- Đọc `SKILL.md` ở đây không được sổ phiên tính là "đã mở skill".
+Khuôn `SKILL.md` như skill dùng chung. Harness sinh bản cho Claude Code ở đầu mỗi phiên, hoặc chạy tay `node .claude/modules/core/cli/cli.js host-sync` (`--check` chỉ báo). Điều đã đo bằng phiên `claude` thật (bản 2.1.299, Windows, một lần):
+- Skill sinh ra KHÔNG có trong danh sách lúc mở phiên; nó hiện sau khi phiên chạm một tệp trong đơn vị, rồi gọi được bằng công cụ Skill (nội dung nạp đủ).
+- Tệp nhắc `<đơn vị>/.claude/rules/harness.md` (trỏ tới `.harness/CLAUDE.md`) cũng nạp sau khi phiên chạm tệp trong đơn vị.
+- Hook và máy chủ MCP ở `<đơn vị>/.claude/` KHÔNG nạp, nên harness không sinh `settings.json` hay `.mcp.json` ở đó; luật, công cụ, lệnh riêng của đơn vị vẫn đi qua khối mở rộng ở mục 3.
+Cách harness giữ tệp sinh:
+- Mỗi tệp sinh có dòng dấu `<!-- harness-host:claude src:... sha:... -->` (đặt sau frontmatter). Tệp có dấu mà bị sửa tay thì không ghi đè (báo ra); tệp cùng tên không có dấu (của nhóm) không bao giờ bị đụng.
+- Bỏ skill ở `.harness/skills/` thì bản sinh còn nguyên bị xóa. Tệp sinh được thêm vào `.git/info/exclude` của repo đơn vị.
+- Skill sinh ở đơn vị được tính là skill hợp lệ: mở bằng công cụ Skill hay đọc trọn `SKILL.md` thì sổ phiên ghi nhận. Tên skill nên khác tên skill chung của dự án (cùng tên thì skill chung được dùng trước).
+
+### Repo đã có `.claude/` do team tự viết
+Team không phải đổi cách làm. Harness đọc những gì họ có và chỉ ghi phần thêm:
+- Kiểm kê (chỉ đọc): `node .claude/modules/core/cli/cli.js host-inventory` (hoặc công cụ MCP `host_status`; `doctor` cũng nêu). Bảng nói với từng đơn vị: skill, rule, `CLAUDE.md` của team DÙNG ĐƯỢC khi phiên mở ở gốc dự án (nạp muộn); hook, quyền, lệnh, agent, máy chủ MCP riêng của đơn vị KHÔNG nạp khi mở ở gốc (đã đo, bản 2.1.299, Windows, một lần); biến môi trường trong `settings.json` chưa đo. Hook của team không chạy khi mở ở gốc: mở phiên ngay trong đơn vị khi cần chúng, hoặc chuyển thành luật ở `.harness/` (mục 3). Harness không tự gộp hook hay `settings.json` của đơn vị lên gốc.
+- Mỗi tên chỉ có MỘT nguồn gốc: skill của team (viết ở `.claude/skills/`) trùng tên với skill ở `.harness/skills/` thì bản của team thắng, harness không sinh bản của nó và báo ở `doctor`, `host-sync`, `host_status` (không báo lại ở mỗi phiên). Skill team viết không bị harness sinh lại ra `.claude/` và không bị xóa.
+- Skill riêng mới tạo bằng công cụ `host_define` (service, name, description, body): công cụ kiểm tên, mô tả một dòng, nội dung; từ chối tên trùng skill của team; ghi vào `.harness/skills/` rồi sinh tệp công cụ. Tệp sinh có dấu `harness-host` và bị hook `guard-host` chặn sửa tay (Write, Edit, lệnh shell ghi); muốn đổi thì gọi lại `host_define`.
 
 ## 3. Luật, công cụ, lệnh riêng của một repo
 Đặt khối mở rộng ở `<đơn vị>/.harness/module.json` cùng thư mục `rules/`, `tools/`, `commands/`. Khối chỉ áp cho việc đụng tới đơn vị đó (ghi tệp trong đơn vị, hoặc gọi công cụ với `service` là đơn vị đó) và chỉ chặn thêm, không nới được luật của harness. Cách làm và xác nhận: [04-mo-rong.md](04-mo-rong.md).

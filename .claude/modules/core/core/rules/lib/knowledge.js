@@ -57,7 +57,10 @@ function toolSkills(map, names) {
 function skillOfFile(ws, abs) {
   const rel = posix(path.relative(ws.skillsDir, path.resolve(abs)));
   const m = /^([a-z][a-z0-9-]*)\/SKILL\.md$/i.exec(rel);
-  return m && ws.skillExists(m[1].toLowerCase()) ? m[1].toLowerCase() : '';
+  if (m && ws.skillExists(m[1].toLowerCase())) return m[1].toLowerCase();
+  // Skill của một đơn vị, do bộ chuyển công cụ sinh: <đơn vị>/.claude/skills/<tên>/SKILL.md.
+  const u = /(?:^|\/)\.claude\/skills\/([a-z][a-z0-9-]*)\/SKILL\.md$/i.exec(posix(path.resolve(abs)));
+  return u && ws.skillExists(u[1].toLowerCase()) ? u[1].toLowerCase() : '';
 }
 // Tệp `abs` có phải một tài liệu bắt buộc không: trả { service, doc } hoặc null. Tài liệu của đơn vị (serviceDocs, unitDocs, reads
 // của mẫu tệp) tính trong đơn vị; reads của mẫu tệp nằm ngoài đơn vị thì service là '' và doc tính từ gốc.

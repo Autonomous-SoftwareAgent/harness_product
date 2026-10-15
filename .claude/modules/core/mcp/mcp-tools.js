@@ -36,6 +36,21 @@ const CORE_TOOLS = [
     run: () => require('../hooks/scope-lib').statusText(ROOT, process.env.CLAUDE_CODE_SESSION_ID),
   },
   {
+    name: 'db_query',
+    description: 'TRA sổ phiên của harness (harness.db) bằng MỘT câu SELECT, chỉ đọc: kế hoạch đã duyệt (rec_plans), dịch vụ đã sửa (rec_edits), commit theo kế hoạch (rec_commits), ' +
+      'skill đã mở (act_skill_loads), công cụ đã gọi (act_tool_calls), lần luật chặn hay nhắc (act_rule_decisions), phiên (sessions). Sổ chỉ có tên công cụ, tên dịch vụ, lý do một dòng; không có tham số lời gọi hay nội dung tệp. ' +
+      'Gọi KHÔNG có `sql` để xem danh sách bảng và cột. Lọc theo phiên bằng `WHERE sid = \'<mã phiên>\'`. Tự thêm LIMIT khi thiếu (mặc định 50, tối đa 200). Ghi, PRAGMA, nhiều câu một lúc đều bị từ chối.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sql: { type: 'string', description: 'Một câu SELECT (hoặc WITH ... SELECT). Bỏ trống để xem bảng và cột.' },
+        limit: { type: 'integer', description: 'Số dòng tối đa, 1-200; mặc định 50.' },
+      },
+    },
+    noService: true,
+    run: (a) => require('../adapters/storage/sql-readonly').run(ROOT, a.sql, a.limit),
+  },
+  {
     name: 'session_transfer',
     description: 'CHUYỂN việc của một đơn vị sang một phiên nền MỚI có Remote Control. Chỉ gọi khi người dùng bảo chuyển phiên. Công cụ ghi một tờ bàn giao ' +
       '(phần bạn viết theo khuôn sáu mục, cộng phần máy gom: kế hoạch và phạm vi, skill đã mở, tình trạng git, yêu cầu còn mở), đặt tên phiên mới <đơn-vị>-<số>, ' +
@@ -65,6 +80,30 @@ const CORE_TOOLS = [
     noService: true,
     run: (a) => require('../cli/transfer').run(ROOT, { unit: a.unit, note: a.note, model: a.model, sid: process.env.CLAUDE_CODE_SESSION_ID }),
   },
+  {
+    name: 'host_status',
+    description: 'Xem tệp công cụ (Claude Code) của từng đơn vị: team đã có skill, rule, hook, quyền, lệnh nào ở <đơn vị>/.claude/, thứ nào dùng được khi phiên mở ở gốc dự án và thứ nào KHÔNG nạp, tệp do harness sinh, skill trùng tên, tệp lệch. Chỉ đọc.',
+    inputSchema: { type: 'object', properties: {} },
+    noService: true,
+    run: () => require('../cli/host').status(),
+  },
+  {
+    name: 'host_define',
+    description: 'TẠO hoặc SỬA một skill riêng của đơn vị ở <đơn vị>/.harness/skills/<tên>/SKILL.md rồi sinh tệp cho công cụ ở <đơn vị>/.claude/skills/. Dùng công cụ này thay vì sửa tay tệp sinh (bị chặn). Kiểm tên, mô tả một dòng, nội dung; từ chối tên trùng skill team đã có. Chỉ gọi sau khi người dùng duyệt kế hoạch có đơn vị đó.',
+    inputSchema: {
+      type: 'object',
+      required: ['service', 'name', 'description', 'body'],
+      properties: {
+        service: { type: 'string', description: 'Tên đơn vị (dịch vụ) sở hữu skill, ví dụ "web".' },
+        name: { type: 'string', description: 'Tên skill: chữ thường, số, gạch ngang, bắt đầu bằng chữ.' },
+        description: { type: 'string', description: 'MỘT dòng nói skill dùng khi nào (Claude Code dựa vào đây để chọn skill).' },
+        body: { type: 'string', description: 'Nội dung skill (Markdown), không có frontmatter.' },
+      },
+    },
+    noService: true,
+    run: (a) => require('../cli/host').define(a),
+  },
+
 ];
 
 // Công cụ của KHỐI MỞ RỘNG đã xác nhận, tên <tên khối>_<tên công cụ>. Công cụ trùng tên công cụ đã có thì bị bỏ (doctor báo).

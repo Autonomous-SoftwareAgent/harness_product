@@ -99,6 +99,18 @@ on('doctor', () => {
     const r = require('./doctor').run(ROOT);
     console.log(r.text); if (r.errors) process.exitCode = 1;
 });
+on('host-sync', () => {
+    // Sinh tệp cho công cụ (hiện là Claude Code) từ định nghĩa gốc của các đơn vị ở <đơn vị>/.harness/: skill và rule nhắc cửa vào, sinh vào
+    // <đơn vị>/.claude/. --check: chỉ báo, thoát 1 nếu lệch. Tệp không phải bản sinh hoặc đã sửa tay không bao giờ bị ghi đè.
+    const r = require('../adapters/hosts/sync').syncAll(ROOT, { check: argv.includes('--check') });
+    console.log(r.text || 'Tệp sinh cho công cụ khớp định nghĩa gốc.'); if (argv.includes('--check') && r.problems.length) process.exitCode = 1;
+});
+on('host-inventory', () => {
+    // Kiểm kê chỉ đọc <đơn vị>/.claude/ của team ở từng đơn vị: dùng được khi mở phiên ở gốc, hay KHÔNG nạp (hook, quyền, lệnh, agent, MCP). --json: dạng máy đọc.
+    const inv = require('../adapters/hosts/inventory');
+    const data = inv.inventory(ROOT);
+    console.log(argv.includes('--json') ? JSON.stringify({ units: data, lostAtRoot: inv.lostAtRoot(data) }, null, 2) : inv.render(data));
+});
 on('setup', () => {
     // Bộ cài: sinh phần của harness trong .claude/settings.json và .mcp.json từ tệp tự khai của các khối đang bật; giữ phần người dùng
     // tự thêm. --check: chỉ so, thoát 1 nếu lệch. --dry-run: in việc sẽ làm.

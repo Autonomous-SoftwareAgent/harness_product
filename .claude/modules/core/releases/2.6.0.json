@@ -1,0 +1,75 @@
+{
+  "version": "2.6.0",
+  "date": "2026-10-15",
+  "summary": "Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được.",
+  "changes": [
+    {
+      "id": "kiem-ke-claude-cua-team",
+      "kind": "added",
+      "block": "core",
+      "title": "Kiểm kê .claude/ có sẵn của team ở từng đơn vị (host-inventory, host_status)",
+      "before": "Đơn vị đã có .claude/ do team tự viết thì harness không nói gì: team không biết thứ nào của họ vẫn dùng được khi phiên mở ở gốc dự án, thứ nào ngừng chạy âm thầm.",
+      "after": "Lệnh host-inventory (chữ, hoặc --json), công cụ MCP host_status (chỉ đọc) và doctor liệt kê cho từng đơn vị: skill, rule, lệnh, agent, số hook, quyền, biến môi trường, máy chủ MCP riêng của team; tệp harness sinh đếm riêng. Phân loại theo phép đo bằng phiên claude thật (bản 2.1.299, Windows, một lần, phiên mở ở gốc): skill, rule, CLAUDE.md dùng được (nạp muộn); hook, quyền, lệnh, agent, MCP riêng của đơn vị KHÔNG nạp; biến môi trường chưa đo. doctor cảnh báo những thứ sẽ ngừng chạy khi mở ở gốc. Skill onboard có bước kiểm kê này.",
+      "files": [
+        "core/adapters/hosts/inventory.js",
+        "core/cli/cli.js",
+        "core/cli/doctor.js",
+        "core/cli/host.js",
+        "core/skills/onboard.md",
+        "core/guides/03-skill-theo-repo.md"
+      ],
+      "surface": { "commands": ["host-inventory"], "tools": ["host_status"], "skills": ["onboard"] },
+      "migrations": [],
+      "impact": "Không phải làm gì. Chỉ đọc, không ghi tệp nào. Đơn vị chưa có .claude/ thì được gom thành một dòng.",
+      "verified": "Test: đếm đúng skill, rule, lệnh, agent, hook, quyền, môi trường, MCP của một đơn vị giả; tệp harness sinh tách riêng; phân loại chữ; lostAtRoot; lệnh qua cli.js dạng chữ và --json; doctor nêu hook sẽ không chạy. Phiên claude thật: lệnh, agent, quyền deny, MCP riêng của đơn vị không nạp khi mở ở gốc.",
+      "unverified": "Biến môi trường trong settings.json của đơn vị khi mở ở gốc chưa đo. Chỉ đo một lần, một model, trên Windows; chưa thử trên repo thật có .claude/ của nhóm."
+    },
+    {
+      "id": "ban-cua-team-thang-khi-trung-ten",
+      "kind": "changed",
+      "block": "core",
+      "title": "Định nghĩa chung có nguồn gốc: bản của team thắng khi trùng tên",
+      "before": "Bộ sinh chỉ đọc .harness/skills/. Skill trùng tên với skill team đã có ở .claude/ thì báo \"đã có nhưng không phải bản do harness sinh\" ở mọi lần mở phiên.",
+      "after": "Bộ chuyển Claude có chiều đọc (importNative): skill team viết ở <đơn vị>/.claude/skills/ là nguồn native. Mỗi tên chỉ có MỘT nguồn gốc: trùng tên với skill ở .harness/skills/ thì bản của team thắng, harness không sinh bản của nó và không bao giờ ghi, xóa hay chép lại skill native. Chỗ trùng tên được báo ở host-sync, doctor, host_status và kiểm kê, không báo lại ở mỗi phiên mở.",
+      "files": [
+        "core/adapters/hosts/definitions.js",
+        "core/adapters/hosts/claude.js",
+        "core/adapters/hosts/sync.js"
+      ],
+      "surface": {},
+      "migrations": [],
+      "impact": "Không phải làm gì. Dự án đã có skill cùng tên ở cả hai chỗ: bản ở .claude/ của team được dùng như trước; chỉ khác là thông báo không còn lặp mỗi phiên.",
+      "verified": "Test: gộp hai nguồn, bản của team thắng, bản bị che được ghi vào ghi chú; skill team không bị đụng khi đồng bộ; tệp harness sinh không bị đọc lại như nguồn native.",
+      "unverified": "Mới chỉ có bộ chuyển Claude; chưa dùng chiều đọc để sinh sang công cụ khác (Codex, Opencode)."
+    },
+    {
+      "id": "cong-cu-host-define-chan-tep-sinh",
+      "kind": "added",
+      "block": "core",
+      "title": "Công cụ host_define và hook chặn sửa tay tệp harness sinh",
+      "before": "Skill riêng của đơn vị do agent viết thẳng bằng Write; tệp harness sinh ở <đơn vị>/.claude/ sửa tay được và chỉ bị phát hiện ở lần đồng bộ sau.",
+      "after": "Công cụ MCP host_define (service, name, description, body) kiểm tên, mô tả một dòng, nội dung, từ chối tên trùng skill team, ghi vào <đơn vị>/.harness/skills/<tên>/SKILL.md rồi sinh tệp công cụ. Hook mới guard-host (luật host-generated, cổng workspace.hostGenerated) chặn Write, Edit và lệnh shell ghi vào tệp có dấu harness-host, lời chặn chỉ đúng đường (host_define hoặc host-sync). Tệp của team không dấu và tệp chưa có thì qua.",
+      "files": [
+        "core/mcp/mcp-tools.js",
+        "core/cli/host.js",
+        "core/hooks/guard-host.js",
+        "core/core/rules/host-generated.js",
+        "core/ports/workspace.js",
+        "core/adapters/project/workspace.js",
+        "core/presets/light.json",
+        "core/skills/plan.md",
+        "core/skills/services.md"
+      ],
+      "surface": { "tools": ["host_define", "host_status"], "hooks": ["guard-host"], "skills": ["plan", "services"] },
+      "migrations": [],
+      "impact": "Bộ cài sinh lại settings.json có thêm hook guard-host khi nâng cấp (lệnh install hoặc setup). Hook chỉ chặn tệp có dấu harness-host nên không ảnh hưởng tệp của team. Dự án có bảng nối skill riêng (skills-map.json): thêm host_status vào readonly và, nếu muốn đòi skill services trước khi tạo skill, host_define vào tools; bộ khuôn nhẹ đã có host_status. Phiên đang mở gõ /mcp để thấy hai công cụ mới.",
+      "verified": "Test: hook thật chặn Write, Edit, NotebookEdit và lệnh shell ghi vào tệp sinh, cho qua tệp team và tệp chưa có; luật chạy với bộ chuyển giả; host_define tạo, cập nhật, từ chối tên sai, mô tả nhiều dòng, tên trùng skill team; phiên claude thật (đợt trước) skill sinh nạp và gọi được.",
+      "unverified": "Lệnh ghi qua shell không phân tích được (biến, ghép chuỗi) lách được hook, như các luật chặn ghi khác; lần đồng bộ sau vẫn báo tệp bị sửa tay. Chưa thử agent thật có chịu dùng host_define thay vì Write hay không."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

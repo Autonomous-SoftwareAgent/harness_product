@@ -1,0 +1,35 @@
+{
+  "version": "2.4.0",
+  "date": "2026-10-14",
+  "summary": "Thêm công cụ db_query: agent tự tra sổ phiên của harness (kế hoạch đã duyệt, dịch vụ đã sửa, skill đã mở, lần bị chặn) bằng một câu SELECT chỉ đọc.",
+  "changes": [
+    {
+      "id": "cong-cu-db-query",
+      "kind": "added",
+      "block": "core",
+      "title": "Công cụ db_query: tra sổ phiên bằng một câu SELECT, chỉ đọc",
+      "before": "Chỉ hook đọc sổ phiên (harness.db) để quyết định chặn hay cho qua. Agent không có công cụ nào để hỏi lại sổ: phiên đã được duyệt kế hoạch nào, đã sửa dịch vụ nào, đã mở skill nào, bị luật nào chặn.",
+      "after": "Công cụ db_query (máy chủ của lõi) chạy MỘT câu SELECT hoặc WITH trên sổ phiên. Sổ mở ở chế độ chỉ đọc của SQLite và có bộ cấp phép chặn mọi thứ ngoài đọc; câu có lệnh ghi, PRAGMA, ATTACH hay nhiều câu bị từ chối. Tự thêm LIMIT (mặc định 50, tối đa 200). Gọi không có câu SQL thì trả danh sách bảng và cột. Sổ chỉ có tên công cụ, tên dịch vụ và lý do một dòng; không có tham số lời gọi hay nội dung tệp.",
+      "files": [
+        "core/mcp/mcp-tools.js",
+        "core/adapters/storage/sql-readonly.js",
+        "core/presets/light.json",
+        "core/skills/plan.md",
+        "core/skills/services.md"
+      ],
+      "surface": {
+        "tools": ["db_query"],
+        "skills": ["plan", "services"]
+      },
+      "migrations": [],
+      "impact": "Công cụ mới thuộc nhóm chỉ đọc nên không đòi mở skill nào. Dự án có bảng nối skill riêng (skills-map.json) và muốn công cụ này không bị chặn vì chưa mở skill thì thêm db_query vào danh sách readonly của bảng đó; bộ khuôn mặc định đã có. Phiên Claude Code đang mở gõ /mcp để thấy công cụ mới.",
+      "verified": "Test: đọc được dữ liệu, gọi không có câu SQL trả bảng và cột, tự thêm LIMIT và kẹp mức tối đa, tám cách ghi hoặc lệnh quản trị bị từ chối và sổ không đổi, dấu chấm phẩy trong chuỗi chữ không bị coi là nhiều câu, chưa có sổ thì báo rõ và không tạo sổ; thử trên sổ thật của phiên.",
+      "unverified": "Chưa thử bằng phiên Claude CLI thật xem agent có tự viết đúng câu SQL từ danh sách bảng ngay lần đầu hay không. Bộ cấp phép của SQLite cần bản Node có setAuthorizer; bản Node không có thì hai lớp còn lại (chỉ đọc, kiểm câu lệnh) vẫn giữ."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

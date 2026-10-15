@@ -44,3 +44,5 @@ Mục nào thật sự không có gì thì viết "không có" (vài chữ), đ�
 ## Cách kiểm
 - Tin kế hoạch có tiêu đề và đủ năm mục.
 - Sau lời duyệt, `scope_status` cho thấy kế hoạch đã được nhận và còn thiếu đăng ký nào.
+- Cần tra sổ phiên (kế hoạch đã duyệt, dịch vụ đã sửa, skill đã mở, lần bị chặn): công cụ `db_query` (một câu SELECT, chỉ đọc); gọi không có `sql` để xem bảng và cột.
+- Tệp công cụ của đơn vị (`<đơn vị>/.claude/skills/...` có dấu `harness-host`) do harness SINH, không sửa tay (hook chặn): tạo hay sửa skill riêng của đơn vị bằng công cụ `host_define`, xem team đã có gì và chỗ lệch bằng `host_status`.

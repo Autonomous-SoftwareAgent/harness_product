@@ -7,7 +7,7 @@
     "overview": "services",
     "serviceDocs": ["CLAUDE.md", "docs/agent/STATUS.md"],
     "tools": {},
-    "readonly": ["scope_register", "scope_status"],
+    "readonly": ["scope_register", "scope_status", "db_query", "host_status"],
     "files": []
   },
   "policies": { "rootNeverPush": false, "docsNeverPush": false, "unitSheets": [], "readOnlyDirs": [] }

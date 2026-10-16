@@ -110,6 +110,12 @@ function run(root) {
     const hostInv = require('../adapters/hosts/inventory');
     for (const l of hostInv.lostAtRoot(hostInv.inventory(root))) warn(`.claude/ của team: ${l}. Xem: node ${P.codeRel(root, 'cli/cli.js')} host-inventory`);
   } catch (e) { warn(`không kiểm được tệp sinh cho công cụ: ${e.message}`); }
+  try {
+    const hl = require('./host').health();
+    for (const x of hl.errors) err(x);
+    for (const x of hl.warns) warn(x);
+    for (const x of hl.notes) out.push(`GHI CHÚ: ${x}`);
+  } catch (e) { warn(`không kiểm được vòng đời skill của đơn vị: ${e.message}`); }
 
   // 3. Bảng việc -> skill, sổ phiên, hook của sổ phiên
   if (!map) (fs.existsSync(P.skillsMapPath(root)) && cfg.skillsRaw === null ? err : warn)('chưa có bảng việc -> skill (phần skills của cấu hình): hook chặn theo skill KHÔNG chặn gì.');

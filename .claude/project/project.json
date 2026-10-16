@@ -31,7 +31,10 @@
       "context_relate": "context",
       "portal_build": "service-page",
       "session_transfer": "transfer-session",
-      "host_define": "services"
+      "host_define": "services",
+      "host_rename": "services",
+      "host_remove": "services",
+      "host_adopt": "services"
     },
     "readonly": [
       "docs_status",

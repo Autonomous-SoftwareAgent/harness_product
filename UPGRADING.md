@@ -4,13 +4,14 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 
 ## Cách dùng
 1. Xem bản bạn đang cài: tệp `.claude/modules/VERSION` trong dự án.
-2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.7.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
+2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.8.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
 3. Phần "Bị bỏ hoặc đổi tên" liệt kê những thứ bạn có thể đang dùng mà không còn nữa, kèm cái thay thế.
 4. Cài bản mới: tải gói này về rồi chạy lại lệnh `install` (xem README.md). Dự án đã cài có thể xem từng mục thay đổi gắn với tình trạng dự án bằng `node .claude/modules/core/cli/cli.js upgrade preview`.
 
 ## Bảng các bản
 | Bản | Ngày | Việc phải làm | Tóm tắt |
 |---|---|---|---|
+| 2.8.0 | 2026-10-16 | không có: nâng cấp như mọi lần | Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi host_define là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng doctor. |
 | 2.7.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được; dòng Dịch vụ không còn làm lời duyệt trượt vì chữ giải thích. |
 | 2.6.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được. |
 | 2.5.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Bộ sinh tệp cho Claude Code từ định nghĩa gốc của đơn vị: skill riêng của repo viết một lần ở .harness/, harness sinh ra .claude/ để Claude Code tự nạp; nền cho các bộ chuyển công cụ khác. |
@@ -37,6 +38,28 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 - **Bản 2.0.0, đổi:** Mỗi khối một máy chủ MCP thay cho một máy chủ giữ cả bộ công cụ. Cấu hình của bạn được lệnh nâng cấp chuyển tự động. Mọi phiên Claude Code đang mở phải gõ /mcp (hoặc mở lại) một lần để thấy tên mới; phiên chưa nối lại vẫn gọi được công cụ qua máy chủ cũ. Mỗi phiên chạy thêm vài tiến trình Node (mỗi máy chủ một tiến trình, tốn thêm bộ nhớ). Kịch bản, tài liệu hay quyền đã ghi tên mcp__bsn-docs__... phải đổi sang tên mới. Khai quyền theo từng công cụ (mcp__bsn-docs__<công cụ>) không tự đổi: bước chuyển chỉ đổi quyền theo cả máy chủ.
 
 ## Chi tiết từng bản (mới ở trên)
+
+### 2.8.0 (2026-10-16)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi host_define là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng doctor.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần (`upgrade`); không có bước chuyển cấu hình. `settings.json` được sinh lại có thêm hook `host-resync`; công cụ MCP mới hiện sau khi gõ `/mcp`.
+- Skill riêng có sẵn ở `.harness/skills/` vẫn chạy; muốn ép thì thêm hai dòng `harness-*` vào đầu tệp hoặc gọi lại `host_define` với `enforce`.
+
+**Bạn sẽ thấy khác**
+
+- Lỗi cũ được sửa: một tệp mã chỉ NHẮC tới dòng dấu sinh (ví dụ bộ chuyển công cụ) từng bị coi là tệp do harness sinh và bị chặn sửa. Nay chỉ dòng dấu đúng khuôn ở đầu dòng mới tính.
+- Công cụ `host_define` nhận thêm tham số, các lời gọi cũ (service, name, description, body) vẫn chạy y nguyên. Thông báo lỗi tên sai không đổi.
+- Không đổi: skill của team giữ nguyên và thắng khi trùng tên; tệp sinh vẫn không sửa tay được; bố cục đơn vị không tự đổi.
+
+**Chưa kiểm và giới hạn**
+
+- Việc ép theo `harness-files` mới kiểm bằng test và kịch bản ảnh chụp chạy hook thật, chưa qua một phiên Claude CLI thật ở dự án khác.
+- `host_adopt` mới kiểm trên cây thử, chưa trên một repo của team có skill thật đang được git theo dõi.
+- Mọi phép đo Claude Code chỉ trên một bản, một máy; chưa có Codex hay công cụ khác.
+- Phiên mở thẳng trong thư mục đơn vị không có hook nào, nên không có sinh lại và không có ép.
 
 ### 2.7.0 (2026-10-15)
 - **Mức việc phải làm:** không có: nâng cấp như mọi lần.

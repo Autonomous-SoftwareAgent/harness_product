@@ -36,6 +36,7 @@ Harness không biết gì về dự án cho tới khi `.claude/project/project.j
    3. Gốc dự án chưa có `CLAUDE.md` thì tạo: luật chung (duyệt kế hoạch trước khi sửa, một phiên một đơn vị, việc của đơn vị khác ghi `docs/handoff/`), bảng đơn vị, bảng "việc gì dùng skill nào". Đã có thì chỉ THÊM mục còn thiếu.
    4. Mỗi đơn vị thiếu khung: `node .claude/modules/core/cli/new-service.js <tên>`. Lệnh chỉ tạo phần còn thiếu, không ghi đè. Rồi điền `CLAUDE.md` và `docs/agent/STATUS.md` của đơn vị từ mã thật: đơn vị làm gì, lệnh chạy và test, thư mục nào chứa gì. Điều chưa đọc thấy thì ghi "chưa rõ".
    5. Khai skill riêng của dự án nếu kế hoạch có: tạo `.claude/skills/<tên>/SKILL.md` (khuôn ở skill `skill-map`) và khai vào `skills.tools` hay `skills.files`.
+   6. Skill hay quy tắc riêng của MỘT đơn vị thì không đặt ở `.claude/skills/` của dự án: gọi công cụ `host_define` với `service` là đơn vị đó. Skill muốn ÉP (sửa tệp khớp mẫu mà chưa mở skill thì bị chặn) thì thêm `enforce: { files: [mẫu tính từ gốc đơn vị], reads: [tài liệu phải đọc thêm] }` ngay trong lời gọi; không phải sửa bảng nối. Quy tắc chỉ cần nhắc khi chạm tệp thì `kind: "note"` kèm `paths`. Đổi tên `host_rename`, gỡ `host_remove`, xem vòng đời `host_status`. Chỉ viết điều đọc thấy trong mã và tài liệu của đơn vị; điều chưa rõ ghi "chưa rõ".
 5. **Kiểm:** `node .claude/modules/core/cli/cli.js doctor` phải không có dòng LỖI. Sửa tới khi sạch. Có dòng CẢNH BÁO thì nói với người dùng.
 6. **Báo người dùng:** đã khai gì, tạo tệp nào, `doctor` nói gì, và việc người dùng cần làm (gõ `/mcp` nếu tóm tắt đầu phiên nhắc; commit khi họ muốn).
 
@@ -48,7 +49,7 @@ Harness không biết gì về dự án cho tới khi `.claude/project/project.j
 | `docs/agent/STATUS.md` | Giữ nguyên | `new-service.js` tạo khung; thêm dòng nhật ký đầu tiên |
 | Tài liệu có cấu trúc | Dùng skill `service-docs`, `diagrams` | Chỉ tạo khi người dùng bật; công cụ tự tạo khung ở lần ghi đầu |
 | `.mcp.json` | Harness tự thêm một mục cho mỗi khối đang bật (`harness`, `harness-docs`, ...) khi mở phiên | Harness tự tạo khi mở phiên |
-| `<đơn vị>/.claude/` của team | Không bao giờ ghi đè hay xóa. Skill, rule của team vẫn dùng được; trùng tên với skill ở `.harness/skills/` thì bản của team thắng. Skill riêng mới viết bằng công cụ `host_define` (harness sinh `.claude/` từ `.harness/`); tệp có dấu `harness-host` do harness sinh, không sửa tay | Không cần tạo: harness chỉ sinh khi có skill ở `.harness/skills/` |
+| `<đơn vị>/.claude/` của team | Không bao giờ ghi đè hay xóa. Skill, rule của team vẫn dùng được; trùng tên với skill ở `.harness/skills/` thì bản của team thắng. Skill riêng mới viết bằng công cụ `host_define` (một lời gọi: skill kèm `enforce` nếu muốn ép, hoặc `kind: "note"` cho quy tắc tự nạp theo đường dẫn; harness sinh `.claude/` từ `.harness/`); skill team muốn đưa về `.harness/` thì `host_adopt` (chạy khô trước, cần người dùng đồng ý); tệp có dấu `harness-host` do harness sinh, không sửa tay | Không cần tạo: harness chỉ sinh khi có skill ở `.harness/skills/` |
 
 ## Lỗi hay gặp
 - Ghi `project.json` trước khi được duyệt: cổng duyệt chặn, và đó là đúng.

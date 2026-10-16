@@ -5,6 +5,7 @@
 // skill ở <đơn vị>/.claude/skills/ và rule ở <đơn vị>/.claude/rules/ được nạp khi phiên chạm tệp trong đơn vị (nạp muộn); hook và máy chủ MCP
 // ở thư mục con thì KHÔNG nạp, nên bộ chuyển này không sinh settings.json hay .mcp.json.
 const crypto = require('node:crypto');
+const { stripEnforce } = require('./definitions');
 
 const NAME = 'claude';
 const MARK = 'harness-host:claude';
@@ -66,7 +67,13 @@ function plan(units) {
   for (const u of units) {
     for (const s of u.skills || []) {
       if (!NAME_RE.test(s.name)) continue;
-      out.push({ unit: u.name, rel: `.claude/skills/${s.name}/SKILL.md`, text: stamp(s.text, `.harness/skills/${s.name}/SKILL.md`), kind: 'skill', exclude: `/.claude/skills/${s.name}/` });
+      // Điều kiện ép (harness-files, harness-reads) là của harness: không chép sang tệp của công cụ.
+      out.push({ unit: u.name, rel: `.claude/skills/${s.name}/SKILL.md`, text: stamp(stripEnforce(s.text), `.harness/skills/${s.name}/SKILL.md`), kind: 'skill', exclude: `/.claude/skills/${s.name}/` });
+    }
+    // Note: rule nạp theo đường dẫn (frontmatter `paths:`), sinh ra .claude/rules/<tên>.md.
+    for (const n of u.notes || []) {
+      if (!NAME_RE.test(n.name) || n.name === 'harness') continue;
+      out.push({ unit: u.name, rel: `.claude/rules/${n.name}.md`, text: stamp(n.text, `.harness/notes/${n.name}.md`), kind: 'rule', exclude: `/.claude/rules/${n.name}.md` });
     }
     if (u.entry && u.entry.exists) {
       out.push({ unit: u.name, rel: '.claude/rules/harness.md', text: stamp(entryRule(u), u.entry.rel), kind: 'rule', exclude: '/.claude/rules/harness.md' });

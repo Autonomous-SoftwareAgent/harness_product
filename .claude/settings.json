@@ -132,6 +132,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/host-resync.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",

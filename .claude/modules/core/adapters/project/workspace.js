@@ -37,7 +37,7 @@ function loadWords(root) {
 }
 
 // Tệp có dấu của bộ chuyển công cụ (đọc đầu tệp): đầu ra của harness. Không có tệp hay không có dấu thì false.
-const hostGenerated = (abs) => { try { const fd = fs.openSync(abs, 'r'); try { const b = Buffer.alloc(4096); const n = fs.readSync(fd, b, 0, 4096, 0); return /<!-- harness-host:[a-z][a-z0-9-]* src:/.test(b.toString('utf8', 0, n)); } finally { fs.closeSync(fd); } } catch { return false; } };
+const hostGenerated = (abs) => { try { const fd = fs.openSync(abs, 'r'); try { const b = Buffer.alloc(4096); const n = fs.readSync(fd, b, 0, 4096, 0); return /^<!-- harness-host:[a-z][a-z0-9-]* src:\S+ sha:[0-9a-f]{12} -->\r?$/m.test(b.toString('utf8', 0, n)); } finally { fs.closeSync(fd); } } catch { return false; } };
 const skillFile = (root, name) => path.join(P.skillsDir(root), name, 'SKILL.md');
 // Skill của dự án nằm ở .claude/skills/. Skill riêng của một đơn vị do bộ chuyển công cụ sinh ra ở <đơn vị>/.claude/skills/ (từ định nghĩa gốc
 // <đơn vị>/.harness/skills/) cũng được tính là skill hợp lệ: mở nó bằng công cụ Skill hay đọc trọn SKILL.md thì sổ phiên ghi nhận, và bảng nối
@@ -108,7 +108,12 @@ function create(root) {
     units: () => P.extraUnits(root),
     scopeMode: () => P.scopeMode(root),
     // Bảng nối là phần `skills` của cấu hình dự án: khai ngay trong project.json, hoặc tên một tệp riêng (ví dụ skills-map.json).
-    skillsMapRaw: () => { try { return P.projectConfig(root).skillsRaw; } catch { return null; } },
+    // Phần điều kiện ép khai ở skill của từng đơn vị được gộp vào cuối `files` (hosts/enforce.js): đơn vị chỉ thêm yêu cầu, không bớt.
+    skillsMapRaw: () => {
+      let raw = null;
+      try { raw = P.projectConfig(root).skillsRaw; } catch { return null; }
+      try { return require('./enforce').merge(root, raw); } catch { return raw; } // gộp hỏng thì giữ bảng gốc, không tắt cả bảng
+    },
     skillsMapExists: () => fs.existsSync(P.skillsMapPath(root)),
     skillExists: (name) => skillExists(root, name),
     allSkills: () => allSkills(root),

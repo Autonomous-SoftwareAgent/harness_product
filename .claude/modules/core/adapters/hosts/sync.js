@@ -28,6 +28,11 @@ function nativeFiles(dir) {
   return out;
 }
 
+// Tên các note của một đơn vị: <đơn vị>/.harness/notes/<tên>.md.
+function unitNotes(dir) {
+  try { return fs.readdirSync(path.join(dir, P.UNIT_EXT_DIR, 'notes')).filter((f) => /^[a-z][a-z0-9-]*\.md$/.test(f)).map((f) => f.slice(0, -3)).sort(); } catch { return []; }
+}
+
 // Mô tả các đơn vị cho bộ chuyển. Mọi đơn vị đều có mặt (kể cả đơn vị không còn định nghĩa gốc nào) để dọn được tệp sinh mồ côi.
 // Hai nguồn định nghĩa: native (team viết ở .claude/, bộ chuyển đọc qua importNative) và harness (.harness/skills/). Trùng tên thì native thắng:
 // skill của harness bị che không được sinh, và được ghi vào `shadowed` để báo (không báo mỗi phiên: chỉ ở host-sync, doctor, host_status).
@@ -37,11 +42,13 @@ function gather(root, adapter) {
     const lay = P.unitLayout(root, name);
     const mine = P.unitSkills(root, name).map((n) => ({ kind: 'skill', name: n, text: readText(path.join(dir, P.UNIT_EXT_DIR, 'skills', n, 'SKILL.md')), src: `${P.UNIT_EXT_DIR}/skills/${n}/SKILL.md` })).filter((x) => x.text !== null);
     const native = adapter && typeof adapter.importNative === 'function' ? adapter.importNative(nativeFiles(dir)) : [];
-    const merged = defs.merge(native, mine);
+    const notes = unitNotes(dir).map((n) => ({ kind: 'note', name: n, text: readText(path.join(dir, P.UNIT_EXT_DIR, 'notes', `${n}.md`)), src: `${P.UNIT_EXT_DIR}/notes/${n}.md` })).filter((x) => x.text !== null);
+    const merged = defs.merge(native, [...mine, ...notes]);
     const entryAbs = path.join(dir, ...lay.entryRel.split('/'));
     units.push({
       name, dir, native, shadowed: merged.shadowed,
-      skills: merged.defs.filter((d) => d.origin === 'harness').map((d) => ({ name: d.name, text: d.text })),
+      skills: merged.defs.filter((d) => d.origin === 'harness' && d.kind === 'skill').map((d) => ({ name: d.name, text: d.text })),
+      notes: merged.defs.filter((d) => d.origin === 'harness' && d.kind === 'note').map((d) => ({ name: d.name, text: d.text })),
       entry: { rel: lay.entryRel, exists: lay.layout === 'harness' && fs.existsSync(entryAbs) },
     });
   }

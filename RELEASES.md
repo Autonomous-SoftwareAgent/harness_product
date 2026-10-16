@@ -6,6 +6,38 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.8.0 (2026-10-16)
+
+Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi `host_define` là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng `doctor`. Bản này không bỏ gì và không có bước chuyển cấu hình.
+
+### Có gì mới
+- **Điều kiện ép nằm ngay trong skill.** Skill ở `<đơn vị>/.harness/skills/<tên>/SKILL.md` khai thêm hai dòng ở đầu tệp: `harness-files` (mẫu đường dẫn, tính từ gốc đơn vị) và `harness-reads` (tài liệu phải đọc thêm). Hook chặn theo skill tự gộp phần này vào bảng nối ở gốc dự án: sửa tệp khớp mẫu mà phiên chưa mở skill thì bị chặn. Không còn bước sửa bảng nối ở gốc. Đơn vị chỉ thêm được yêu cầu, không bớt được yêu cầu của bảng gốc; mẫu hỏng bị bỏ và `doctor` báo.
+- **Note: quy tắc tự nạp khi chạm tệp.** `<đơn vị>/.harness/notes/<tên>.md` có `paths:` (mẫu kiểu glob, tính từ thư mục đơn vị); harness sinh `<đơn vị>/.claude/rules/<tên>.md`. Note chỉ nhắc, không ép.
+- **Bốn công cụ MCP** (thêm ba): `host_define` nhận `kind` (skill hoặc note), `enforce`, `paths`; `host_rename` (bản gốc, bản sinh, điều kiện ép đi cùng nhau); `host_remove`; `host_adopt` (nhận skill của team về `.harness/`, mặc định chạy khô, cần `confirm=true`, từ chối khi skill có tệp kèm theo).
+- **Bảng vòng đời** trong `host_status`: từng skill và note đang ở trạng thái nào (bản sinh khớp, lệch hay bị sửa tay; có ép hay chưa; số lần mở và lần cuối). Mỗi thao tác ghi một dòng sự kiện vào sổ phiên (chỉ tên đơn vị, tên mục, loại thao tác), tra được bằng `db_query`.
+- **Tự sinh lại sau khi sửa tay.** Hook mới `host-resync`: ghi vào `.harness/skills/` hay `.harness/notes/` thì tệp công cụ được sinh lại ngay.
+- **`doctor` báo thêm:** lỗi khi mẫu ép hỏng hoặc skill khai ép mà chưa được sinh; cảnh báo khi mẫu ép không khớp tệp nào hoặc skill 30 ngày chưa ai mở; ghi chú khi skill chưa ép.
+
+### Hành vi đổi
+- Lỗi cũ được sửa: một tệp mã chỉ NHẮC tới dòng dấu sinh (ví dụ bộ chuyển công cụ) từng bị coi là tệp do harness sinh và bị chặn sửa. Nay chỉ dòng dấu đúng khuôn ở đầu dòng mới tính.
+- Công cụ `host_define` nhận thêm tham số, các lời gọi cũ (service, name, description, body) vẫn chạy y nguyên. Thông báo lỗi tên sai không đổi.
+- Không đổi: skill của team giữ nguyên và thắng khi trùng tên; tệp sinh vẫn không sửa tay được; bố cục đơn vị không tự đổi.
+
+### Nâng cấp
+- Nâng cấp như mọi lần (`upgrade`); không có bước chuyển cấu hình. `settings.json` được sinh lại có thêm hook `host-resync`; công cụ MCP mới hiện sau khi gõ `/mcp`.
+- Skill riêng có sẵn ở `.harness/skills/` vẫn chạy; muốn ép thì thêm hai dòng `harness-*` vào đầu tệp hoặc gọi lại `host_define` với `enforce`.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test vòng đời (11 ca): điều kiện ép nằm trong tệp và bản sinh không chép nó; gộp vào bảng nối chỉ thêm, dòng gốc nguyên vẹn, hook thật đòi skill; note giữ `paths`; đổi tên và gỡ dọn đủ ba chỗ, bản sinh sửa tay được giữ; nhận skill của team (chạy khô, `confirm`, từ chối khi có tệp kèm); `doctor` và bảng vòng đời; hook sinh lại; sự kiện vào sổ phiên; tệp mã nhắc tới dấu sinh không bị chặn.
+- Đo bằng phiên `claude -p` thật (Claude Code 2.1.299 qua haiku, Windows, một lần): rule ở `<đơn vị>/.claude/rules/` có `paths: ["src/core/**"]` chỉ nạp khi phiên chạm tệp khớp, mẫu tính từ thư mục đơn vị (mẫu tính từ gốc dự án không khớp); rule không có `paths` nạp ngay khi phiên chạm bất cứ tệp nào của đơn vị.
+
+### Chưa kiểm và giới hạn
+- Việc ép theo `harness-files` mới kiểm bằng test và kịch bản ảnh chụp chạy hook thật, chưa qua một phiên Claude CLI thật ở dự án khác.
+- `host_adopt` mới kiểm trên cây thử, chưa trên một repo của team có skill thật đang được git theo dõi.
+- Mọi phép đo Claude Code chỉ trên một bản, một máy; chưa có Codex hay công cụ khác.
+- Phiên mở thẳng trong thư mục đơn vị không có hook nào, nên không có sinh lại và không có ép.
+
 ## 2.7.0 (2026-10-15)
 
 Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được. Sửa lỗi trải nghiệm khiến người dùng phải duyệt hai lần chỉ vì cách viết. Bản này không bỏ gì và không có bước chuyển cấu hình.

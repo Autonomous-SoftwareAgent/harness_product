@@ -1,0 +1,88 @@
+{
+  "version": "2.8.0",
+  "date": "2026-10-16",
+  "summary": "Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi host_define là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng doctor.",
+  "changes": [
+    {
+      "id": "dieu-kien-ep-trong-skill",
+      "kind": "added",
+      "block": "core",
+      "title": "Điều kiện ép của skill đơn vị nằm ngay trong SKILL.md, hook tự gộp vào bảng nối",
+      "before": "Skill riêng của một đơn vị (ở .harness/skills/) chỉ là gợi ý: muốn ép (sửa tệp khớp mẫu mà chưa mở skill thì bị chặn) phải sửa bảng nối skill ở gốc dự án bằng tay, tức là đơn vị không sở hữu trọn skill của mình.",
+      "after": "Hai dòng ở đầu SKILL.md: harness-files (mẫu đường dẫn, tính từ gốc đơn vị) và harness-reads (tài liệu phải đọc thêm). Khi hook chặn theo skill đọc bảng nối, phần này được gộp vào cuối skills.files với tiền tố thư mục đơn vị. Đơn vị chỉ thêm được yêu cầu, không bớt yêu cầu của bảng gốc; mẫu hỏng bị bỏ và doctor báo lỗi; gộp hỏng thì giữ nguyên bảng gốc. Bản sinh cho công cụ không có hai dòng này.",
+      "files": [
+        "core/ports/skill-enforce.js",
+        "core/adapters/project/enforce.js",
+        "core/adapters/project/workspace.js",
+        "core/adapters/hosts/definitions.js"
+      ],
+      "surface": { "config": ["skills.files"], "skills": ["onboard"] },
+      "migrations": [],
+      "impact": "Không phải làm gì. Skill riêng có sẵn ở .harness/skills/ vẫn chạy như cũ (không ép). Muốn ép thì thêm hai dòng harness-* vào đầu tệp hoặc gọi lại host_define với enforce. Bảng nối ở gốc không đổi.",
+      "verified": "Test: dòng của bảng gốc nguyên vẹn sau khi gộp; mẫu ghép đúng tiền tố đơn vị; mẫu rộng cũng không bớt được dòng gốc; mẫu hỏng bị bỏ mà bảng không hỏng; luật đòi skill đúng với tệp khớp và không đòi với tệp khác, kèm tài liệu khai thêm.",
+      "unverified": "Việc ép chưa qua một phiên Claude CLI thật ở dự án khác; kịch bản ảnh chụp chạy hook thật."
+    },
+    {
+      "id": "note-quy-tac-nap-theo-duong-dan",
+      "kind": "added",
+      "block": "core",
+      "title": "Note: quy tắc riêng của đơn vị tự nạp khi phiên chạm tệp khớp paths",
+      "before": "Đơn vị chỉ có skill (gọi khi cần) và luật chặn lúc ghi; không có cách viết một quy tắc 'nhắc khi sửa vùng mã này'.",
+      "after": "<đơn vị>/.harness/notes/<tên>.md có paths (mẫu glob tính từ thư mục đơn vị); harness sinh <đơn vị>/.claude/rules/<tên>.md giữ nguyên paths. Note chỉ nhắc, không ép; tên 'harness' dành cho tệp nhắc cửa vào.",
+      "files": [
+        "core/adapters/hosts/claude.js",
+        "core/adapters/hosts/sync.js",
+        "core/adapters/hosts/definitions.js"
+      ],
+      "surface": { "tools": ["host_define"] },
+      "migrations": [],
+      "impact": "Không phải làm gì; tính năng mới, chỉ dùng khi gọi host_define với kind=note.",
+      "verified": "Test: sinh ra đúng tệp, giữ paths, dấu sinh sau frontmatter; note không nhận enforce; tên harness bị cấm. Đo bằng phiên claude -p thật (2.1.299, Windows, một lần): rule có paths chỉ nạp khi chạm tệp khớp, mẫu tính từ thư mục đơn vị (mẫu tính từ gốc dự án không khớp); rule không có paths nạp khi chạm bất cứ tệp nào của đơn vị.",
+      "unverified": "Một bản Claude Code, một máy; chưa đo với mẫu paths phức tạp hay nhiều đơn vị lồng nhau."
+    },
+    {
+      "id": "vong-doi-skill-don-vi",
+      "kind": "added",
+      "block": "core",
+      "title": "Vòng đời trọn vẹn: host_define mở rộng, host_rename, host_remove, host_adopt, bảng vòng đời, hook sinh lại, doctor",
+      "before": "Chỉ có tạo hoặc ghi đè skill (host_define). Không có đổi tên, gỡ, nhận skill của team; không có chỗ xem skill đang ở trạng thái nào; sửa tay định nghĩa gốc thì tệp công cụ lệch tới phiên sau; doctor không nói gì về skill đơn vị.",
+      "after": "host_define nhận kind, enforce, paths. host_rename và host_remove đi cùng bản gốc, bản sinh, điều kiện ép (bản sinh bị sửa tay thì giữ và báo; tệp của team không bao giờ bị động tới). host_adopt nhận skill của team về .harness/ (chạy khô mặc định, cần confirm=true, từ chối khi có tệp kèm theo). host_status in bảng vòng đời từng skill và note. Mỗi thao tác ghi một dòng sự kiện vào sổ phiên (act_rule_decisions, rule 'host'). Hook host-resync sinh lại ngay khi ghi vào .harness/skills/ hay .harness/notes/. doctor báo lỗi (mẫu hỏng, khai ép mà chưa sinh), cảnh báo (mẫu không khớp tệp nào, 30 ngày chưa ai mở) và ghi chú (chưa ép).",
+      "files": [
+        "core/cli/host.js",
+        "core/cli/doctor.js",
+        "core/mcp/mcp-tools.js",
+        "core/hooks/host-resync.js",
+        "core/guides/03-skill-theo-repo.md",
+        "core/skills/onboard.md",
+        "core/skills/services.md",
+        "core/FORMAT.md"
+      ],
+      "surface": { "tools": ["host_define", "host_rename", "host_remove", "host_adopt", "host_status"], "hooks": ["host-resync"], "commands": ["doctor"], "skills": ["onboard", "services"] },
+      "migrations": [],
+      "impact": "Bộ cài sinh lại settings.json có thêm hook host-resync khi nâng cấp (upgrade hoặc setup); công cụ MCP mới hiện sau khi gõ /mcp. Lời gọi host_define cũ (service, name, description, body) vẫn chạy y nguyên.",
+      "verified": "11 test vòng đời ở cây thử: đổi tên và gỡ dọn đủ ba chỗ; bản sinh sửa tay được giữ; nhận skill của team (chạy khô, confirm, từ chối khi có tệp kèm, nguyên văn); doctor và bảng vòng đời; hook thật sinh lại và chỉ chạy với tệp định nghĩa; sự kiện vào sổ phiên. Kịch bản ảnh chụp hành vi có thêm các bước này, chụp lại hai nền.",
+      "unverified": "host_adopt chưa chạy trên repo của team có skill thật đang được git theo dõi. Phiên mở thẳng trong thư mục đơn vị không có hook nên không có sinh lại và không có ép."
+    },
+    {
+      "id": "tep-ma-nhac-toi-dau-sinh",
+      "kind": "fixed",
+      "block": "core",
+      "title": "Tệp mã chỉ nhắc tới dòng dấu sinh không còn bị coi là tệp do harness sinh",
+      "before": "Hook guard-host coi một tệp là tệp sinh nếu 4096 byte đầu CÓ chuỗi dấu ở bất cứ đâu; chính bộ chuyển công cụ (nhắc tới dấu trong mã) vì vậy bị chặn sửa với lời 'tệp do harness sinh'.",
+      "after": "Chỉ một dòng đúng khuôn (đứng ở đầu dòng, có src và mã băm 12 ký tự) mới tính là dấu sinh; chuỗi nhắc tới dấu trong mã hay chú thích thì không.",
+      "files": [
+        "core/adapters/project/workspace.js"
+      ],
+      "surface": { "hooks": ["guard-host"] },
+      "migrations": [],
+      "impact": "Không phải làm gì. Tệp thật do harness sinh vẫn bị chặn sửa tay; chỉ các tệp mã có chuỗi nhắc tới dấu hết bị chặn nhầm.",
+      "verified": "Test: tệp mã có đủ chuỗi dấu trong biểu thức và chú thích không bị coi là tệp sinh; dòng dấu thật (cả kết thúc dòng kiểu Windows) vẫn bị nhận ra.",
+      "unverified": "Chỉ kiểm bằng test ở cây thử; chưa thử trên một repo thật có tệp mã nhắc tới dấu sinh ở dự án khác."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

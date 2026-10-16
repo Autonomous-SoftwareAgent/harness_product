@@ -89,19 +89,72 @@ const CORE_TOOLS = [
   },
   {
     name: 'host_define',
-    description: 'TẠO hoặc SỬA một skill riêng của đơn vị ở <đơn vị>/.harness/skills/<tên>/SKILL.md rồi sinh tệp cho công cụ ở <đơn vị>/.claude/skills/. Dùng công cụ này thay vì sửa tay tệp sinh (bị chặn). Kiểm tên, mô tả một dòng, nội dung; từ chối tên trùng skill team đã có. Chỉ gọi sau khi người dùng duyệt kế hoạch có đơn vị đó.',
+    description: 'TẠO hoặc SỬA một skill hay một note riêng của đơn vị rồi sinh tệp cho công cụ ở <đơn vị>/.claude/. Skill (kind=skill, mặc định): <đơn vị>/.harness/skills/<tên>/SKILL.md, agent gọi khi cần; thêm enforce thì sửa tệp khớp mẫu mà chưa mở skill sẽ bị chặn (một lần gọi là đủ, không phải sửa bảng nối ở gốc). Note (kind=note): <đơn vị>/.harness/notes/<tên>.md, rule tự nạp khi phiên chạm tệp khớp paths, chỉ nhắc, không ép. Dùng công cụ này thay vì sửa tay tệp sinh (bị chặn). Từ chối tên trùng skill team đã có. Chỉ gọi sau khi người dùng duyệt kế hoạch có đơn vị đó.',
     inputSchema: {
       type: 'object',
-      required: ['service', 'name', 'description', 'body'],
+      required: ['service', 'name', 'body'],
       properties: {
-        service: { type: 'string', description: 'Tên đơn vị (dịch vụ) sở hữu skill, ví dụ "web".' },
-        name: { type: 'string', description: 'Tên skill: chữ thường, số, gạch ngang, bắt đầu bằng chữ.' },
-        description: { type: 'string', description: 'MỘT dòng nói skill dùng khi nào (Claude Code dựa vào đây để chọn skill).' },
-        body: { type: 'string', description: 'Nội dung skill (Markdown), không có frontmatter.' },
+        service: { type: 'string', description: 'Tên đơn vị (dịch vụ) sở hữu, ví dụ "web".' },
+        name: { type: 'string', description: 'Tên: chữ thường, số, gạch ngang, bắt đầu bằng chữ.' },
+        kind: { type: 'string', enum: ['skill', 'note'], description: 'skill (mặc định) hoặc note.' },
+        description: { type: 'string', description: 'Skill: MỘT dòng nói skill dùng khi nào (Claude Code dựa vào đây để chọn). Note không cần.' },
+        body: { type: 'string', description: 'Nội dung (Markdown), không có frontmatter.' },
+        enforce: {
+          type: 'object',
+          description: 'Chỉ cho skill. Điều kiện ép: files là các mẫu đường dẫn (biểu thức chính quy) TÍNH TỪ GỐC ĐƠN VỊ, ví dụ ["^src/adapters/"]; reads là tài liệu phải đọc thêm trong đơn vị. Bỏ trống thì skill chỉ là gợi ý.',
+          properties: { files: { type: 'array', items: { type: 'string' } }, reads: { type: 'array', items: { type: 'string' } } },
+        },
+        paths: { type: 'array', items: { type: 'string' }, description: 'Chỉ cho note: mẫu đường dẫn kiểu glob, note tự nạp khi phiên chạm tệp khớp.' },
       },
     },
     noService: true,
     run: (a) => require('../cli/host').define(a),
+  },
+  {
+    name: 'host_rename',
+    description: 'ĐỔI TÊN một skill hay note do harness quản ở một đơn vị: bản gốc, bản sinh và điều kiện ép đi cùng nhau, không để lại bản cũ. Tên mới không được trùng. Chỉ gọi sau khi người dùng duyệt kế hoạch có đơn vị đó.',
+    inputSchema: {
+      type: 'object',
+      required: ['service', 'name', 'to'],
+      properties: {
+        service: { type: 'string', description: 'Tên đơn vị.' },
+        name: { type: 'string', description: 'Tên hiện tại.' },
+        to: { type: 'string', description: 'Tên mới.' },
+        kind: { type: 'string', enum: ['skill', 'note'], description: 'skill (mặc định) hoặc note.' },
+      },
+    },
+    noService: true,
+    run: (a) => require('../cli/host').rename(a),
+  },
+  {
+    name: 'host_remove',
+    description: 'GỠ một skill hay note do harness quản ở một đơn vị: xóa bản gốc; bản sinh còn nguyên thì tự xóa theo, bản đã bị sửa tay thì giữ lại và báo. Không gỡ được tệp của team. Chỉ gọi sau khi người dùng duyệt kế hoạch có đơn vị đó.',
+    inputSchema: {
+      type: 'object',
+      required: ['service', 'name'],
+      properties: {
+        service: { type: 'string', description: 'Tên đơn vị.' },
+        name: { type: 'string', description: 'Tên skill hay note.' },
+        kind: { type: 'string', enum: ['skill', 'note'], description: 'skill (mặc định) hoặc note.' },
+      },
+    },
+    noService: true,
+    run: (a) => require('../cli/host').remove(a),
+  },
+  {
+    name: 'host_adopt',
+    description: 'NHẬN một skill do team tự viết ở <đơn vị>/.claude/skills/<tên>/ về <đơn vị>/.harness/skills/ để harness quản vòng đời của nó. Mặc định CHẠY KHÔ: chỉ nói sẽ làm gì. Làm thật khi confirm=true và CHỈ sau khi người dùng đồng ý, vì tệp của team bị thay bằng bản sinh. Từ chối khi skill có tệp kèm theo ngoài SKILL.md.',
+    inputSchema: {
+      type: 'object',
+      required: ['service', 'name'],
+      properties: {
+        service: { type: 'string', description: 'Tên đơn vị.' },
+        name: { type: 'string', description: 'Tên skill của team.' },
+        confirm: { type: 'boolean', description: 'true = làm thật; bỏ trống = chạy khô.' },
+      },
+    },
+    noService: true,
+    run: (a) => require('../cli/host').adopt(a),
   },
 
 ];

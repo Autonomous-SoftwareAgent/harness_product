@@ -1,7 +1,7 @@
 {
   "_": "Tệp tự khai của khối. Đường dẫn trong tệp là đường dẫn logic (tính như ở .claude/modules/ của bố cục cũ). Bộ cài (cli/setup.js) sinh phần của harness trong .claude/settings.json và .mcp.json từ các tệp này; `order` giữ thứ tự hook như đã đo.",
   "name": "core",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "api": "0.1",
   "required": true,
   "uses": [],
@@ -13,6 +13,7 @@
     { "event": "PreToolUse", "order": 40, "matcher": "Write|Edit|NotebookEdit|@mcp", "file": "hooks/guard-skill.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 50, "matcher": "mcp__.*", "file": "hooks/guard-mcp.js", "timeout": 10 },
     { "event": "PostToolUse", "order": 10, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/forward.js", "args": "track", "timeout": 10 },
+    { "event": "PostToolUse", "order": 12, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/host-resync.js", "timeout": 10 },
     { "event": "PostToolUse", "order": 20, "file": "hooks/ledger.js", "args": "record", "timeout": 10 },
     { "event": "Stop", "order": 10, "file": "hooks/forward.js", "args": "stop", "timeout": 60, "statusMessage": "Checking docs are in sync..." },
     { "event": "Stop", "order": 20, "file": "gate/gate-hook.js", "args": "stop", "timeout": 10 },

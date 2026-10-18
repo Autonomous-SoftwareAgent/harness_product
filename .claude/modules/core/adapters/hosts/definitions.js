@@ -12,7 +12,7 @@
 // Hai dòng này là của harness: bộ chuyển KHÔNG chép chúng sang tệp của công cụ.
 const NAME_RE = /^[a-z][a-z0-9-]*$/;
 // Dạng khai điều kiện ép là một hợp đồng dùng chung với bộ chuyển dự án (hai bộ chuyển không nhập nhau): ports/skill-enforce.js.
-const { FRONT_RE, ENFORCE_KEYS, front, enforceOf, stripEnforce } = require('../../ports/skill-enforce');
+const { FRONT_RE, ENFORCE_KEYS, front, enforceOf, stripEnforce, yamlScalar, brokenDescription } = require('../../ports/skill-enforce');
 const norm = (t) => String(t).replace(/\r\n/g, '\n');
 
 // { kind, name, text, src }[] -> { defs, shadowed }
@@ -44,10 +44,29 @@ function enforceProblems(enforce) {
   return out;
 }
 
-// Kiểm một định nghĩa trước khi ghi (host_define dùng). `kind`: 'skill' (mặc định) hoặc 'note'. Trả danh sách vấn đề (rỗng = hợp lệ).
-function problems({ name, description, body, kind = 'skill', enforce, paths }) {
+const MODELS = ['haiku', 'sonnet', 'opus', 'inherit'];
+const TOOL_RE = /^[A-Za-z][A-Za-z0-9_*-]*$/;
+
+// Kiểm một định nghĩa trước khi ghi (host_define dùng). `kind`: 'skill' (mặc định), 'note' hoặc 'agent'. Trả danh sách vấn đề (rỗng = hợp lệ).
+function problems({ name, description, body, kind = 'skill', enforce, paths, tools, model }) {
   const out = [];
-  if (!['skill', 'note'].includes(kind)) return [`kind phải là skill hoặc note, không phải "${kind}"`];
+  if (!['skill', 'note', 'agent'].includes(kind)) return [`kind phải là skill, note hoặc agent, không phải "${kind}"`];
+  if (kind === 'agent') {
+    if (!NAME_RE.test(String(name || ''))) out.push('tên agent chỉ gồm chữ thường, số, gạch ngang, bắt đầu bằng chữ');
+    const d0 = String(description || '');
+    if (!d0.trim()) out.push('thiếu mô tả (description): một dòng nói agent làm gì và khi nào được giao việc');
+    if (/[\r\n]/.test(d0)) out.push('mô tả phải nằm trên MỘT dòng');
+    if (d0.length > 400) out.push('mô tả dài quá 400 ký tự');
+    const ts = Array.isArray(tools) ? tools : [];
+    if (!ts.length || ts.some((t) => typeof t !== 'string' || !TOOL_RE.test(t))) out.push('agent cần tools: danh sách tên công cụ được dùng (ví dụ ["Read","Grep","Glob"]); không khai thì agent thừa hưởng MỌI công cụ của phiên, nên bắt buộc khai');
+    if (model != null && !MODELS.includes(model)) out.push(`model phải là một trong ${MODELS.join(', ')}`);
+    if (enforce != null) out.push('agent không có enforce (chỉ skill có)');
+    const b0 = String(body || '');
+    if (!b0.trim()) out.push('thiếu nội dung (body): vai và cách làm của agent');
+    if (b0.length > 30000) out.push('nội dung dài quá 30000 ký tự');
+    if (/^---\s*$/m.test(b0)) out.push('nội dung không được có dòng chỉ gồm "---" (sẽ làm hỏng frontmatter)');
+    return out;
+  }
   if (!NAME_RE.test(String(name || ''))) out.push(`tên ${kind} chỉ gồm chữ thường, số, gạch ngang, bắt đầu bằng chữ`);
   if (kind === 'note' && name === 'harness') out.push('tên "harness" dành cho tệp nhắc cửa vào do harness sinh');
   const d = String(description || '');
@@ -70,7 +89,7 @@ function problems({ name, description, body, kind = 'skill', enforce, paths }) {
 
 // Dựng nội dung SKILL.md. Thuần: cùng đầu vào cho cùng đầu ra.
 function skillText({ name, description, body, enforce }) {
-  const lines = [`name: ${name}`, `description: ${String(description).trim()}`];
+  const lines = [`name: ${name}`, `description: ${yamlScalar(String(description).trim())}`];
   if (enforce && Array.isArray(enforce.files) && enforce.files.length) lines.push(`harness-files: ${JSON.stringify(enforce.files)}`);
   if (enforce && Array.isArray(enforce.reads) && enforce.reads.length) lines.push(`harness-reads: ${JSON.stringify(enforce.reads)}`);
   return `---\n${lines.join('\n')}\n---\n${String(body).replace(/\r\n/g, '\n').replace(/\s+$/, '')}\n`;
@@ -82,6 +101,20 @@ function noteText({ paths, body }) {
   return `---\npaths:\n${list}\n---\n${String(body).replace(/\r\n/g, '\n').replace(/\s+$/, '')}\n`;
 }
 
+// Dựng nội dung một agent nguồn (<đơn vị>/.harness/agents/<tên>.md): frontmatter name, description, tools (một dòng, cách nhau dấu phẩy), model rồi nội dung.
+function agentText({ name, description, tools, model, body }) {
+  const lines = [`name: ${name}`, `description: ${yamlScalar(String(description).trim())}`, `tools: ${(tools || []).join(', ')}`];
+  if (model && model !== 'inherit') lines.push(`model: ${model}`);
+  return `---\n${lines.join('\n')}\n---\n${String(body).replace(/\r\n/g, '\n').replace(/\s+$/, '')}\n`;
+}
+
+// Đọc ngược một agent nguồn: { name, description, tools, model, body } (để bộ chuyển sinh tệp cho công cụ, và để đổi tên mà không mất nội dung).
+function readAgent(text) {
+  const f = front(text);
+  const tools = String(f.fields.get('tools') || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return { name: f.fields.get('name') || '', description: f.fields.get('description') || '', tools, model: f.fields.get('model') || '', body: f.body };
+}
+
 // Đọc ngược một note đã ghi: { paths, body } (để đổi tên mà không mất nội dung).
 function readNote(text) {
   const t = norm(text);
@@ -90,4 +123,4 @@ function readNote(text) {
   return { paths, body: m ? t.slice(m[0].length) : t };
 }
 
-module.exports = { NAME_RE, ENFORCE_KEYS, merge, front, enforceOf, stripEnforce, problems, skillText, noteText, readNote };
+module.exports = { NAME_RE, MODELS, ENFORCE_KEYS, brokenDescription, merge, front, enforceOf, stripEnforce, problems, skillText, noteText, readNote, agentText, readAgent };

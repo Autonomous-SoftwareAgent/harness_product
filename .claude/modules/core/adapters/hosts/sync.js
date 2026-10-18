@@ -33,6 +33,11 @@ function unitNotes(dir) {
   try { return fs.readdirSync(path.join(dir, P.UNIT_EXT_DIR, 'notes')).filter((f) => /^[a-z][a-z0-9-]*\.md$/.test(f)).map((f) => f.slice(0, -3)).sort(); } catch { return []; }
 }
 
+// Tên các agent nguồn của một đơn vị: <đơn vị>/.harness/agents/<tên>.md.
+function unitAgents(dir) {
+  try { return fs.readdirSync(path.join(dir, P.UNIT_EXT_DIR, 'agents')).filter((f) => /^[a-z][a-z0-9-]*\.md$/.test(f)).map((f) => f.slice(0, -3)).sort(); } catch { return []; }
+}
+
 // Mô tả các đơn vị cho bộ chuyển. Mọi đơn vị đều có mặt (kể cả đơn vị không còn định nghĩa gốc nào) để dọn được tệp sinh mồ côi.
 // Hai nguồn định nghĩa: native (team viết ở .claude/, bộ chuyển đọc qua importNative) và harness (.harness/skills/). Trùng tên thì native thắng:
 // skill của harness bị che không được sinh, và được ghi vào `shadowed` để báo (không báo mỗi phiên: chỉ ở host-sync, doctor, host_status).
@@ -45,8 +50,10 @@ function gather(root, adapter) {
     const notes = unitNotes(dir).map((n) => ({ kind: 'note', name: n, text: readText(path.join(dir, P.UNIT_EXT_DIR, 'notes', `${n}.md`)), src: `${P.UNIT_EXT_DIR}/notes/${n}.md` })).filter((x) => x.text !== null);
     const merged = defs.merge(native, [...mine, ...notes]);
     const entryAbs = path.join(dir, ...lay.entryRel.split('/'));
+    const agents = unitAgents(dir).map((n) => ({ name: n, text: readText(path.join(dir, P.UNIT_EXT_DIR, 'agents', `${n}.md`)) })).filter((x) => x.text !== null);
     units.push({
-      name, dir, native, shadowed: merged.shadowed,
+      name, dir, native, shadowed: merged.shadowed, agents,
+      rel: path.relative(root, dir).split(path.sep).join('/'),
       skills: merged.defs.filter((d) => d.origin === 'harness' && d.kind === 'skill').map((d) => ({ name: d.name, text: d.text })),
       notes: merged.defs.filter((d) => d.origin === 'harness' && d.kind === 'note').map((d) => ({ name: d.name, text: d.text })),
       entry: { rel: lay.entryRel, exists: lay.layout === 'harness' && fs.existsSync(entryAbs) },
@@ -85,6 +92,12 @@ function candidates(dir) {
   return out;
 }
 
+// Các tệp agent có thể do bộ chuyển sinh ở gốc dự án: .claude/agents/*.md.
+function rootCandidates(root) {
+  const dir = path.join(root, '.claude', 'agents');
+  try { return fs.readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => path.join(dir, f)); } catch { return []; }
+}
+
 // Chạy mọi bộ chuyển. `check`: chỉ báo, không ghi. Trả { written, removed, problems, text }; text rỗng khi không có gì để nói.
 function syncAll(root, { check = false } = {}) {
   const written = []; const removed = []; const problems = []; const notes = [];
@@ -98,11 +111,13 @@ function syncAll(root, { check = false } = {}) {
     const byUnit = new Map(units.map((u) => [u.name, u]));
     for (const f of files) {
       const u = byUnit.get(f.unit);
-      const abs = path.join(u.dir, ...f.rel.split('/'));
+      // Tệp `root` (agent) nằm ở gốc dự án: Claude Code chỉ nạp agent ở nơi mở phiên (đã đo), không nạp agent trong thư mục đơn vị.
+      const base = f.root ? root : u.dir;
+      const abs = path.join(base, ...f.rel.split('/'));
       wanted.add(abs.toLowerCase());
-      const shown = `${u.name}/${f.rel}`;
+      const shown = f.root ? f.rel : `${u.name}/${f.rel}`;
       const cur = readText(abs);
-      if (cur !== null && norm(cur) === norm(f.text)) { if (!check) exclude(u.dir, f.exclude); continue; }
+      if (cur !== null && norm(cur) === norm(f.text)) { if (!check) exclude(base, f.exclude); continue; }
       if (cur !== null) {
         const old = adapter.read(cur);
         if (!old) { problems.push(`${shown} đã có nhưng không phải bản do harness sinh, nên không ghi đè.`); continue; }
@@ -110,8 +125,20 @@ function syncAll(root, { check = false } = {}) {
       }
       if (check) { problems.push(`${shown} ${cur === null ? 'chưa được sinh' : 'đã cũ so với định nghĩa gốc'}.`); continue; }
       writeAtomic(abs, f.text);
-      exclude(u.dir, f.exclude);
+      exclude(base, f.exclude);
       written.push(shown);
+    }
+    // Agent sinh ở gốc mà nguồn không còn: dọn như tệp sinh mồ côi khác.
+    for (const abs of rootCandidates(root)) {
+      if (wanted.has(abs.toLowerCase())) continue;
+      const cur = readText(abs);
+      const old = cur === null ? null : adapter.read(cur);
+      if (!old) continue;
+      const shown = path.relative(root, abs).split(path.sep).join('/');
+      if (!old.pristine) { problems.push(`${shown} là bản sinh cũ nhưng đã bị sửa tay, nên không xóa.`); continue; }
+      if (check) { problems.push(`${shown} là bản sinh mồ côi (định nghĩa gốc ${old.src} đã bỏ).`); continue; }
+      try { fs.rmSync(abs, { force: true }); } catch { /* bỏ qua */ }
+      removed.push(shown);
     }
     // Tệp sinh mà định nghĩa gốc không còn.
     for (const u of units) {

@@ -41,6 +41,13 @@
         ".claude/modules/core/mcp/mcp-server.js",
         "portal"
       ]
+    },
+    "harness-secrets": {
+      "command": "node",
+      "args": [
+        ".claude/modules/core/mcp/mcp-server.js",
+        "secrets"
+      ]
     }
   }
 }

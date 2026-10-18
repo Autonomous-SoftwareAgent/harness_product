@@ -67,7 +67,10 @@ function run(root, { unit, noteFile, note, model, sid, waitReadMs = 180000 } = {
   try { saved = store.save(root, { id, unit, name, from: me, to: '', createdAt: new Date(now).toISOString(), link: '', readAt: '', readBy: '' }, markdown); } catch (e) { return `KHÔNG chuyển: ${e.message}`; }
 
   const create = deps.create || ((n, o) => require('./session').createRaw(n, o, root));
-  const made = create(name, { prompt: T.opening({ unit, rel: saved.rel, id }), model });
+  // Phiên giao đang là phiên điều phối (có ủy quyền): gắn dấu "do bạn tạo" để phiên mới duyệt thay được. Không thì lời mở đầu như cũ.
+  let token = '';
+  try { token = deps.create ? '' : require('../gate/gate-delegate').mintSpawn(root, sid, name); } catch { token = ''; }
+  const made = create(name, { prompt: `${token ? `${token}\n` : ''}${T.opening({ unit, rel: saved.rel, id })}`, model });
   if (made.error) return `Đã ghi tờ bàn giao ${saved.rel} nhưng KHÔNG tạo được phiên "${name}": ${made.error}\nChưa có gì được bàn giao. Sửa nguyên nhân rồi chạy lại (lần sau sẽ là một tờ mới).`;
   store.update(root, id, { to: made.id, link: made.link || '' });
 

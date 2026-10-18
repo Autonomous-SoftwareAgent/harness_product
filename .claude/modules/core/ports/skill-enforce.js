@@ -17,8 +17,29 @@ function front(text) {
   const m = FRONT_RE.exec(t);
   if (!m) return { fields: new Map(), raw: '', body: t };
   const fields = new Map();
-  for (const line of m[1].split('\n')) { const k = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(line); if (k) fields.set(k[1], k[2].trim()); }
+  for (const line of m[1].split('\n')) { const k = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(line); if (k) fields.set(k[1], unquote(k[2].trim())); }
   return { fields, raw: m[1], body: t.slice(m[0].length) };
+}
+
+// Giá trị bọc nháy kép (dạng chuỗi JSON, cũng là chuỗi YAML hợp lệ) thì trả chuỗi bên trong; không phải thì giữ nguyên.
+function unquote(v) {
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) { try { const s = JSON.parse(v); if (typeof s === 'string') return s; } catch { /* không phải chuỗi JSON */ } }
+  return v;
+}
+
+// Một giá trị chưa bọc nháy mà YAML sẽ hiểu sai: có ": " (thành khóa mới), " #" (thành chú thích) hoặc mở đầu bằng ký tự đặc biệt.
+// Claude Code bỏ qua cả skill khi phần đầu tệp không đọc được, nên bộ ghi phải bọc nháy giá trị như vậy.
+const needsQuote = (v) => /: | #|:$/.test(v) || /^[\s"'\[\]{}&*!|>%@`#,?-]/.test(v) || /\s$/.test(v);
+const yamlScalar = (v) => (needsQuote(String(v)) ? JSON.stringify(String(v)) : String(v));
+
+// Dòng `description:` chưa bọc nháy mà YAML đọc sai trong một SKILL.md; '' nếu ổn. Dùng để doctor báo skill viết tay.
+function brokenDescription(text) {
+  const m = FRONT_RE.exec(norm(text));
+  if (!m) return '';
+  const line = m[1].split('\n').find((l) => l.startsWith('description:'));
+  if (!line) return '';
+  const raw = line.slice('description:'.length).trim();
+  return raw && !raw.startsWith('"') && !raw.startsWith("'") && needsQuote(raw) ? raw : '';
 }
 
 // Giá trị một trường dạng danh sách trên một dòng: mảng JSON, hoặc một chuỗi trần (một phần tử).
@@ -46,4 +67,4 @@ function stripEnforce(text) {
   return `---\n${kept.join('\n')}\n---\n${t.slice(m[0].length)}`;
 }
 
-module.exports = { FRONT_RE, ENFORCE_KEYS, front, listValue, enforceOf, stripEnforce };
+module.exports = { FRONT_RE, ENFORCE_KEYS, front, listValue, enforceOf, stripEnforce, needsQuote, yamlScalar, brokenDescription };

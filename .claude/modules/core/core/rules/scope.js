@@ -15,6 +15,7 @@
 const path = require('node:path');
 const { deny, ask, note } = require('../../ports/events');
 const { ago, ACTIVE_MS } = require('../sessions/table');
+const { unitOfAgent } = require('./lib/agent-unit');
 
 // Quyết định cho một lần sửa tệp thuộc dịch vụ `service`, theo kế hoạch đang hiệu lực của phiên. Trả null (cho qua) hoặc chuỗi lý do chặn.
 async function denyReason(store, sid, service) {
@@ -52,6 +53,12 @@ async function run(event, { workspace: ws, store }) {
   const isService = decl ? true : (top !== '' && ws.isService(top));
   const at = top && !decl ? ws.serviceRel(top) : '';
   if (!isService && !readOnly) return null;
+
+  // Agent con của một đơn vị (tên "<đơn vị>-<tên>", do harness sinh) chỉ sửa trong đơn vị của nó; cùng phiên cha nên cùng kế hoạch đã duyệt, nhưng không vượt sang đơn vị khác.
+  const own = event.agentType ? unitOfAgent(event.agentType, (n) => ws.isService(n) || Object.prototype.hasOwnProperty.call(ws.units(), n)) : '';
+  if (own && isService && ws.caseKey(own) !== ws.caseKey(top)) {
+    return deny(`Agent "${event.agentType}" là agent của đơn vị ${own}, không sửa tệp của "${top}" (${abs}). Báo lại phiên giao việc để nó trình kế hoạch cho "${top}".`);
+  }
 
   if (readOnly) return ask(`${readOnly}/ là thư mục dự án khai là chỉ để đọc (mã bên ngoài để tham khảo): ${abs}. Sửa ở đây thường là nhầm chỗ.`);
 

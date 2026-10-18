@@ -19,6 +19,7 @@
 //   skillsMapRel             đường dẫn của bảng nối tính từ gốc, kiểu posix (chuỗi)
 //   skillsDir                thư mục chứa skill (chuỗi, tuyệt đối)
 //   skillExists(name)        skill có thật không
+//   skillRel(name)           (tùy chọn) đường dẫn SKILL.md của skill tính từ gốc dự án; '' khi không có. Lời chặn theo skill dùng nó để chỉ đúng tệp của skill đơn vị
 //   bannedWords()            danh sách từ cấm của máy (mảng chuỗi); null nếu máy không có danh sách
 //   bannedListRel            đường dẫn của danh sách từ cấm tính từ gốc, kiểu posix (chuỗi)
 //   entryExists(name)        tệp cửa vào của harness tên `name` (ví dụ 'docs-track.js') có còn không

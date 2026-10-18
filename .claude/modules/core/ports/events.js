@@ -9,6 +9,7 @@
 //   root     thư mục gốc của dự án (đường dẫn tuyệt đối)
 //   session  mã phiên, '' nếu công cụ chủ không cho biết
 //   agent    mã agent con, '' nếu là phiên chính
+//   agentType (tùy chọn) loại agent con (tên agent), '' hoặc thiếu nếu là phiên chính
 //   cwd      thư mục làm việc lúc xảy ra sự kiện, '' nếu không biết
 //   action   việc phiên sắp làm hoặc vừa làm (chỉ có nghĩa với before-action, after-action): {
 //     type     một trong ACTIONS

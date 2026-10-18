@@ -1,7 +1,7 @@
 {
   "_": "Tệp tự khai của khối. Đường dẫn trong tệp là đường dẫn logic (tính như ở .claude/modules/ của bố cục cũ). Bộ cài (cli/setup.js) sinh phần của harness trong .claude/settings.json và .mcp.json từ các tệp này; `order` giữ thứ tự hook như đã đo.",
   "name": "core",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "api": "0.1",
   "required": true,
   "uses": [],
@@ -10,7 +10,9 @@
     { "event": "PreToolUse", "order": 10, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/guard-scope.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 15, "matcher": "Write|Edit|NotebookEdit|Bash", "file": "hooks/guard-host.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 30, "matcher": "Write|Edit|NotebookEdit|Bash", "file": "gate/gate-hook.js", "args": "tool", "timeout": 10 },
+    { "event": "PreToolUse", "order": 35, "matcher": "Read|Grep|Glob", "file": "gate/gate-hook.js", "args": "read", "timeout": 10 },
     { "event": "PreToolUse", "order": 40, "matcher": "Write|Edit|NotebookEdit|@mcp", "file": "hooks/guard-skill.js", "timeout": 10 },
+    { "event": "PreToolUse", "order": 45, "matcher": "@mcp", "file": "hooks/guard-delegate.js", "timeout": 10 },
     { "event": "PreToolUse", "order": 50, "matcher": "mcp__.*", "file": "hooks/guard-mcp.js", "timeout": 10 },
     { "event": "PostToolUse", "order": 10, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/forward.js", "args": "track", "timeout": 10 },
     { "event": "PostToolUse", "order": 12, "matcher": "Write|Edit|NotebookEdit", "file": "hooks/host-resync.js", "timeout": 10 },
@@ -35,5 +37,5 @@
     "gitHooks": "cli/install-git-hooks.js",
     "bannedScan": "cli/banned-scan.js"
   },
-  "skills": ["services", "plan", "new-service", "onboard", "skill-map", "transfer-session", "mcp-servers", "harness-upgrade"]
+  "skills": ["services", "plan", "new-service", "onboard", "skill-map", "transfer-session", "mcp-servers", "harness-upgrade", "orchestrate"]
 }

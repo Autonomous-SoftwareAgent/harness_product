@@ -14,6 +14,8 @@ const N = require('./lib/mcp-names');
 
 const TOOL_SERVER = N.LEGACY; // tên cũ; máy chủ theo khối nhận qua N.isOwn
 
+// Đường dẫn thật của từng skill còn thiếu (skill của đơn vị nằm ở <đơn vị>/.claude/skills/); cổng không có skillRel thì để trống.
+const skillPaths = (ws, names) => Object.fromEntries(names.map((n) => [n, typeof ws.skillRel === 'function' ? ws.skillRel(n) || '' : '']));
 async function run(event, { workspace: ws, store }) {
   const map = K.loadMap(ws);
   if (!map || map.mode === 'off' || !event.session) return null;
@@ -24,7 +26,7 @@ async function run(event, { workspace: ws, store }) {
     await book.touch(event.session);
     const miss = K.missing(req, await book.have(event.session, agent));
     if (!miss.skills.length && !miss.docs.length) return null;
-    const text = K.denyText(miss, { agent, mapRel: ws.skillsMapRel });
+    const text = K.denyText(miss, { agent, mapRel: ws.skillsMapRel, paths: skillPaths(ws, miss.skills) });
     // `detail` (còn thiếu gì) đi vào sổ quyết định của luật cùng dịch vụ; lời cho phiên vẫn là `reason`.
     const detail = [...miss.skills, ...miss.docs.map((d) => d.rel)].join(', ');
     const d = map.mode === 'enforce' ? deny(text) : note(text.replace('Lời gọi này bị chặn vì', 'Nhắc (chưa chặn):'));

@@ -4,13 +4,15 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 
 ## Cách dùng
 1. Xem bản bạn đang cài: tệp `.claude/modules/VERSION` trong dự án.
-2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.8.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
+2. Trong bảng dưới, đọc các dòng nằm TRÊN bản của bạn, tới bản mới nhất (2.9.0). Cột "Việc phải làm" nói mỗi bản đòi gì.
 3. Phần "Bị bỏ hoặc đổi tên" liệt kê những thứ bạn có thể đang dùng mà không còn nữa, kèm cái thay thế.
 4. Cài bản mới: tải gói này về rồi chạy lại lệnh `install` (xem README.md). Dự án đã cài có thể xem từng mục thay đổi gắn với tình trạng dự án bằng `node .claude/modules/core/cli/cli.js upgrade preview`.
 
 ## Bảng các bản
 | Bản | Ngày | Việc phải làm | Tóm tắt |
 |---|---|---|---|
+| 2.9.0 | 2026-10-16 | không có: nâng cấp như mọi lần | Điều phối nhiều phiên: người dùng ủy quyền cho MỘT phiên duyệt kế hoạch của các phiên làm việc (có hạn, ký, dùng một lần; phạm vi và việc rủi ro theo đúng kế hoạch người dùng đã duyệt, dòng "Được làm"); sub-agent dựng sẵn cho từng repo; bảng việc của phiên điều phối. |
+| 2.8.1 | 2026-10-16 | không có: nâng cấp như mọi lần | Sửa ba lỗi của 2.8.0: note làm mất hiệu lực khối mở rộng đã xác nhận; mô tả skill có dấu hai chấm làm Claude Code bỏ qua skill; lời chặn theo skill không chỉ đúng tệp skill của đơn vị (kèm ghi chú đơn vị trong thư mục bị .gitignore). |
 | 2.8.0 | 2026-10-16 | không có: nâng cấp như mọi lần | Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi host_define là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng doctor. |
 | 2.7.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Khuôn kế hoạch thoáng: chỉ cần đủ năm mục, viết kiểu nào cũng được; dòng Dịch vụ không còn làm lời duyệt trượt vì chữ giải thích. |
 | 2.6.0 | 2026-10-15 | không có: nâng cấp như mọi lần | Repo đã có .claude/ do team tự viết: harness kiểm kê và báo thứ nào dùng được, thứ nào không nạp khi mở ở gốc; bản của team thắng khi trùng tên; skill riêng của đơn vị đổi bằng công cụ và tệp sinh không còn sửa tay được. |
@@ -38,6 +40,50 @@ Tệp này do lệnh đóng gói sinh ra từ sổ phát hành và các tờ tha
 - **Bản 2.0.0, đổi:** Mỗi khối một máy chủ MCP thay cho một máy chủ giữ cả bộ công cụ. Cấu hình của bạn được lệnh nâng cấp chuyển tự động. Mọi phiên Claude Code đang mở phải gõ /mcp (hoặc mở lại) một lần để thấy tên mới; phiên chưa nối lại vẫn gọi được công cụ qua máy chủ cũ. Mỗi phiên chạy thêm vài tiến trình Node (mỗi máy chủ một tiến trình, tốn thêm bộ nhớ). Kịch bản, tài liệu hay quyền đã ghi tên mcp__bsn-docs__... phải đổi sang tên mới. Khai quyền theo từng công cụ (mcp__bsn-docs__<công cụ>) không tự đổi: bước chuyển chỉ đổi quyền theo cả máy chủ.
 
 ## Chi tiết từng bản (mới ở trên)
+
+### 2.9.0 (2026-10-16)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Điều phối nhiều phiên: người dùng ủy quyền cho MỘT phiên duyệt kế hoạch của các phiên làm việc (có hạn, ký, dùng một lần; phạm vi và việc rủi ro theo đúng kế hoạch người dùng đã duyệt, dòng "Được làm"); sub-agent dựng sẵn cho từng repo; bảng việc của phiên điều phối.
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần (`upgrade`); không có bước chuyển cấu hình. `settings.json` được sinh lại có thêm hai hook; công cụ MCP mới hiện sau khi gõ `/mcp`.
+- Không dùng ủy quyền thì không phải làm gì thêm. Muốn dùng: đọc `.claude/modules/core/guides/05-dieu-phoi-va-sub-agent.md`.
+
+**Bạn sẽ thấy khác**
+
+- Ba công cụ MCP chỉ đọc mới (`delegate_status`, `plan_view`, `task_status`), bốn công cụ ghi mới (`session_spawn`, `plan_approve`, `task_dispatch`, `task_report`); hai hook mới (`guard-delegate`, và `gate-hook read` chặn công cụ đọc, tìm kiếm đọc khóa ký).
+- Lệnh Bash nhắc tới khóa ký hay tệp ủy quyền bị chặn dù cổng đóng hay mở.
+- Luật phạm vi: agent sinh ra cho repo A (tên `A-<tên>`) không sửa tệp repo khác. Agent chung (Explore, general-purpose...) và phiên chính không bị luật này.
+- Sổ phiên nâng lên phiên bản 5 ở lần mở đầu (chụp bản sao trước khi nâng; chỉ thêm bảng).
+- Dấu vân tay cổng duyệt đổi (có thêm `gate/gate-delegate.js`).
+
+**Chưa kiểm và giới hạn**
+
+- Không chặn được một agent cố tình phá: cùng tài khoản hệ điều hành và có Bash, nó có thể đọc khóa nếu lọt hook, hoặc chạy một phiên `claude` mới để tự tạo ủy quyền. Lớp này chặn lỗi vô tình, tấn công qua nội dung và sửa tay thô sơ, và để lại dấu vết.
+- Máy không đọc chữ trong kế hoạch để từ chối (đọc chữ từng chặn nhầm kế hoạch onboard vô hại, vì nó buộc phải nói `.harness/` và `.claude/` của đơn vị). Việc cấm bị chặn ở lúc làm bằng lệnh và đường dẫn thật; chỗ hở: lệnh chạy qua Bash mà hook không phân tích được, hoặc một chương trình tự ghi ra ngoài. Phiên điều phối vẫn phải đọc kế hoạch.
+- Lần chạy thật với bốn phiên làm thay (onboard bốn repo) qua bản trước của cơ chế này; bản quyền-theo-kế-hoạch chưa chạy với phiên Claude thật.
+- Mới thử một bản Claude Code, một máy, phiên chạy bằng `claude -p`; chưa thử nhiều phiên nền chạy song song lâu ngày; chưa đo token tiết kiệm được.
+- Công cụ không tự nhắn phiên nhận việc; chỉ trả lời nhắn mẫu.
+
+### 2.8.1 (2026-10-16)
+- **Mức việc phải làm:** không có: nâng cấp như mọi lần.
+- **Tóm tắt:** Sửa ba lỗi của 2.8.0: note làm mất hiệu lực khối mở rộng đã xác nhận; mô tả skill có dấu hai chấm làm Claude Code bỏ qua skill; lời chặn theo skill không chỉ đúng tệp skill của đơn vị (kèm ghi chú đơn vị trong thư mục bị .gitignore).
+
+**Việc bạn phải làm**
+
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. Đơn vị đã gặp cảnh báo trên sẽ hết cảnh báo ngay, không phải xác nhận lại, nếu chỉ khác nhau ở `notes/`.
+
+**Bạn sẽ thấy khác**
+
+- `host_define` tự bọc nháy kép dòng `description:` khi giá trị có `: `, ` #` hay mở đầu bằng ký tự đặc biệt (trước đây ghi nguyên văn nên `description: Dùng khi: sửa mã` làm hỏng YAML và skill biến mất). Mô tả an toàn vẫn viết trần. Gọi lại `host_define` với cùng tên là sửa được skill cũ.
+- Lời chặn theo skill nêu đường dẫn thật của skill đơn vị và bảo đọc trọn tệp bằng công cụ Read (công cụ Skill báo "Unknown skill" khi thư mục đơn vị bị `.gitignore`). Skill chung ở gốc dự án giữ lời cũ.
+- Dấu vân tay của khối mở rộng của đơn vị (luật ở `.harness/rules/`, công cụ, lệnh) không còn tính thư mục `notes/`. Trước đây: đơn vị đã xác nhận luật riêng, rồi có người (hay agent) thêm một note bằng `host_define` thì `doctor` báo "khối mở rộng đã sửa sau lần xác nhận" và bản mới không có hiệu lực cho tới khi xác nhận lại bằng tay. Skill và tài liệu (`skills/`, `docs/`) đã được bỏ qua từ trước; note là ghi chép giống chúng.
+
+**Chưa kiểm và giới hạn**
+
+- Chưa thử trên dự án khác đã cài 2.8.0 và đã xác nhận khối mở rộng.
+- Đơn vị nằm trong thư mục bị .gitignore ở gốc dự án thì Claude Code không liệt kê skill của nó (đã đo, chưa biết có cách khai báo nào để mở); lúc đó skill chỉ mở được bằng cách đọc trọn SKILL.md (hook sổ phiên tính cách này), note và việc ép theo skill vẫn chạy.
 
 ### 2.8.0 (2026-10-16)
 - **Mức việc phải làm:** không có: nâng cấp như mọi lần.

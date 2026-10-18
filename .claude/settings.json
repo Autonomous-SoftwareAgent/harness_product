@@ -5,7 +5,8 @@
     "harness-docs",
     "harness-diagrams",
     "harness-context",
-    "harness-portal"
+    "harness-portal",
+    "harness-secrets"
   ],
   "worktree": {
     "bgIsolation": "none"
@@ -17,7 +18,8 @@
       "mcp__harness-docs",
       "mcp__harness-diagrams",
       "mcp__harness-context",
-      "mcp__harness-portal"
+      "mcp__harness-portal",
+      "mcp__harness-secrets"
     ],
     "deny": [
       "Read(**/*.pem)",
@@ -70,11 +72,31 @@
         ]
       },
       {
-        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__bsn-docs__.*",
+        "matcher": "Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/gate/gate-hook.js\" read",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__harness-secrets__.*|mcp__bsn-docs__.*",
         "hooks": [
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/guard-skill.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__harness-secrets__.*|mcp__bsn-docs__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/guard-delegate.js\"",
             "timeout": 10
           }
         ]
@@ -90,7 +112,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__bsn-docs__.*",
+        "matcher": "Write|Edit|NotebookEdit|mcp__harness__.*|mcp__harness-mcp__.*|mcp__harness-docs__.*|mcp__harness-diagrams__.*|mcp__harness-context__.*|mcp__harness-portal__.*|mcp__harness-secrets__.*|mcp__bsn-docs__.*",
         "hooks": [
           {
             "type": "command",
@@ -106,6 +128,16 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/guard-push/hooks/guard-push.js\"",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/secrets/hooks/guard-github.js\"",
+            "timeout": 15
           }
         ]
       },
@@ -254,6 +286,15 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/core/hooks/transfer.js\" start",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/modules/secrets/hooks/secrets-brief.js\"",
+            "timeout": 15
           }
         ]
       }

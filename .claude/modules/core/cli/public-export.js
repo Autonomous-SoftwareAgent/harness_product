@@ -32,7 +32,7 @@ const EXCLUDE = [
   /^portal\/mcp\/generators(\/|$)/, /(^|\/)test(\/|$)/,
 ];
 // Khối đi vào gói; khối không có tên ở đây là phần riêng của dự án nguồn.
-const SHIP = ['core', 'servicedocs', 'diagrams', 'context', 'portal', 'guard-push'];
+const SHIP = ['core', 'servicedocs', 'diagrams', 'context', 'portal', 'guard-push', 'secrets'];
 // Tệp đánh dấu dòng này thì KHÔNG viết lại đường dẫn `.claude/plugin/...` trong chữ (bộ cài cần nói về bố cục cũ).
 const KEEP_PATHS = 'harness-export: giữ đường dẫn bố cục cũ';
 // Dò gói: mọi tệp chữ của gói. Bí mật và đường dẫn máy là mẫu chung; dấu vết của dự án nguồn lấy từ export.json của dự án nguồn.

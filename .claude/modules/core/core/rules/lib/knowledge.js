@@ -134,8 +134,11 @@ function missing(req, had) {
 }
 
 // Câu từ chối: nói đúng thứ còn thiếu và cách nạp, để phiên tự làm tiếp mà không phải hỏi ai.
-function denyText(miss, { agent, mapRel = '.claude/project/skills-map.json' } = {}) {
+function denyText(miss, { agent, mapRel = '.claude/project/skills-map.json', paths = {} } = {}) {
   const parts = [];
+  // Skill của một đơn vị nằm ở <đơn vị>/.claude/skills/. Claude Code không liệt kê skill ở thư mục bị .gitignore của gốc, nên công cụ Skill
+  // có thể báo "Unknown skill": cách chắc chắn là đọc trọn SKILL.md bằng công cụ Read (sổ phiên tính cả hai cách).
+  const unitPaths = miss.skills.map((s) => [s, paths[s]]).filter(([, p]) => p && !/^\.claude\/skills\//.test(p));
   if (miss.skills.length) parts.push(`skill ${miss.skills.map((s) => `\`${s}\``).join(', ')}`);
   const unitDocs = miss.docs.filter((d) => d.service);
   const rootDocs = miss.docs.filter((d) => !d.service);
@@ -143,6 +146,7 @@ function denyText(miss, { agent, mapRel = '.claude/project/skills-map.json' } = 
   if (rootDocs.length) parts.push(`tài liệu: ${rootDocs.map((d) => d.rel).join(', ')}`);
   const how = [];
   if (miss.skills.length) how.push(`mở từng skill bằng công cụ Skill (hoặc đọc trọn .claude/skills/<tên>/SKILL.md bằng công cụ Read)`);
+  if (unitPaths.length) how.push(`skill của đơn vị thì đọc trọn tệp bằng công cụ Read: ${unitPaths.map(([s, p]) => `\`${s}\` ở ${p}`).join('; ')} (công cụ Skill có thể báo "Unknown skill" nếu thư mục đơn vị bị .gitignore ở gốc dự án)`);
   if (miss.docs.length) how.push('đọc từng tệp tài liệu bằng công cụ Read (tệp dài thì đọc từng phần; cat hay Grep không được tính)');
   return `Lời gọi này bị chặn vì phiên chưa nạp đủ kiến thức cho việc đang làm (bảng nối ${mapRel}). Còn thiếu: ${parts.join('; ')}. ` +
     `Cách làm: ${how.join('; ')}; rồi gọi lại đúng lời gọi này. Sau mỗi lần nén ngữ cảnh phải nạp lại.` +

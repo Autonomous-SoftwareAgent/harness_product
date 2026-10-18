@@ -34,7 +34,10 @@
       "host_define": "services",
       "host_rename": "services",
       "host_remove": "services",
-      "host_adopt": "services"
+      "host_adopt": "services",
+      "plan_approve": "orchestrate",
+      "task_dispatch": "orchestrate",
+      "session_spawn": "orchestrate"
     },
     "readonly": [
       "docs_status",
@@ -47,7 +50,13 @@
       "scope_register",
       "scope_status",
       "db_query",
-      "host_status"
+      "host_status",
+      "delegate_status",
+      "secret_status",
+      "github_ci",
+      "plan_view",
+      "task_status",
+      "task_report"
     ],
     "files": []
   },

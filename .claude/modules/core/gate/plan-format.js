@@ -89,6 +89,53 @@ const SYNONYMS = {
   'Rủi ro': ['Risks', 'Risk'],
 };
 const HEADING_SYNONYMS = ['Plan'];
+// Mục TÙY CHỌN "Ủy quyền": kế hoạch cho phép phiên này duyệt thay người dùng kế hoạch của các phiên do chính nó tạo ra. Không nằm trong năm mục gốc, nhưng cổng
+// phải nhận ra nó (không thì dòng này bị coi là phần đuôi của mục trước). Thiếu thì chỉ bị đòi khi kế hoạch nói sẽ mở phiên khác (xem spawnsSessions).
+const DELEG = 'Ủy quyền';
+const DELEG_NAMES = ['Uỷ quyền', 'Ủy quyền duyệt', 'Delegation', 'Delegate', 'Approval delegation', 'Duyệt thay'];
+// Kế hoạch nói sẽ mở hay tạo phiên khác (so trên chữ đã bỏ dấu, chữ thường). Phủ định ("không mở phiên") không tính; "phiên bản" không phải phiên.
+const SPAWN_RE = /(?<!khong )(?<!chua )(?<!dung )\b(?:mo|tao|khoi tao|khoi dong|giao viec (?:cho|sang)|spawn|create|open|start|launch)\b[^.\n;]{0,40}?\b(?:phien(?! ban)|session)\b|\bphien nen\b|\bremote control\b|\bbackground session\b|\bsession_(?:transfer|spawn)\b|\bsession\.js new\b/i;
+const OFF_RE = /^(?:khong|none|no|n\/a|na|off|tat)(?![a-z0-9_])/;
+// Mục TÙY CHỌN "Được làm": việc rủi ro mà kế hoạch cho phép (đọc từ dòng này, không đoán từ văn của "Làm gì"). Với ủy quyền, đây là giới hạn
+// việc của các phiên làm thay. Không có dòng thì mặc định chỉ sửa tệp và commit ở máy.
+const ALLOW = 'Được làm';
+const ALLOW_NAMES = ['Được phép', 'Cho phép', 'Allowed', 'Allow'];
+const ACTIONS = [
+  ['commit', /\bcommit\b/],
+  ['push', /\b(?:day|push|dua len)\b/],
+  ['tag', /\b(?:gan nhan|tag|release)\b/],
+  ['deploy', /\b(?:deploy|trien khai)\b/],
+  ['rollback', /\b(?:rollback|quay lui)\b/],
+  ['delete', /\b(?:xoa|delete|rm)\b/],
+  ['overwrite', /\b(?:ghi de|overwrite|force)\b/],
+  ['gate', /\b(?:sua cong duyet|cong duyet|gate)\b/],
+  ['create', /\b(?:tao repo|tao kho|create repo|create)\b/],
+  ['admin', /\b(?:quan tri|admin|administration)\b/],
+];
+// Mục TÙY CHỌN "GitHub": đối tượng trên GitHub mà kế hoạch được chạm ngoài repo của các đơn vị ở mục Dịch vụ: repo "chủ/tên" (hay địa chỉ
+// đầy đủ), tổ chức "org:<tên>", tài khoản "tài khoản" (hay "account"). Việc được làm trên chúng do dòng "Được làm" quyết.
+const GITHUB = 'GitHub';
+const GITHUB_NAMES = ['Github', 'Đối tượng GitHub', 'Repo GitHub'];
+function githubOf(found) {
+  if (!(GITHUB in found)) return { present: false, repos: [], orgs: [], account: false, unknown: [], text: '' };
+  const text = oneLine(found[GITHUB], 500);
+  const repos = []; const orgs = []; const unknown = []; let account = false;
+  for (const raw of text.split(/[,;\s]+/).map((s) => s.replace(/^[`'"]+|[`'".]+$/g, '')).filter(Boolean)) {
+    const item = raw.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+    const flat = plain(item).toLowerCase();
+    if (/^(?:tai|khoan|account|user)$/.test(flat) || flat === 'tai khoan') { if (flat !== 'tai') account = true; continue; }
+    const org = /^(?:org|to-chuc|tochuc):([A-Za-z0-9][A-Za-z0-9-]{0,38})$/i.exec(item);
+    if (org) { orgs.push(org[1].toLowerCase()); continue; }
+    if (/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/.test(item)) { repos.push(item.toLowerCase()); continue; }
+    if (/^(?:va|and|cung|cua)$/.test(flat)) continue;
+    unknown.push(raw);
+  }
+  if (/\btai khoan\b/.test(plain(text).toLowerCase())) account = true;
+  return { present: true, repos: [...new Set(repos)], orgs: [...new Set(orgs)], account, unknown, text };
+}
+const ACTION_KEYS = ACTIONS.map(([k]) => k);
+const DEFAULT_ACTIONS = ['commit'];
+const HOURS = /(\d{1,3})\s*(?:h|gio|hours?)(?![a-z])/;
 // Dài trước, ngắn sau: "Tệp sửa" phải thử trước "Tệp".
 const names = (list) => [...list].sort((a, b) => b.length - a.length).map((n) => esc(plain(n))).join('|');
 const WORD_END = '(?![a-z0-9_])';
@@ -118,7 +165,7 @@ const firstLine = (s) => String(s || '').split('\n').map((l) => l.trim()).find(B
 // (đòi hay không thì xét sau, khi đã biết kế hoạch nêu đơn vị nào).
 function fieldsOf(opts) {
   const unitLabels = [...new Set(Object.values(opts.unitExtra || {}).flat())];
-  return [...LABELS.map((l) => [l, [l, ...SYNONYMS[l], ...opts.labels[l]]]), ...[...opts.extra, ...unitLabels.filter((l) => !opts.extra.some((e) => key(e) === key(l)))].map((l) => [l, [l]])]
+  return [...LABELS.map((l) => [l, [l, ...SYNONYMS[l], ...opts.labels[l]]]), [DELEG, [DELEG, ...DELEG_NAMES]], [ALLOW, [ALLOW, ...ALLOW_NAMES]], [GITHUB, [GITHUB, ...GITHUB_NAMES]], ...[...opts.extra, ...unitLabels.filter((l) => !opts.extra.some((e) => key(e) === key(l)))].map((l) => [l, [l]])]
     .map(([name, list]) => ({ name, re: labelRe(list) }));
 }
 
@@ -185,14 +232,41 @@ function readServices(text) {
   return { services: uniq, none: false, unreadable: uniq.length === 0 };
 }
 
-// Trả { ok, errors, fix, headingOk, services, reason, scope, block, extra }.
+// Dòng "Ủy quyền" của kế hoạch: { present, enabled, hours, text }. Giá trị "không", "none", "no", "tắt" hoặc để trống là KHÔNG ủy quyền; mọi giá trị khác là có.
+// Giờ lấy từ chữ như "8h", "4 giờ" (mặc định 8, kẹp trong 1 đến 24).
+function delegationOf(found) {
+  if (!(DELEG in found)) return { present: false, enabled: false, hours: 0, text: '' };
+  const text = oneLine(found[DELEG], 300);
+  const flat = plain(text).toLowerCase();
+  const h = HOURS.exec(flat);
+  return { present: true, enabled: Boolean(flat) && !OFF_RE.test(flat), hours: Math.min(24, Math.max(1, h ? Number(h[1]) : 8)), text };
+}
+// Dòng "Được làm": { present, actions, unknown, text }. Mỗi món cách nhau bằng dấu phẩy hay chấm phẩy; món không nhận ra ghi vào unknown (để nhắc,
+// không chặn). "không" thì không món nào; thiếu dòng thì mặc định DEFAULT_ACTIONS.
+function allowedOf(found) {
+  if (!(ALLOW in found)) return { present: false, actions: [...DEFAULT_ACTIONS], unknown: [], text: '' };
+  const text = oneLine(found[ALLOW], 300);
+  const flat = plain(text).toLowerCase();
+  if (!flat || OFF_RE.test(flat)) return { present: true, actions: [], unknown: [], text };
+  const actions = new Set();
+  const unknown = [];
+  for (const item of flat.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)) {
+    const hit = ACTIONS.filter(([, re]) => re.test(item)).map(([k]) => k);
+    if (hit.length) hit.forEach((k) => actions.add(k)); else unknown.push(item);
+  }
+  return { present: true, actions: ACTION_KEYS.filter((k) => actions.has(k)), unknown, text };
+}
+// Kế hoạch có nói sẽ mở hay tạo phiên khác không (xét mục "Làm gì" và "Sửa tệp").
+const spawnsSessions = (found) => SPAWN_RE.test(plain(`${found['Làm gì'] || ''}\n${found['Sửa tệp'] || ''}`).toLowerCase());
+
+// Trả { ok, errors, fix, headingOk, services, reason, scope, block, extra, delegation }.
 //   fix: tên các mục phải viết thêm hoặc sửa (thiếu, để trống, "Dịch vụ" không đọc ra tên nào, mục bắt buộc thêm); rỗng khi lỗi không sửa theo từng mục được.
 //   reason: dòng đầu của mục "Làm gì" (tóm tắt việc sẽ làm; sổ phạm vi ghi vào cột lý do). services rỗng nghĩa là kế hoạch chỉ đụng phần dùng chung.
 function parsePlanWith(text, options) {
   const opts = options || DEFAULT_OPTIONS;
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const loc = locate(lines, opts);
-  if (!loc) return { ok: false, errors: [`không thấy kế hoạch: cần một dòng tiêu đề "## ${HEADING}" (phần chữ sau đó tùy ý) rồi đủ năm mục ${LABELS.join(', ')}`], fix: [], headingOk: false, services: [], reason: '', scope: '', block: '', extra: {} };
+  if (!loc) return { ok: false, errors: [`không thấy kế hoạch: cần một dòng tiêu đề "## ${HEADING}" (phần chữ sau đó tùy ý) rồi đủ năm mục ${LABELS.join(', ')}`], fix: [], headingOk: false, services: [], reason: '', scope: '', block: '', extra: {}, delegation: { present: false, enabled: false, hours: 0, text: '' }, allowed: { present: false, actions: [...DEFAULT_ACTIONS], unknown: [], text: '' }, github: { present: false, repos: [], orgs: [], account: false, unknown: [], text: '' } };
   const bodyLines = lines.slice(loc.hi + 1, loc.end);
   const found = scan(bodyLines, opts);
   const errors = [];
@@ -215,9 +289,15 @@ function parsePlanWith(text, options) {
   if (missingExtra.length) { errors.push(`thiếu mục bắt buộc thêm: ${missingExtra.map(show).join(', ')}`); fix.push(...missingExtra.map((n) => n.label)); }
   const emptyExtra = need.filter((n) => n.label in found && !oneLine(found[n.label], 10));
   if (emptyExtra.length) { errors.push(`mục bắt buộc thêm để trống: ${emptyExtra.map(show).join(', ')}`); fix.push(...emptyExtra.map((n) => n.label)); }
+  // Kế hoạch nói sẽ mở phiên khác mà không có dòng "Ủy quyền": chưa mở cổng, chỉ đòi viết thêm đúng dòng đó (ghi "không" cũng được).
+  const delegation = delegationOf(found);
+  if (!delegation.present && spawnsSessions(found)) {
+    errors.push('thiếu mục: Ủy quyền (kế hoạch nói sẽ mở hoặc tạo phiên khác; ghi "Ủy quyền: không" nếu không cần phiên đó duyệt thay người dùng)');
+    fix.push(DELEG);
+  }
   const block = `${loc.implicit ? `## ${HEADING}` : lines[loc.hi].trim()}\n${bodyLines.join('\n').trim()}`;
   const extra = Object.fromEntries(need.filter((n) => n.label in found).map((n) => [n.label, oneLine(found[n.label], 500)]));
-  return { ok: errors.length === 0, errors, fix: [...new Set(fix)], headingOk: true, services: errors.length ? [] : services, reason: oneLine(firstLine(found['Làm gì']), 300), scope: oneLine(found['Sửa tệp'], 500), block, extra };
+  return { ok: errors.length === 0, errors, fix: [...new Set(fix)], headingOk: true, services: errors.length ? [] : services, reason: oneLine(firstLine(found['Làm gì']), 300), scope: oneLine(found['Sửa tệp'], 500), block, extra, delegation, allowed: allowedOf(found), github: githubOf(found) };
 }
 
 // Ghép phần bổ sung vào kế hoạch cũ: `addendum` là tin ngắn của model chỉ có các dòng của đúng các mục trong `fix`. Các dòng cũ của mục đó
@@ -273,7 +353,7 @@ const parsePlan = (text) => parsePlanWith(text, currentOptions());
 const mergeAddendumNow = (base, addendum, fix) => mergeAddendum(base, addendum, fix, currentOptions());
 
 module.exports = {
-  parsePlan, parsePlanWith, mergeAddendum: mergeAddendumNow, mergeAddendumWith: mergeAddendum, normalizeOptions, loadOptions, example, LABELS, HEADING, NAME_RE, currentOptions,
+  parsePlan, parsePlanWith, mergeAddendum: mergeAddendumNow, mergeAddendumWith: mergeAddendum, normalizeOptions, loadOptions, example, LABELS, HEADING, NAME_RE, currentOptions, DELEG, ALLOW, GITHUB, ACTION_KEYS, DEFAULT_ACTIONS,
   // Khối mẫu của dự án đang chạy (dự án không khai mục thêm thì đúng bằng khối gốc).
   get EXAMPLE() { return example(currentOptions()); },
 };

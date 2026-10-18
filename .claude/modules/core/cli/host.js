@@ -34,6 +34,11 @@ const entryOf = (unit) => {
 };
 const skillFile = (dir, name) => path.join(dir, P.UNIT_EXT_DIR, 'skills', name, 'SKILL.md');
 const noteFile = (dir, name) => path.join(dir, P.UNIT_EXT_DIR, 'notes', `${name}.md`);
+const agentFile = (dir, name) => path.join(dir, P.UNIT_EXT_DIR, 'agents', `${name}.md`);
+// Tệp nguồn của một mục theo loại; skill là thư mục (SKILL.md), note và agent là một tệp.
+const srcFile = (kind, dir, name) => (kind === 'note' ? noteFile(dir, name) : kind === 'agent' ? agentFile(dir, name) : skillFile(dir, name));
+const srcRemoval = (kind, file) => (kind === 'skill' ? path.dirname(file) : file);
+const LABEL = { skill: 'Skill', note: 'Note', agent: 'Agent' };
 
 // Ghi một dòng sự kiện vào sổ phiên. Không có mã phiên hay không mở được sổ thì bỏ qua: sự kiện là để tra cứu, không bắt buộc.
 function logEvent(kind, unit, name) {
@@ -84,8 +89,16 @@ function lifecycle(now = Date.now()) {
       rows.push({ unit: u.name, kind: 'note', name: n.name, state: bad(rel).length ? (bad(rel).some((p) => p.includes('sửa tay')) ? 'sửa tay' : 'lệch') : 'khớp', enforced: false, badPatterns: [], opens: 0, last: 0, now });
     }
   }
+  for (const u of sync.gather(ROOT, null)) {
+    for (const a of u.agents || []) {
+      const rel = `.claude/agents/${u.name}-${a.name}.md`;
+      const d = mods().defs.readAgent(a.text);
+      rows.push({ unit: u.name, kind: 'agent', name: a.name, state: bad(rel).length ? (bad(rel).some((p) => p.includes('sửa tay')) ? 'sửa tay' : 'lệch') : 'khớp', enforced: false, badPatterns: [], opens: 0, last: 0, now, tools: d.tools, model: d.model });
+    }
+  }
   const lines = rows.map((r) => {
     const days = r.last ? Math.floor((now - r.last) / 86400000) : null;
+    if (r.kind === 'agent') return `  ${r.unit}/agent ${r.name}: bản sinh ${r.state}; tên ${r.unit}-${r.name}; công cụ ${r.tools.join(', ') || '(chưa khai)'}; model ${r.model || 'thừa hưởng'}`;
     const use = r.kind === 'note' ? 'tự nạp khi chạm tệp' : r.opens ? `đã mở ${r.opens} lần, lần cuối ${days === 0 ? 'hôm nay' : `${days} ngày trước`}` : 'chưa ai mở';
     return `  ${r.unit}/${r.kind} ${r.name}: bản sinh ${r.state}; ${r.kind === 'note' ? 'chỉ nhắc' : r.enforced ? 'có ép' : 'chưa ép'}; ${use}${r.badPatterns.length ? `; mẫu ép hỏng: ${r.badPatterns.join(', ')}` : ''}`;
   });
@@ -111,21 +124,22 @@ function define(a) {
   const entry = entryOf(unit);
   const kind = a.kind || 'skill';
   const bad = defs.problems({ ...a, kind });
-  if (bad.length) throw new Error(`${kind === 'note' ? 'Note' : 'Skill'} không hợp lệ: ${bad.join('; ')}.`);
+  if (bad.length) throw new Error(`${LABEL[kind] || 'Mục'} không hợp lệ: ${bad.join('; ')}.`);
   if (kind === 'skill') {
     const native = claude.importNative(sync.nativeFiles(entry.dir)).find((d) => d.name === a.name);
     if (native) throw new Error(`Đơn vị ${unit} đã có skill "${a.name}" do team viết ở ${native.src}. Bản của team được dùng, nên harness không ghi bản trùng tên. Đặt tên khác, hoặc nhờ người dùng quyết định nhận skill đó vào .harness/ (host_adopt).`);
   }
-  const file = kind === 'note' ? noteFile(entry.dir, a.name) : skillFile(entry.dir, a.name);
+  const file = srcFile(kind, entry.dir, a.name);
   const existed = fs.existsSync(file);
-  writeAtomic(file, kind === 'note' ? defs.noteText(a) : defs.skillText(a));
+  writeAtomic(file, kind === 'note' ? defs.noteText(a) : kind === 'agent' ? defs.agentText(a) : defs.skillText(a));
   markUnit(unit);
   logEvent(existed ? 'update' : 'define', unit, `${kind}:${a.name}`);
   const r = sync.syncAll(ROOT);
   const where = path.relative(entry.dir, file).split(path.sep).join('/');
   const ep = kind === 'skill' && a.enforce && Array.isArray(a.enforce.files) && a.enforce.files.length
     ? ` Ép: sửa tệp khớp ${a.enforce.files.join(', ')} trong ${unit} thì phải mở skill trước.` : '';
-  return [`${existed ? 'Đã cập nhật' : 'Đã tạo'} ${kind} "${a.name}" ở ${unit}/${where}.${ep}`, r.text || 'Tệp công cụ đã khớp.'].join('\n');
+  const ag = kind === 'agent' ? ` Agent sinh ra tên ${unit}-${a.name} ở .claude/agents/ (gọi bằng subagent_type="${unit}-${a.name}"); chỉ làm trong ${unit}, dùng đúng các công cụ: ${(a.tools || []).join(', ')}.` : '';
+  return [`${existed ? 'Đã cập nhật' : 'Đã tạo'} ${kind} "${a.name}" ở ${unit}/${where}.${ep}${ag}`, r.text || 'Tệp công cụ đã khớp.'].join('\n');
 }
 
 // ---------- host_rename ----------
@@ -137,15 +151,15 @@ function rename(a) {
   const to = String(a.to || '');
   if (!defs.NAME_RE.test(to)) throw new Error('Tên mới chỉ gồm chữ thường, số, gạch ngang, bắt đầu bằng chữ.');
   if (kind === 'note' && to === 'harness') throw new Error('Tên "harness" dành cho tệp nhắc cửa vào do harness sinh.');
-  const from = kind === 'note' ? noteFile(entry.dir, a.name) : skillFile(entry.dir, a.name);
-  const dest = kind === 'note' ? noteFile(entry.dir, to) : skillFile(entry.dir, to);
+  const from = srcFile(kind, entry.dir, a.name);
+  const dest = srcFile(kind, entry.dir, to);
   const text = readText(from);
   if (text === null) throw new Error(`Không có ${kind} "${a.name}" ở ${unit}/.harness (chỉ đổi tên được định nghĩa do harness quản; skill của team thì dùng host_adopt trước).`);
   if (fs.existsSync(dest)) throw new Error(`Đã có ${kind} tên "${to}" ở ${unit}.`);
   if (kind === 'skill' && sync.nativeFiles(entry.dir).some((f) => f.rel === `.claude/skills/${to}/SKILL.md` && !mods().claude.read(f.text))) throw new Error(`Team đã có skill "${to}" ở ${unit}/.claude/skills/.`);
-  const next = kind === 'skill' ? text.replace(/^name:.*$/m, `name: ${to}`) : text;
+  const next = kind === 'note' ? text : text.replace(/^name:.*$/m, `name: ${to}`);
   writeAtomic(dest, next); // bước 1: ghi tên mới; hỏng ở đây thì chưa mất gì
-  try { fs.rmSync(kind === 'note' ? from : path.dirname(from), { recursive: true, force: true }); } catch (e) { fs.rmSync(kind === 'note' ? dest : path.dirname(dest), { recursive: true, force: true }); throw new Error(`Không xóa được bản cũ, đã hoàn tác: ${e.message}`); }
+  try { fs.rmSync(srcRemoval(kind, from), { recursive: true, force: true }); } catch (e) { fs.rmSync(srcRemoval(kind, dest), { recursive: true, force: true }); throw new Error(`Không xóa được bản cũ, đã hoàn tác: ${e.message}`); }
   markUnit(unit);
   logEvent('rename', unit, `${kind}:${a.name}->${to}`);
   const r = sync.syncAll(ROOT);
@@ -158,9 +172,9 @@ function remove(a) {
   const unit = String(a.service || '');
   const entry = entryOf(unit);
   const kind = a.kind || 'skill';
-  const from = kind === 'note' ? noteFile(entry.dir, a.name) : skillFile(entry.dir, a.name);
+  const from = srcFile(kind, entry.dir, a.name);
   if (readText(from) === null) throw new Error(`Không có ${kind} "${a.name}" ở ${unit}/.harness (tệp của team không gỡ bằng công cụ này).`);
-  fs.rmSync(kind === 'note' ? from : path.dirname(from), { recursive: true, force: true });
+  fs.rmSync(srcRemoval(kind, from), { recursive: true, force: true });
   markUnit(unit);
   logEvent('remove', unit, `${kind}:${a.name}`);
   const r = sync.syncAll(ROOT);
@@ -236,7 +250,30 @@ function health(now = Date.now()) {
       }
     }
   }
+  // Đơn vị nằm trong thư mục bị .gitignore ở gốc dự án: Claude Code không liệt kê skill của đơn vị đó (đã đo), chỉ rule (note) nạp.
+  for (const [unit, dir] of dirs) {
+    if (!P.unitSkills(ROOT, unit).length) continue;
+    let ignored = false;
+    try { ignored = spawnSync('git', ['check-ignore', '-q', path.relative(ROOT, dir).split(path.sep).join('/')], { cwd: ROOT, stdio: 'ignore' }).status === 0; } catch { /* không có git: bỏ qua */ }
+    if (ignored) notes.push(`đơn vị ${unit} nằm trong thư mục bị .gitignore ở gốc dự án: Claude Code KHÔNG liệt kê skill của đơn vị này (công cụ Skill báo "Unknown skill"); mở skill bằng cách đọc trọn SKILL.md bằng công cụ Read (hook tính cả hai cách), còn note vẫn nạp bình thường`);
+  }
+  // Mô tả có ": " hay " #" chưa bọc nháy làm phần đầu tệp không phải YAML hợp lệ: Claude Code bỏ qua cả skill, nên báo là LỖI.
+  for (const [unit, dir] of dirs) {
+    for (const name of P.unitSkills(ROOT, unit)) {
+      const bad = mods().defs.brokenDescription(readText(skillFile(dir, name)) || '');
+      if (bad) errors.push(`skill ${unit}/${name}: mô tả có dấu ": " hoặc " #" mà chưa bọc nháy kép, nên Claude Code không đọc được skill (bọc cả mô tả trong dấu nháy kép, hoặc gọi lại host_define: công cụ tự bọc)`);
+    }
+  }
   for (const r of lifecycle(now).rows) {
+    if (r.kind === 'agent') {
+      const tag = `${r.unit}/${r.name}`;
+      if (!r.tools.length) errors.push(`agent ${tag} không khai tools, nên thừa hưởng MỌI công cụ của phiên (khai lại bằng host_define kind=agent)`);
+      else if (!r.tools.includes('Read')) warns.push(`agent ${tag} không có công cụ Read nên không đọc được cửa vào và skill của đơn vị (phần mở đầu do harness sinh đòi đọc)`);
+      if (r.tools.some((t) => /plan_approve|delegate/.test(t))) errors.push(`agent ${tag} khai công cụ duyệt kế hoạch; chỉ phiên chính được duyệt (luật delegate-guard sẽ chặn)`);
+      if (r.tools.includes('Agent')) notes.push(`agent ${tag} được gọi agent khác: nhiều tầng thì mỗi tầng phải nạp lại skill và tài liệu`);
+      if (r.state !== 'khớp') warns.push(`agent ${tag}: bản sinh ${r.state} (chạy host-sync)`);
+      continue;
+    }
     if (r.kind !== 'skill') continue;
     if (!r.enforced) notes.push(`skill ${r.unit}/${r.name} chưa khai điều kiện ép (chỉ là gợi ý)`);
     let age = 0;

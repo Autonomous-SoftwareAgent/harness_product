@@ -40,7 +40,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Hạn cứng cho nhật ký act_ (lời gọi công cụ, quyết định của luật) khi lệnh bảo trì hằng ngày không chạy. Lệnh bảo trì (db-maintain.js)
 // gom số liệu theo ngày vào eval.db rồi mới xóa ở hạn 60 ngày; hạn cứng này chỉ để sổ không phình mãi khi lệnh đó không bao giờ chạy.
 const HARD_KEEP_MS = 180 * DAY_MS;
-const VERSION = 4;
+const VERSION = 5;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS sessions(sid TEXT PRIMARY KEY, started_at INTEGER NOT NULL, last_at INTEGER NOT NULL, epoch INTEGER NOT NULL DEFAULT 0);
@@ -115,6 +115,14 @@ const SCHEMA_V4 = `
   UPDATE rec_commits SET uid = ${UID_SQL};
   ALTER TABLE sessions ADD COLUMN project TEXT NOT NULL DEFAULT '';
   ALTER TABLE sessions ADD COLUMN harness_ver TEXT NOT NULL DEFAULT '';
+`;
+
+// Phiên bản 5: bảng việc của phiên điều phối (việc con giao cho phiên làm việc: ai giao, ai nhận, tới đâu, báo cáo). Có thể đổi (trạng thái, báo cáo), nên thuộc nhóm act_.
+const SCHEMA_V5 = `
+  CREATE TABLE IF NOT EXISTS act_tasks(uid TEXT PRIMARY KEY, task TEXT NOT NULL, sid TEXT NOT NULL, service TEXT NOT NULL, worker TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL, status TEXT NOT NULL, report TEXT NOT NULL DEFAULT '', at INTEGER NOT NULL, updated INTEGER NOT NULL);
+  CREATE UNIQUE INDEX IF NOT EXISTS act_tasks_task ON act_tasks(task);
+  CREATE INDEX IF NOT EXISTS act_tasks_sid ON act_tasks(sid, status);
 `;
 
 const uid = () => crypto.randomUUID();
@@ -212,8 +220,9 @@ function migrate(db, root) {
       const { project } = projectMeta(root);
       db.prepare("UPDATE sessions SET project = ? WHERE project = ''").run(project);
       sealChains(db);
-      db.exec(`PRAGMA user_version = ${VERSION}`);
     }
+    if (version < 5) db.exec(SCHEMA_V5);
+    db.exec(`PRAGMA user_version = ${VERSION}`);
     db.exec('COMMIT');
   } catch (e) {
     try { db.exec('ROLLBACK'); } catch { /* bỏ qua */ }
@@ -270,6 +279,29 @@ const addTool = (db, { sid, agent = '', tool, service = '', planId = 0, now = Da
 const addDecision = (db, { sid, agent = '', planId = 0, rule, kind = '', tool = '', service = '', verdict, detail = '', now = Date.now() }) =>
   db.prepare('INSERT INTO act_rule_decisions(uid, sid, agent, plan_id, rule, kind, tool, service, verdict, detail, at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(uid(), sid, agent, planId || 0, rule, kind, tool, service || '', verdict, String(detail).slice(0, 300), now);
+// ---------- Bảng việc (act_tasks) ----------
+const TASK_STATUS = ['queued', 'running', 'done', 'blocked', 'failed'];
+// Thêm một việc do phiên điều phối `sid` giao cho dịch vụ `service`. Trả mã việc ngắn.
+function addTask(db, { sid, service, title, worker = '', now = Date.now() }) {
+  const task = crypto.randomBytes(3).toString('hex');
+  touch(db, sid, now);
+  db.prepare('INSERT INTO act_tasks(uid, task, sid, service, worker, title, status, report, at, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(uid(), task, sid, service, worker, String(title).slice(0, 300), 'queued', '', now, now);
+  return task;
+}
+const getTask = (db, task) => db.prepare('SELECT * FROM act_tasks WHERE task = ?').get(task) || null;
+// Cập nhật trạng thái và báo cáo; gán người nhận nếu chưa có. Trả dòng sau khi cập nhật.
+function setTask(db, { task, status, report, worker, now = Date.now() }) {
+  const cur = getTask(db, task);
+  if (!cur) return null;
+  db.prepare('UPDATE act_tasks SET status = ?, report = ?, worker = ?, updated = ? WHERE task = ?')
+    .run(status || cur.status, report === undefined ? cur.report : String(report).slice(0, 4000), cur.worker || worker || '', now, task);
+  return getTask(db, task);
+}
+const listTasks = (db, { sid, limit = 50 } = {}) => (sid
+  ? db.prepare('SELECT * FROM act_tasks WHERE sid = ? ORDER BY at DESC LIMIT ?').all(sid, limit)
+  : db.prepare('SELECT * FROM act_tasks ORDER BY at DESC LIMIT ?').all(limit));
+
 // Xóa nhật ký act_ cũ. Mặc định là hạn cứng; lệnh bảo trì gọi với hạn ngắn hơn SAU KHI đã gom số liệu theo ngày.
 function prune(db, now = Date.now(), keepMs = HARD_KEEP_MS) {
   for (const t of ['act_tool_calls', 'act_rule_decisions']) db.prepare(`DELETE FROM ${t} WHERE at < ?`).run(now - keepMs);
@@ -307,4 +339,4 @@ function skillsOf(root, sid) {
   try { return [...have(db, sid, '').skills].sort(); } catch { return []; } finally { try { db.close(); } catch { /* bỏ qua */ } }
 }
 
-module.exports = { VERSION, open, touch, bumpEpoch, addSkill, addDoc, addTool, addDecision, prune, have, stats, skillsOf, chainInsert, verifyChain, projectMeta, HARD_KEEP_MS, DAY_MS };
+module.exports = { VERSION, open, touch, bumpEpoch, addSkill, addDoc, addTool, addDecision, TASK_STATUS, addTask, getTask, setTask, listTasks, prune, have, stats, skillsOf, chainInsert, verifyChain, projectMeta, HARD_KEEP_MS, DAY_MS };

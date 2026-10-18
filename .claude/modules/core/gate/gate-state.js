@@ -18,7 +18,7 @@ function parse(s) {
   const r = s.repair;
   base.repair = r && typeof r === 'object' && typeof r.base === 'string' && Array.isArray(r.fix) && r.fix.every((x) => typeof x === 'string') && r.fix.length
     ? { base: r.base, fix: r.fix, age: Number.isInteger(r.age) && r.age > 0 ? r.age : 0 } : null;
-  base.approved = a && typeof a === 'object' && typeof a.sha === 'string' && typeof a.plan === 'string' ? { sha: a.sha, plan: a.plan, at: Number(a.at) || 0 } : null;
+  base.approved = a && typeof a === 'object' && typeof a.sha === 'string' && typeof a.plan === 'string' ? { sha: a.sha, plan: a.plan, at: Number(a.at) || 0, ...(typeof a.by === 'string' && a.by ? { by: a.by } : {}) } : null;
   return base;
 }
 

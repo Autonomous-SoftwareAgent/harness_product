@@ -40,6 +40,7 @@ function toEvent(input, { kind, root, cwdFallback, shell }) {
     root,
     session: src.session_id || '',
     agent: typeof src.agent_id === 'string' ? src.agent_id : '',
+    agentType: typeof src.agent_type === 'string' ? src.agent_type : '',
     cwd,
     action: {
       type,

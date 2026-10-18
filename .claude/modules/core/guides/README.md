@@ -10,6 +10,7 @@ Bộ này viết cho dev đã cài harness vào một dự án và cần biết:
 | Người muốn dạy Claude cách làm một loại việc chung cho cả dự án | Thêm skill dùng chung, gắn nó vào việc cụ thể | [02-skill-toan-cuc.md](02-skill-toan-cuc.md) |
 | Người giữ một repo trong dự án | Cho repo đó tài liệu bắt buộc, skill và luật riêng | [03-skill-theo-repo.md](03-skill-theo-repo.md) |
 | Người muốn chặn thêm hay thêm công cụ riêng | Khối mở rộng, máy chủ MCP ngoài, bật tắt khối | [04-mo-rong.md](04-mo-rong.md) |
+| Người muốn chỉ nói chuyện với một phiên mà nhiều repo cùng được làm | Phiên điều phối, ủy quyền duyệt kế hoạch, sub-agent của repo, bảng việc | [05-dieu-phoi-va-sub-agent.md](05-dieu-phoi-va-sub-agent.md) |
 
 ## Ba chỗ đặt, nhớ một lần
 | Chỗ | Của ai | Bản mới của harness có đụng không |

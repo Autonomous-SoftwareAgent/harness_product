@@ -18,7 +18,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 const SKIP_DIRS = new Set(['node_modules', '.git']);
 // Trong <đơn vị>/.harness/ còn có ghi chép và tệp cửa vào của đơn vị (bố cục gom): chúng KHÔNG thuộc khối mở rộng. Không bỏ qua thì mỗi
 // lần ghi tài liệu làm đổi dấu vân tay của khối (bị báo "đã sửa sau khi xác nhận"), và lệnh xác nhận chép cả ghi chép vào bản đã xác nhận.
-const NOT_BLOCK_DIRS = new Set(['docs', 'skills']);
+const NOT_BLOCK_DIRS = new Set(['docs', 'skills', 'notes', 'agents']);
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return undefined; } };
 const posix = (p) => p.split(path.sep).join('/');
 

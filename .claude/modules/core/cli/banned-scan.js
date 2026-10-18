@@ -72,12 +72,24 @@ function report(hits, what) {
   ].filter(Boolean).join('\n') + '\n');
 }
 
-function preCommit(cwd, re) {
+// Bí mật dạng đã biết (token GitHub, Docker Hub, khóa AWS, khóa riêng PEM): dò ở MỌI repo trước commit và trước đẩy, kể cả khi máy không có
+// danh sách từ cấm. Lời từ chối chỉ nêu tệp và dòng, không in lại giá trị.
+const SECRET_RE = /\bgh[pousr]_[A-Za-z0-9]{30,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b|\bdckr_pat_[A-Za-z0-9_-]{20,}\b|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/;
+function reportSecret(hits, what) {
+  const rows = [...new Set(hits.map((h) => `${h.commit ? `${h.commit.slice(0, 12)} ` : ''}${h.file}${h.line ? `:${h.line}` : ''}`))];
+  process.stderr.write([
+    `BÍ MẬT: ${what} có chuỗi giống token hay khóa thật (${rows.length} chỗ). Từ chối.`,
+    ...rows.slice(0, 40).map((r) => `  ${r}`),
+    'Bỏ bí mật khỏi nội dung (chỉ ghi TÊN biến môi trường). Token đã lộ trong một commit thì coi như lộ: thu hồi và tạo token mới.',
+  ].join('\n') + '\n');
+}
+
+function preCommit(cwd, re, rep = report) {
   const r = git(cwd, ['diff', '--cached', '-U0', '--no-renames', '--no-color', '--no-ext-diff']);
   if (r.status !== 0) return 0;
   const hits = hitsInPatch(r.stdout, re);
   if (!hits.length) return 0;
-  report(hits, 'phần sắp commit');
+  rep(hits, 'phần sắp commit');
   return 1;
 }
 
@@ -105,7 +117,7 @@ function historyHits(cwd, range, re) {
   return { hits, error: '' };
 }
 
-function prePush(cwd, remote, stdin, re) {
+function prePush(cwd, remote, stdin, re, rep = report) {
   const all = [];
   for (const l of String(stdin).split('\n')) {
     const [, local, , remoteSha] = l.trim().split(/\s+/);
@@ -117,7 +129,7 @@ function prePush(cwd, remote, stdin, re) {
     all.push(...r.hits);
   }
   if (!all.length) return 0;
-  report(all, 'các commit sắp đẩy');
+  rep(all, 'các commit sắp đẩy');
   return 1;
 }
 
@@ -145,7 +157,9 @@ function main(argv) {
   if (mode === 'pre-push') {
     try { pushStdin = fs.readFileSync(0, 'utf8'); } catch { pushStdin = ''; }
     if (require('./docs-guard').prePush(process.cwd(), a1, pushStdin, ROOT)) return 1;
+    if (prePush(process.cwd(), a1, pushStdin, SECRET_RE, reportSecret)) return 1;
   }
+  if (mode === 'pre-commit' && preCommit(process.cwd(), SECRET_RE, reportSecret)) return 1;
   const words = loadWords(ROOT);
   if (!words) {
     if (mode === 'scan') { console.log('Máy này không có danh sách từ cấm: KHÔNG quét.'); return 0; }
@@ -167,5 +181,5 @@ function main(argv) {
   return 2;
 }
 
-module.exports = { main, loadWords, matcher, linesWith, hitsInPatch, historyHits, scan };
+module.exports = { main, loadWords, matcher, linesWith, hitsInPatch, historyHits, scan, SECRET_RE };
 if (require.main === module) process.exit(main(process.argv.slice(2)));

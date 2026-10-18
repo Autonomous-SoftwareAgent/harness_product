@@ -1,0 +1,84 @@
+{
+  "version": "2.8.1",
+  "date": "2026-10-16",
+  "summary": "Sửa ba lỗi của 2.8.0: note làm mất hiệu lực khối mở rộng đã xác nhận; mô tả skill có dấu hai chấm làm Claude Code bỏ qua skill; lời chặn theo skill không chỉ đúng tệp skill của đơn vị (kèm ghi chú đơn vị trong thư mục bị .gitignore).",
+  "changes": [
+    {
+      "id": "note-khong-doi-dau-van-tay-khoi",
+      "kind": "fixed",
+      "block": "core",
+      "title": "Thư mục notes/ không thuộc khối mở rộng của đơn vị",
+      "before": "Dấu vân tay của khối mở rộng của đơn vị tính cả thư mục .harness/notes/. Đơn vị đã xác nhận luật riêng, rồi có note được thêm bằng host_define thì doctor báo khối mở rộng đã sửa sau lần xác nhận; bản mới chưa có hiệu lực cho tới khi xác nhận lại bằng tay.",
+      "after": "notes/ được bỏ qua như skills/ và docs/ (đó là ghi chép, không phải mã của khối). Thêm hay sửa note không đổi dấu vân tay; sửa tệp luật, công cụ, lệnh thì dấu vẫn đổi.",
+      "files": [
+        "core/adapters/project/extensions.js"
+      ],
+      "surface": {
+        "commands": [
+          "doctor"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì. Đơn vị đang hiện cảnh báo khối mở rộng đã sửa sau lần xác nhận chỉ vì có note thì hết cảnh báo, không cần xác nhận lại.",
+      "verified": "Test: thêm skill và note không đổi dấu vân tay, thêm một tệp luật thì dấu đổi; đỏ với mã 2.8.0, xanh với mã mới.",
+      "unverified": "Chưa thử trên dự án khác đã cài 2.8.0 và đã xác nhận khối mở rộng."
+    },
+    {
+      "id": "mo-ta-skill-boc-nhay",
+      "kind": "fixed",
+      "block": "core",
+      "title": "host_define bọc nháy mô tả skill khi cần; doctor báo skill viết tay có mô tả hỏng YAML",
+      "before": "host_define ghi nguyên văn dòng description:. Mô tả có dấu hai chấm kèm khoảng trắng hoặc dấu thăng (ví dụ \"Dùng trước khi sửa: đọc gì\") làm phần đầu SKILL.md không còn là YAML hợp lệ; Claude Code bỏ qua cả skill mà không báo gì.",
+      "after": "host_define bọc nháy kép (dạng chuỗi JSON) khi giá trị có \": \", \" #\" hoặc mở đầu bằng ký tự đặc biệt; mô tả an toàn vẫn viết trần; đọc ngược ra đúng chuỗi gốc. doctor và host_status báo LỖI cho skill viết tay có description hỏng, nêu cách sửa.",
+      "files": [
+        "core/ports/skill-enforce.js",
+        "core/adapters/hosts/definitions.js",
+        "core/cli/host.js"
+      ],
+      "surface": {
+        "tools": [
+          "host_define"
+        ],
+        "commands": [
+          "doctor"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì. Skill đã tạo bằng 2.8.0 với mô tả có dấu hai chấm thì gọi lại host_define cùng tên để được bọc nháy; doctor sẽ nêu skill nào cần.",
+      "verified": "Test: mô tả có dấu hai chấm và dấu thăng được bọc nháy ở cả bản gốc lẫn bản sinh, đọc ngược đúng; mô tả thường giữ dạng trần; skill viết tay hỏng bị doctor báo LỖI. Đo bằng claude -p thật: skill 2.8.0 với mô tả có dấu hai chấm không hiện, cây thử tối thiểu với mô tả hợp lệ thì gọi được.",
+      "unverified": "Mới thử các ký tự phổ biến (dấu hai chấm, dấu thăng); chưa thử mọi ký tự đặc biệt của YAML."
+    },
+    {
+      "id": "loi-chan-chi-duong-dan-skill-don-vi",
+      "kind": "changed",
+      "block": "core",
+      "title": "Lời chặn theo skill chỉ đúng đường dẫn skill của đơn vị; ghi chú đơn vị trong thư mục bị .gitignore",
+      "before": "Lời chặn bảo mở skill bằng công cụ Skill hoặc đọc .claude/skills/<tên>/SKILL.md ở gốc dự án, kể cả khi skill nằm ở <đơn vị>/.claude/skills/. Đơn vị trong thư mục bị .gitignore ở gốc thì công cụ Skill báo Unknown skill (Claude Code không liệt kê skill ở đó), phiên không biết phải làm gì.",
+      "after": "Lời chặn nêu đường dẫn thật của skill đơn vị và bảo đọc trọn tệp bằng công cụ Read (hook sổ phiên tính cách này). doctor và host_status ghi chú đơn vị nào nằm trong thư mục bị .gitignore ở gốc. Cổng dự án có thêm skillRel(tên) tùy chọn.",
+      "files": [
+        "core/core/rules/lib/knowledge.js",
+        "core/core/rules/skill.js",
+        "core/adapters/project/workspace.js",
+        "core/ports/workspace.js",
+        "core/guides/03-skill-theo-repo.md"
+      ],
+      "surface": {
+        "hooks": [
+          "guard-skill"
+        ],
+        "commands": [
+          "doctor"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì. Chỉ lời chặn đổi chữ cho skill của đơn vị; skill chung giữ lời cũ.",
+      "verified": "Test: skillRel trả đúng đường dẫn; lời chặn có đường dẫn và nhắc Unknown skill cho skill đơn vị, không nhắc cho skill chung; ghi chú .gitignore chỉ xuất hiện khi đơn vị thật sự bị bỏ qua. Đo bằng claude -p thật: skill ở đơn vị không bị .gitignore gọi được, bị .gitignore thì Unknown skill.",
+      "unverified": "Chưa biết có cách khai báo nào để Claude Code liệt kê skill ở thư mục bị .gitignore; hiện chỉ mở được bằng Read."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

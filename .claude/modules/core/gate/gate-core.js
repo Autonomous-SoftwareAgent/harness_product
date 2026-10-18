@@ -146,7 +146,9 @@ function verifyOpen(state) {
 }
 
 // Chữ trong mã nội tuyến cho thấy nó nhắm vào tệp được bảo vệ của gate.
-const MENTIONS_PROTECTED = /gate\.config\.json|manifest\.json|migrated_at|gate-diag|\.claude[\\/]+\.state|\.claude[\\/]+plugin[\\/]+gate/i;
+const MENTIONS_PROTECTED = /gate\.config\.json|manifest\.json|migrated_at|gate-diag|\.claude[\\/]+\.state|\.claude[\\/]+plugin[\\/]+gate|harness-delegate|gate-delegate/i;
+// Lệnh nhắc tới khóa ký ủy quyền hay tệp ủy quyền: chặn dù cổng đóng hay mở, dù đọc hay ghi (đọc khóa là tự ký được lệnh duyệt).
+const MENTIONS_SECRET = /harness-delegate|gate-delegate-/i;
 
 // Lệnh Bash trông như có ghi/thay đổi hệ thống (để HỎI khi cổng đóng). Dựa trên phân tích, không khớp chuỗi thô:
 // nhắc tới "rm -rf" trong một chuỗi hay thân heredoc không tính.
@@ -166,6 +168,9 @@ function decideAction(state, action, ctx) {
 
   if (act.type === 'run-command') {
     const cmd = String(act.command || '');
+    if (MENTIONS_SECRET.test(cmd)) {
+      return deny('Lệnh này nhắc tới khóa ký hoặc tệp ủy quyền duyệt kế hoạch. Chỉ cổng duyệt và công cụ plan_approve được đụng tới chúng; xem tình trạng bằng công cụ delegate_status.', 'protected-delegate');
+    }
     const a = analyzeBash(cmd);
     const hitsProtected =
       a.targets.some((t) => paths.isProtectedTarget(paths.resolveToken(t, cwd)) || paths.isProtectedTarget(t)) ||

@@ -116,6 +116,11 @@ function create(root) {
     },
     skillsMapExists: () => fs.existsSync(P.skillsMapPath(root)),
     skillExists: (name) => skillExists(root, name),
+    // Đường dẫn (kiểu posix, tính từ gốc dự án) của tệp SKILL.md của skill: ở chỗ chung hoặc ở một đơn vị; '' khi không có.
+    skillRel: (name) => {
+      const f = NAME_OK.test(String(name || '')) ? (fs.existsSync(skillFile(root, name)) ? skillFile(root, name) : unitSkillFile(root, name)) : null;
+      return f ? posix(path.relative(root, f)) : '';
+    },
     allSkills: () => allSkills(root),
     bannedWords: () => loadWords(root),
     entryExists: (name) => fs.existsSync(P.codePath(root, `hooks/${name}`)),

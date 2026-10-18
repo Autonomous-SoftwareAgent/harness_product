@@ -71,7 +71,7 @@ const SERVICES_DIR = 'system_service'; // harness-export: bố cục cũ (tên t
 const LEGACY_HOME = ['.claude', 'plugin'];
 const MODULES_HOME = ['.claude', 'modules'];
 const PROJECT_HOME = ['.claude', 'project'];
-const MODULE_ORDER = ['core', 'servicedocs', 'diagrams', 'context', 'portal', 'guard-push', 'bsn'];
+const MODULE_ORDER = ['core', 'servicedocs', 'diagrams', 'context', 'portal', 'guard-push', 'secrets', 'bsn'];
 // Gốc dự án tính từ thư mục của một tệp mã harness: thư mục cha của `.claude` gần nhất đi lên. Dùng thay cho chuỗi '..' cố định,
 // vì độ sâu của tệp khác nhau giữa hai bố cục.
 function rootFrom(dir) {
@@ -521,9 +521,13 @@ function inside(child, parent) {
 // và mọi tệp gate-* trong thư mục trạng thái (trạng thái phiên và nhật ký chẩn đoán).
 const PROTECTED_BASENAMES = new Set(['gate.config.json', 'manifest.json', 'migrated_at']);
 
+// Khóa ký ủy quyền duyệt kế hoạch (ngoài cây dự án, ở thư mục của người dùng): không ghi, không đọc qua công cụ của phiên.
+const isSecretPath = (p) => slashes(p).endsWith('/harness-delegate.key');
+
 function isProtectedPath(p) {
   const n = slashes(p);
   const base = n.slice(n.lastIndexOf('/') + 1);
+  if (base === 'harness-delegate.key') return true;
   // So tên không phân biệt hoa thường: tệp thật là MANIFEST.json và MIGRATED_AT, và norm() chỉ đổi về chữ thường trên Windows,
   // nên trên Linux hai tệp đó từng không được bảo vệ.
   if (n.includes('/.claude/modules/core/gate/') && PROTECTED_BASENAMES.has(base.toLowerCase())) return true;
@@ -595,5 +599,5 @@ module.exports = {
   MCP_LEGACY, mcpPrefix, mcpServers, mcpMatcher,
   MODULE_ORDER, rootFrom, isModular, modulesHome, harnessHome, codeIndex, moduleDirs, codePath, codeDirs, codeRel, projectDir, generatorsDir, contextConfigPath, moduleManifests, enabledModules, moduleEnabled, contributions, provided,
   UNIT_EXT_DIR, extensionsDir, trustDir, trustFile, extensionErrorsPath, mcpConfigPath, mcpTrustFile, mcpStateDir, loadedDir, transfersDir,
-  norm, slashes, inside, isProtectedPath, isProtectedTarget, resolveToken, exemptDirs, PROTECTED_BASENAMES,
+  norm, slashes, inside, isProtectedPath, isSecretPath, isProtectedTarget, resolveToken, exemptDirs, PROTECTED_BASENAMES,
 };

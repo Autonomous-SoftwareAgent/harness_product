@@ -1,0 +1,182 @@
+{
+  "version": "2.9.0",
+  "date": "2026-10-16",
+  "summary": "Điều phối nhiều phiên: người dùng ủy quyền cho MỘT phiên duyệt kế hoạch của các phiên làm việc (có hạn, ký, dùng một lần; phạm vi và việc rủi ro theo đúng kế hoạch người dùng đã duyệt, dòng \"Được làm\"); sub-agent dựng sẵn cho từng repo; bảng việc của phiên điều phối.",
+  "changes": [
+    {
+      "id": "uy-quyen-duyet-ke-hoach",
+      "kind": "added",
+      "block": "core",
+      "title": "Ủy quyền cho một phiên duyệt kế hoạch của các phiên do chính nó tạo, trao bằng dòng \"Ủy quyền\" trong kế hoạch",
+      "after": "Kế hoạch nói sẽ mở hoặc tạo phiên khác thì thêm một dòng \"- Ủy quyền: có, 8h\" (viết kiểu nào cũng được); người dùng duyệt là cổng mở và hook ghi quyền cho phiên đó (mặc định 8 giờ, tối đa 24; \"không\" thì không ghi; nêu harness thì từ chối). Kế hoạch nói mở phiên khác mà thiếu dòng thì cổng chưa mở và chỉ đòi viết thêm đúng dòng đó. Quyền chỉ có nghĩa với các phiên do chính phiên đó tạo bằng session_spawn (công cụ gắn dấu ký \"phiên này do X tạo\" vào lời mở đầu của phiên mới; hook của phiên mới kiểm rồi ghi quan hệ). Phiên điều phối không sửa tệp (cổng của nó luôn đóng), xem kế hoạch bằng plan_view và duyệt bằng plan_approve; lệnh duyệt có chữ ký, gắn băm của đúng kế hoạch, đúng phiên nhận, dùng một lần, hết hạn sau 30 phút. Chỉ lời người dùng tạo được ủy quyền (tin của phiên khác không bao giờ). Việc đẩy lên remote, gắn nhãn, triển khai, xóa, sửa harness bị công cụ từ chối. Cách dự phòng: gõ \"ỦY QUYỀN: 8h\" ở đầu tin (nhận cả dạng dán trong khối mã). Thu hồi bằng \"THU HỒI ỦY QUYỀN\". Sổ duyệt xâu chuỗi băm. Quyền theo KẾ HOẠCH đang duyệt: kế hoạch có dòng Ủy quyền thì phiên chỉ điều phối; kế hoạch không có dòng đó thì phiên tự làm và ủy quyền cũ thôi duyệt thêm. Dòng tùy chọn \"- Được làm:\" khai việc rủi ro (commit, đẩy, gắn nhãn, deploy, quay lui, xóa, ghi đè, sửa cổng duyệt) mà các phiên làm thay được làm, kiểm ở lúc làm; không có dòng thì chỉ sửa tệp và commit. Harness duyệt thay được nếu kế hoạch nêu. Duyệt nối tiếp tối đa 5 lần mỗi phiên; một dịch vụ một bên ghi; mã cổng đổi thì ủy quyền tạm ngưng; task_report không cần mã việc; một tin vừa thu hồi vừa duyệt.",
+      "files": [
+        "core/gate/gate-delegate.js",
+        "core/gate/gate-rule.js",
+        "core/gate/gate-hook.js",
+        "core/gate/gate-state.js",
+        "core/gate/gate-core.js",
+        "core/gate/gate-paths.js",
+        "core/cli/delegate.js",
+        "core/hooks/guard-delegate.js",
+        "core/core/rules/delegate-guard.js",
+        "core/mcp/mcp-tools.js",
+        "core/skills/orchestrate.md",
+        "core/gate/plan-format.js",
+        "core/cli/transfer.js",
+        "core/skills/plan.md"
+      ],
+      "surface": {
+        "tools": [
+          "delegate_status",
+          "plan_view",
+          "plan_approve",
+          "session_spawn"
+        ],
+        "hooks": [
+          "guard-delegate",
+          "gate-hook (read)"
+        ],
+        "skills": [
+          "orchestrate",
+          "plan"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì: không có dòng Ủy quyền thì mọi thứ chạy như cũ, trừ một điều: kế hoạch nói sẽ MỞ hoặc TẠO phiên khác mà thiếu dòng \"Ủy quyền\" thì cổng chưa mở và chỉ đòi viết thêm đúng dòng đó (ghi \"Ủy quyền: không\" nếu không cần). Dự án đã cài cần chạy `setup` (nâng cấp làm giúp) để thêm hai hook mới vào settings.json, và gõ /mcp để thấy bốn công cụ mới. Khóa ký được tạo ở ~/.claude/ của người dùng ở lần trao quyền đầu tiên. Dấu vân tay cổng duyệt đổi (gate/ có thêm tệp và sửa tệp). Kế hoạch giao việc nên có dòng \"Được làm\" nếu phiên làm thay cần đẩy, gắn nhãn, xóa hay deploy; không có thì chúng chỉ sửa tệp và commit ở máy.",
+      "verified": "Test: dòng Ủy quyền đọc đúng ở 8 cách viết, \"không\" không ghi quyền, dịch vụ harness bị từ chối, thiếu dòng khi kế hoạch nói mở phiên thì chỉ đòi đúng dòng đó và bù được bằng một dòng; chạy qua luật cổng với cổng ra giả: duyệt kế hoạch có dòng thì mở cổng và ghi quyền; dấu \"phiên do X tạo\" chỉ ghi được khi hợp lệ (giả, sai người, hết quyền, tự tạo, dùng lại, nằm trong tin của phiên khác đều không); lệnh duyệt chỉ cho phiên do mình tạo, qua khi đủ điều kiện và dùng một lần; từ chối khi không ủy quyền, tự duyệt, băm lệch; kế hoạch onboard có chữ `.harness/`, `.claude/`, `harness-docs` vẫn duyệt được; phiên chạy theo lệnh duyệt thay bị hook chặn ở lúc làm khi push, tag, xóa, deploy hay ghi `.claude/` ở gốc, còn việc của đơn vị thì qua; vượt bằng lệnh bị sửa, chữ ký giả, kế hoạch đổi sau khi duyệt, lệnh mang sang phiên khác, hết hạn, thu hồi giữa chừng, quan hệ hay ủy quyền bị sửa tay, cờ mở giả trong trạng thái; sổ xâu chuỗi đứt khi xóa hoặc sửa dòng; qua hook thật của cây giả. Phiên claude -p thật (Claude Code 2.1.300) với cơ chế dòng gõ tay: dòng ủy quyền được hook ghi nhận, mã phiên của công cụ MCP khớp mã phiên của hook, plan_view và plan_approve chạy, phiên làm việc mở cổng bằng lệnh duyệt đã ký. Bản quyền-theo-kế-hoạch: 17 ca ở test/gate/delegate.test.js (luật cổng với cổng ra giả, hook thật của cây giả, bản cài trong cây thử cho task_report).",
+      "unverified": "Cơ chế \"duyệt kế hoạch có dòng Ủy quyền\" và dấu ký trong lời mở đầu của phiên nền thật mới kiểm bằng test và kịch bản ảnh chụp (lệnh claude giả nhận lời mở đầu), chưa qua hai phiên Claude thật nối nhau; chưa thử nhiều phiên nền chạy song song nhiều giờ. Không chặn được một agent cố tình phá (cùng tài khoản hệ điều hành, có Bash): đọc khóa nếu lọt hook, hoặc chạy một phiên claude mới để tự tạo ủy quyền. Nhận dạng \"kế hoạch nói sẽ mở phiên khác\" bằng từ khóa nên có thể đòi dòng Ủy quyền thừa (chỉ tốn một dòng). Bản quyền-theo-kế-hoạch chưa chạy với phiên Claude thật."
+    },
+    {
+      "id": "sub-agent-cua-don-vi",
+      "kind": "added",
+      "block": "core",
+      "title": "Sub-agent dựng sẵn cho từng repo (host_define kind=agent)",
+      "after": "host_define, host_rename, host_remove nhận kind=agent: nguồn ở <repo>/.harness/agents/<tên>.md (description, tools bắt buộc, model tùy chọn, nội dung vai); harness sinh .claude/agents/<repo>-<tên>.md ở GỐC dự án kèm phần mở đầu bắt agent đọc cửa vào và skill riêng của repo, chỉ làm trong repo, trả báo cáo ba mục. Luật phạm vi chặn agent của repo A sửa tệp repo B. host_status liệt kê agent; doctor báo agent không khai tools, thiếu Read hay khai công cụ duyệt kế hoạch. Thư mục agents/ không thuộc khối mở rộng của repo.",
+      "files": [
+        "core/adapters/hosts/definitions.js",
+        "core/adapters/hosts/claude.js",
+        "core/adapters/hosts/sync.js",
+        "core/adapters/project/extensions.js",
+        "core/adapters/claude-code/hook.js",
+        "core/ports/events.js",
+        "core/cli/host.js",
+        "core/core/rules/scope.js",
+        "core/core/rules/lib/agent-unit.js"
+      ],
+      "surface": {
+        "tools": [
+          "host_define",
+          "host_rename",
+          "host_remove",
+          "host_status"
+        ],
+        "commands": [
+          "doctor",
+          "host-sync"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì: repo chưa có agent thì không có gì đổi. Muốn dùng: gọi host_define với kind=agent sau khi người dùng duyệt kế hoạch có repo đó. Bản sinh nằm ở .claude/agents/ của dự án (bị loại khỏi git của dự án bằng .git/info/exclude).",
+      "verified": "Test: bản sinh ở gốc có dấu sinh, tools, model và phần mở đầu; bắt buộc khai tools, model và tên hợp lệ; đổi tên và gỡ đi cùng bản sinh, bản sinh sửa tay được giữ và báo, agent viết tay của nhóm không bị đụng; thêm agent không đổi dấu vân tay khối mở rộng; luật phạm vi chặn agent sang repo khác. Đo bằng claude -p thật (Claude Code 2.1.300): agent đặt ở .claude/agents/ của gốc được nạp, danh sách tools có hiệu lực, agent trong thư mục repo thì KHÔNG nạp; sub-agent gọi được công cụ MCP của harness và đọc cửa vào theo phần mở đầu; hook nhận được loại agent (agent_type) và mã agent; sub-agent gọi được sub-agent khác (nhưng nên giữ một tầng).",
+      "unverified": "Chưa đo token tiết kiệm được so với một phiên làm hết; chưa thử trên dự án có agent viết tay trùng tên; luật phạm vi chỉ thấy lệnh sửa tệp, không thấy lệnh ghi qua Bash."
+    },
+    {
+      "id": "bang-viec-dieu-phoi",
+      "kind": "added",
+      "block": "core",
+      "title": "Bảng việc của phiên điều phối (task_dispatch, task_report, task_status)",
+      "after": "Phiên điều phối giao việc con cho repo nằm trong ủy quyền bằng task_dispatch (ghi vào bảng act_tasks của sổ phiên, trả lời nhắn mẫu để gửi phiên nhận); phiên làm việc nộp kết quả bằng task_report (chỉ người nhận được nộp); task_status xem bảng. Sổ phiên nâng lên phiên bản 5 tự động khi mở.",
+      "files": [
+        "core/adapters/storage/ledger-db.js",
+        "core/cli/delegate.js"
+      ],
+      "surface": {
+        "tools": [
+          "task_dispatch",
+          "task_report",
+          "task_status"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì: sổ phiên cũ được nâng lên phiên bản 5 ở lần mở đầu (có chụp bản sao trước khi nâng, bảng cũ giữ nguyên, chỉ thêm bảng act_tasks).",
+      "verified": "Test: thêm, cập nhật, đọc và liệt kê việc; người nhận đã gán thì không đổi; sổ phiên bản 4 nâng lên 5 giữ nguyên bảng cũ; hai test nâng sổ cập nhật theo phiên bản mới. Kịch bản ảnh chụp gọi từng công cụ ít nhất một lần, kể cả lần bị từ chối (repo ngoài ủy quyền, việc không có).",
+      "unverified": "Công cụ không tự nhắn phiên nhận (nhắn là việc của công cụ nhắn tin của Claude Code); chưa thử bảng việc với nhiều phiên cùng ghi một lúc ngoài test nâng sổ nhiều tiến trình."
+    },
+    {
+      "id": "huong-dan-dieu-phoi",
+      "kind": "added",
+      "block": "core",
+      "title": "Hướng dẫn và skill điều phối",
+      "after": "Skill orchestrate (khi nào làm phiên điều phối, các bước, việc không bao giờ duyệt thay, cách dùng sub-agent) và hướng dẫn 05-dieu-phoi-va-sub-agent.md (ba tầng, ủy quyền, bảng chống bypass và điều chưa chặn được, sub-agent, bảng việc, thứ tự làm).",
+      "files": [
+        "core/guides/05-dieu-phoi-va-sub-agent.md",
+        "core/guides/README.md"
+      ],
+      "surface": {
+        "skills": [
+          "orchestrate"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không phải làm gì. Bộ cài chép skill orchestrate vào .claude/skills/ nếu dự án chưa có; skill chung services của dự án đã cài không tự thêm dòng nhắc tới nó.",
+      "verified": "Test skill: đúng khuôn năm mục, tên trùng thư mục. Các lệnh và tên công cụ trong hướng dẫn đã chạy thật trong phiên claude -p.",
+      "unverified": "Hướng dẫn chưa được một người ngoài đọc thử."
+    },
+    {
+      "id": "kho-bi-mat-github",
+      "kind": "added",
+      "block": "secrets",
+      "title": "Khối secrets: token GitHub trong kho của hệ điều hành, công cụ GitHub cho agent theo kế hoạch đang duyệt",
+      "after": "Token GitHub nằm trong kho của hệ điều hành; người dùng quản bằng lệnh secret; agent dùng secret_status, github_ci, github_run (mọi lệnh gh và gh api) theo phạm vi của kế hoạch đang duyệt (mục Dịch vụ, dòng \"- GitHub:\", dòng \"- Được làm:\"); git push qua trình cấp mật khẩu theo phạm vi và hook guard-github; nhắc đầu phiên về vòng đời token; bộ quét trước commit và trước đẩy bắt dạng token.",
+      "files": [
+        "secrets/module.json",
+        "secrets/core/secrets/policy.js",
+        "secrets/core/rules/github.js",
+        "secrets/core/rules/secrets-brief.js",
+        "secrets/ports/secret-store.js",
+        "secrets/adapters/secrets/index.js",
+        "secrets/adapters/secrets/windows-dpapi.js",
+        "secrets/adapters/secrets/macos-keychain.js",
+        "secrets/adapters/secrets/linux-secret-tool.js",
+        "secrets/adapters/secrets/file-0600.js",
+        "secrets/adapters/secrets/github.js",
+        "secrets/cli/github.js",
+        "secrets/cli/git-credential.js",
+        "secrets/cli/commands/secret.js",
+        "secrets/mcp/secrets/tools.js",
+        "secrets/hooks/guard-github.js",
+        "secrets/hooks/secrets-brief.js",
+        "core/cli/banned-scan.js",
+        "core/gate/gate-paths.js",
+        "core/cli/public-export.js",
+        "core/gate/gate-hook.js"
+      ],
+      "surface": {
+        "tools": [
+          "secret_status",
+          "github_ci",
+          "github_run"
+        ],
+        "hooks": [
+          "guard-github",
+          "secrets-brief"
+        ],
+        "commands": [
+          "secret"
+        ],
+        "config": [
+          ".mcp.json: máy chủ harness-secrets"
+        ]
+      },
+      "migrations": [],
+      "impact": "Không dùng GitHub qua harness thì không phải làm gì (khối im lặng khi chưa có token). Muốn dùng: chạy `cli.js secret set` trong terminal (hoặc `secret migrate` nếu token đang ở .env), rồi `cli.js secret setup-git`, rồi gõ /mcp. Kế hoạch cần đẩy hay chạy lệnh GitHub ghi phải nêu việc ở dòng \"Được làm\" và đối tượng ngoài đơn vị ở dòng \"- GitHub:\". Bộ quét trước commit nay chặn chuỗi giống token hay khóa thật ở mọi repo.",
+      "verified": "test/cli/secrets.test.js (9 ca: bộ xếp lệnh, phạm vi theo kế hoạch gồm xóa repo và tổ chức, khuôn dòng GitHub, hợp đồng bốn bộ chuyển, DPAPI thật trên Windows, token không lộ, trình cấp mật khẩu, luật đẩy, nhắc đầu phiên, tình trạng token, bộ quét); chạy thật trên Windows với token thật: secret status, đọc CI repo của đơn vị, chặn xóa repo và đọc khóa SSH ngoài kế hoạch, hook chặn git push ngoài kế hoạch; đẩy thật ba repo qua trình cấp mật khẩu khi kế hoạch có \"đẩy\"; ảnh chụp hành vi có bước của khối (gh giả, kho tệp).",
+      "unverified": "Bộ chuyển macOS Keychain và Linux secret-tool chỉ kiểm hợp đồng, chưa chạy trên máy thật; github_run với lệnh ghi thật chưa chạy."
+    }
+  ],
+  "migrations": [],
+  "housekeeping": [
+    "core/module.json",
+    "core/RELEASES.md"
+  ]
+}

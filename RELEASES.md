@@ -6,6 +6,68 @@ Cách đọc số bản `A.B.C`: `A` đổi khi nâng cấp cần làm tay một
 
 Số test ở phần "Đã kiểm" là của bộ test phát triển, chạy ở dự án nguồn; bộ test đó không đi kèm gói. Trong dự án đã cài, phép kiểm là `node .claude/modules/core/cli/cli.js doctor`.
 
+## 2.9.0 (2026-10-16)
+
+Điều phối nhiều phiên: người dùng chỉ nói chuyện với MỘT phiên và ủy quyền cho nó duyệt kế hoạch của các phiên làm việc; mỗi repo có thể có sub-agent dựng sẵn; phiên điều phối có bảng việc. Bản này không bỏ gì và không có bước chuyển cấu hình; không ủy quyền thì mọi thứ chạy như 2.8.1.
+
+### Có gì mới
+- **Ủy quyền duyệt kế hoạch, trao bằng chính kế hoạch.** Kế hoạch nói sẽ mở hoặc tạo phiên khác thì thêm một dòng `- Ủy quyền: có, 8h`; người dùng chỉ cần "duyệt" thì cổng mở và hook ghi quyền cho phiên đó (mặc định 8 giờ, tối đa 24; `không` thì không ghi). Quyền chỉ có nghĩa với CÁC PHIÊN DO CHÍNH PHIÊN ĐÓ TẠO RA bằng `session_spawn` (công cụ gắn vào lời mở đầu của phiên mới một dấu ký "phiên này do X tạo"; hook của phiên mới kiểm rồi ghi quan hệ). Phiên điều phối đọc kế hoạch bằng `plan_view` và duyệt bằng `plan_approve`; lệnh duyệt có chữ ký, gắn băm của đúng kế hoạch, đúng phiên nhận, dùng một lần, hết hạn sau 30 phút. Kế hoạch nói mở phiên khác mà thiếu dòng này thì cổng chưa mở và chỉ đòi viết thêm đúng dòng đó. Cách dự phòng: gõ `ỦY QUYỀN: 8h` ở đầu tin (nhận cả dạng dán trong khối mã). `delegate_status` xem ủy quyền và kiểm sổ duyệt. Thu hồi: gõ `THU HỒI ỦY QUYỀN`.
+- **Quyền theo kế hoạch đang được duyệt.** Kế hoạch có dòng `Ủy quyền` (giao việc cho phiên khác) thì phiên đó chỉ điều phối, không tự sửa tệp; người dùng duyệt một kế hoạch không có dòng đó thì phiên tự làm, và ủy quyền cũ thôi duyệt thêm (việc đã duyệt thay thì các phiên làm nốt). Không có đơn vị nào "không bao giờ ủy quyền được": kế hoạch nêu thì được, kể cả harness.
+- **Dòng `- Được làm:` (tùy chọn)** khai việc rủi ro kế hoạch cho phép: commit, đẩy, gắn nhãn, deploy, quay lui, xóa, ghi đè, sửa cổng duyệt. Với ủy quyền, đây là giới hạn của các phiên làm thay, kiểm ở LÚC LÀM theo lệnh và đường dẫn thật; không có dòng thì chúng chỉ sửa tệp và commit ở máy. Sửa mã cổng duyệt luôn phải nêu rõ và được ghi sổ.
+- **Duyệt nối tiếp**: phiên làm thay đã làm theo một kế hoạch được duyệt thay mà trình kế hoạch mới (ví dụ commit sau khi sửa) thì phiên điều phối duyệt tiếp được, tối đa 5 lần mỗi phiên. Một dịch vụ chỉ một phiên làm thay ghi tại một lúc. Mã cổng duyệt đổi sau khi ủy quyền thì ủy quyền tạm ngưng tới khi người dùng duyệt lại.
+- **Khối mới `secrets` (máy chủ MCP `harness-secrets`):** token GitHub nằm trong kho của hệ điều hành (Windows DPAPI, macOS Keychain, Linux secret-tool; tệp 600 dự phòng có cảnh báo). Người dùng quản bằng `cli.js secret set|rotate|revoke|status|audit|migrate|setup-git`. Agent dùng `secret_status`, `github_ci`, `github_run` (mọi lệnh gh và gh api), không công cụ nào nhận hay trả token. Phạm vi theo kế hoạch đang duyệt: repo của đơn vị ở mục Dịch vụ, dòng mới `- GitHub:` (repo, `org:<tên>`, tài khoản), việc theo dòng `Được làm` (thêm `tạo repo`, `quản trị`). `git push` vẫn là lệnh thường: trình cấp mật khẩu chỉ đưa token cho repo trong phạm vi, hook `guard-github` xét việc của lần đẩy. Nhắc đầu phiên khi token sắp hết hạn, hỏng hay thừa quyền. Bộ quét trước commit và trước đẩy bắt dạng token và khóa.
+- `task_report` không cần mã việc: phiên do phiên điều phối tạo báo cáo thẳng về phiên đó. Một tin "THU HỒI ỦY QUYỀN, duyệt" vừa thu hồi vừa duyệt.
+- **Sub-agent dựng sẵn cho từng repo.** `host_define` (và `host_rename`, `host_remove`) nhận `kind=agent`: nguồn ở `<repo>/.harness/agents/<tên>.md` (`tools` bắt buộc), harness sinh `.claude/agents/<repo>-<tên>.md` ở gốc dự án kèm phần mở đầu bắt agent đọc cửa vào và skill riêng của repo, chỉ làm trong repo, trả báo cáo ba mục.
+- **Bảng việc** `task_dispatch`, `task_report`, `task_status` trong sổ phiên (bảng `act_tasks`).
+- Skill `orchestrate` và hướng dẫn `05-dieu-phoi-va-sub-agent.md`.
+
+### Hành vi đổi
+- Ba công cụ MCP chỉ đọc mới (`delegate_status`, `plan_view`, `task_status`), bốn công cụ ghi mới (`session_spawn`, `plan_approve`, `task_dispatch`, `task_report`); hai hook mới (`guard-delegate`, và `gate-hook read` chặn công cụ đọc, tìm kiếm đọc khóa ký).
+- Lệnh Bash nhắc tới khóa ký hay tệp ủy quyền bị chặn dù cổng đóng hay mở.
+- Luật phạm vi: agent sinh ra cho repo A (tên `A-<tên>`) không sửa tệp repo khác. Agent chung (Explore, general-purpose...) và phiên chính không bị luật này.
+- Sổ phiên nâng lên phiên bản 5 ở lần mở đầu (chụp bản sao trước khi nâng; chỉ thêm bảng).
+- Dấu vân tay cổng duyệt đổi (có thêm `gate/gate-delegate.js`).
+
+### Nâng cấp
+- Nâng cấp như mọi lần (`upgrade`); không có bước chuyển cấu hình. `settings.json` được sinh lại có thêm hai hook; công cụ MCP mới hiện sau khi gõ `/mcp`.
+- Không dùng ủy quyền thì không phải làm gì thêm. Muốn dùng: đọc `.claude/modules/core/guides/05-dieu-phoi-va-sub-agent.md`.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển (cả ảnh chụp hành vi) qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test mới: ủy quyền (mười bảy ca, gồm quyền theo kế hoạch, dòng Được làm, duyệt nối tiếp, một dịch vụ một bên ghi, tạm ngưng khi mã cổng đổi, một tin vừa thu hồi vừa duyệt, báo cáo không cần mã việc; gồm các cách vượt: lệnh bị sửa, chữ ký giả, kế hoạch đổi sau khi duyệt, lệnh sang phiên khác, hết hạn, thu hồi giữa chừng, cờ mở giả, sổ bị xóa dòng; và chạy qua hook thật của cây giả), sub-agent và bảng việc (sáu ca).
+- Đo bằng phiên `claude -p` thật (Claude Code 2.1.300, haiku, Windows): agent ở `.claude/agents/` của gốc được nạp và danh sách `tools` có hiệu lực, agent trong thư mục repo thì không; sub-agent gọi được công cụ MCP của harness; hook nhận loại agent và mã agent; sub-agent gọi được sub-agent khác; một phiên điều phối thật nhận dòng ủy quyền, mã phiên của công cụ MCP khớp mã phiên của hook, `plan_approve` ghi lệnh duyệt và phiên làm việc mở cổng bằng lệnh đó.
+
+### Chưa kiểm và giới hạn
+- Không chặn được một agent cố tình phá: cùng tài khoản hệ điều hành và có Bash, nó có thể đọc khóa nếu lọt hook, hoặc chạy một phiên `claude` mới để tự tạo ủy quyền. Lớp này chặn lỗi vô tình, tấn công qua nội dung và sửa tay thô sơ, và để lại dấu vết.
+- Máy không đọc chữ trong kế hoạch để từ chối (đọc chữ từng chặn nhầm kế hoạch onboard vô hại, vì nó buộc phải nói `.harness/` và `.claude/` của đơn vị). Việc cấm bị chặn ở lúc làm bằng lệnh và đường dẫn thật; chỗ hở: lệnh chạy qua Bash mà hook không phân tích được, hoặc một chương trình tự ghi ra ngoài. Phiên điều phối vẫn phải đọc kế hoạch.
+- Lần chạy thật với bốn phiên làm thay (onboard bốn repo) qua bản trước của cơ chế này; bản quyền-theo-kế-hoạch chưa chạy với phiên Claude thật.
+- Mới thử một bản Claude Code, một máy, phiên chạy bằng `claude -p`; chưa thử nhiều phiên nền chạy song song lâu ngày; chưa đo token tiết kiệm được.
+- Công cụ không tự nhắn phiên nhận việc; chỉ trả lời nhắn mẫu.
+
+## 2.8.1 (2026-10-16)
+
+Sửa ba lỗi của 2.8.0 tìm ra khi dựng skill và note cho các đơn vị thật: một note làm mất hiệu lực khối mở rộng đã xác nhận, mô tả skill có dấu hai chấm làm Claude Code bỏ qua skill, và lời chặn theo skill không chỉ đúng tệp của skill đơn vị. Bản này không bỏ gì và không có bước chuyển cấu hình.
+
+### Có gì mới
+- `doctor` và `host_status` báo LỖI khi `SKILL.md` viết tay có `description:` chứa `: ` hoặc ` #` mà chưa bọc nháy (phần đầu tệp không còn là YAML hợp lệ, Claude Code bỏ qua cả skill). Và ghi chú khi đơn vị nằm trong thư mục bị `.gitignore` ở gốc dự án: Claude Code không liệt kê skill của đơn vị đó, chỉ nạp được rule (note).
+
+### Hành vi đổi
+- `host_define` tự bọc nháy kép dòng `description:` khi giá trị có `: `, ` #` hay mở đầu bằng ký tự đặc biệt (trước đây ghi nguyên văn nên `description: Dùng khi: sửa mã` làm hỏng YAML và skill biến mất). Mô tả an toàn vẫn viết trần. Gọi lại `host_define` với cùng tên là sửa được skill cũ.
+- Lời chặn theo skill nêu đường dẫn thật của skill đơn vị và bảo đọc trọn tệp bằng công cụ Read (công cụ Skill báo "Unknown skill" khi thư mục đơn vị bị `.gitignore`). Skill chung ở gốc dự án giữ lời cũ.
+- Dấu vân tay của khối mở rộng của đơn vị (luật ở `.harness/rules/`, công cụ, lệnh) không còn tính thư mục `notes/`. Trước đây: đơn vị đã xác nhận luật riêng, rồi có người (hay agent) thêm một note bằng `host_define` thì `doctor` báo "khối mở rộng đã sửa sau lần xác nhận" và bản mới không có hiệu lực cho tới khi xác nhận lại bằng tay. Skill và tài liệu (`skills/`, `docs/`) đã được bỏ qua từ trước; note là ghi chép giống chúng.
+
+### Nâng cấp
+- Nâng cấp như mọi lần; không có bước chuyển cấu hình. Đơn vị đã gặp cảnh báo trên sẽ hết cảnh báo ngay, không phải xác nhận lại, nếu chỉ khác nhau ở `notes/`.
+
+### Đã kiểm
+- Bộ kiểm đủ của bản phát triển qua ở Windows và Linux (Docker) trước khi đóng gói; dấu "đã kiểm đủ" gắn với đúng mã băm của gói này.
+- Test mới đỏ với mã 2.8.0 (đã dựng lại lỗi), xanh với mã mới: thêm skill và note không đổi dấu vân tay; sửa một tệp luật thì dấu vẫn đổi; mô tả có dấu hai chấm hay dấu thăng được bọc nháy, đọc ngược ra đúng chuỗi, skill viết tay hỏng bị doctor báo LỖI; lời chặn nêu đúng đường dẫn skill đơn vị; ghi chú đơn vị trong thư mục bị .gitignore.
+- Đo bằng phiên claude -p thật (2.1.299, haiku, Windows, một lần): skill đặt ở <đơn vị>/.claude/skills/ gọi được bằng công cụ Skill sau khi phiên chạm một tệp trong đơn vị, NHƯNG chỉ khi thư mục đơn vị không bị .gitignore ở gốc dự án; cùng cây, thêm `apps/` vào .gitignore thì công cụ Skill báo Unknown skill. Rule (note) thì nạp trong cả hai trường hợp.
+
+### Chưa kiểm và giới hạn
+- Chưa thử trên dự án khác đã cài 2.8.0 và đã xác nhận khối mở rộng.
+- Đơn vị nằm trong thư mục bị .gitignore ở gốc dự án thì Claude Code không liệt kê skill của nó (đã đo, chưa biết có cách khai báo nào để mở); lúc đó skill chỉ mở được bằng cách đọc trọn SKILL.md (hook sổ phiên tính cách này), note và việc ép theo skill vẫn chạy.
+
 ## 2.8.0 (2026-10-16)
 
 Vòng đời trọn vẹn của skill riêng của đơn vị: một lời gọi `host_define` là đủ (skill kèm điều kiện ép, hoặc note nạp theo đường dẫn), có đổi tên, gỡ, nhận skill của team, bảng vòng đời và kiểm bằng `doctor`. Bản này không bỏ gì và không có bước chuyển cấu hình.
